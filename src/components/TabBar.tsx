@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router'
 import { BarChart3, Heart, Library, Plus, Sun, type LucideIcon } from 'lucide-react'
+import { useUsUnread } from '@/features/us/unread'
 
 const LEFT: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Hoy', icon: Sun },
@@ -10,7 +11,7 @@ const RIGHT: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/nosotros', label: 'Nosotros', icon: Heart },
 ]
 
-function Tab({ to, label, icon: Icon }: { to: string; label: string; icon: LucideIcon }) {
+function Tab({ to, label, icon: Icon, badge = 0 }: { to: string; label: string; icon: LucideIcon; badge?: number }) {
   return (
     <NavLink
       to={to}
@@ -21,6 +22,7 @@ function Tab({ to, label, icon: Icon }: { to: string; label: string; icon: Lucid
     >
       {({ isActive }) => (
         <>
+          <span className="relative">
           <Icon
             size={23}
             strokeWidth={1.8}
@@ -29,6 +31,16 @@ function Tab({ to, label, icon: Icon }: { to: string; label: string; icon: Lucid
               transition: 'transform 0.35s var(--spring)',
             }}
           />
+            {badge > 0 && !isActive && (
+              <span
+                className="num absolute -top-1.5 -right-2.5 grid h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white"
+                style={{ animation: 'gb-pop .5s var(--spring)' }}
+                aria-label={`${badge} novedades`}
+              >
+                {badge > 9 ? '9+' : badge}
+              </span>
+            )}
+          </span>
           {label}
         </>
       )}
@@ -38,6 +50,7 @@ function Tab({ to, label, icon: Icon }: { to: string; label: string; icon: Lucid
 
 /** Hoy · Biblioteca · + · Stats · Nosotros. The central + registers a session from anywhere. */
 export function TabBar({ onAdd }: { onAdd: () => void }) {
+  const unread = useUsUnread()
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/90 pb-safe backdrop-blur-md">
       <div className="mx-auto grid max-w-xl grid-cols-5 items-center px-2.5 pt-1.5">
@@ -53,7 +66,7 @@ export function TabBar({ onAdd }: { onAdd: () => void }) {
           <Plus size={26} />
         </button>
         {RIGHT.map((t) => (
-          <Tab key={t.to} {...t} />
+          <Tab key={t.to} {...t} badge={t.to === '/nosotros' ? unread : 0} />
         ))}
       </div>
     </nav>

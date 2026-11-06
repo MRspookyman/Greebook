@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
-import type { Note, Profile, Reaction, ReadingWithBook, Session } from './types'
+import type { Challenge, Note, Nudge, Profile, Reaction, ReadingWithBook, RecommendationWithBook, Session } from './types'
 
 /**
  * Shared query keys. All feature code MUST use these so that optimistic updates,
@@ -16,6 +16,14 @@ export const qk = {
   notes: (readingId: string) => ['notes', readingId] as const,
   /** Every reaction visible to me (mine + partner's). */
   reactions: () => ['reactions'] as const,
+  /** Every shared note of the couple (mine + partner's): club de dos and activity. */
+  sharedNotes: () => ['shared-notes'] as const,
+  /** Recommendations sent or received. */
+  recommendations: () => ['recommendations'] as const,
+  /** Nudges sent or received (latest first). */
+  nudges: () => ['nudges'] as const,
+  /** Monthly couple challenge. */
+  challenge: (month: string) => ['challenge', month] as const,
 }
 
 const PAGE = 1000
@@ -116,5 +124,56 @@ export function useReactions() {
       fetchAll<Reaction>((from, to) =>
         supabase.from('reactions').select('*').order('created_at', { ascending: false }).range(from, to),
       ),
+  })
+}
+
+export function useSharedNotes(enabled = true) {
+  return useQuery({
+    queryKey: qk.sharedNotes(),
+    enabled,
+    queryFn: () =>
+      fetchAll<Note>((from, to) =>
+        supabase.from('notes').select('*').eq('shared', true).order('created_at', { ascending: true }).range(from, to),
+      ),
+  })
+}
+
+export function useRecommendations(enabled = true) {
+  return useQuery({
+    queryKey: qk.recommendations(),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('recommendations')
+        .select('*, book:books(*)')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (error) throw error
+      return data as RecommendationWithBook[]
+    },
+  })
+}
+
+export function useNudges(enabled = true) {
+  return useQuery({
+    queryKey: qk.nudges(),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('nudges').select('*').order('created_at', { ascending: false }).limit(50)
+      if (error) throw error
+      return data as Nudge[]
+    },
+  })
+}
+
+export function useChallenge(month: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.challenge(month),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('challenges').select('*').eq('month', month).maybeSingle()
+      if (error) throw error
+      return data as Challenge | null
+    },
   })
 }

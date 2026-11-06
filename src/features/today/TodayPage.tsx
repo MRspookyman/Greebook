@@ -1,5 +1,5 @@
 import { useRef, useState, type CSSProperties } from 'react'
-import { Check, CloudUpload, Flame, Plus } from 'lucide-react'
+import { Check, CloudUpload, Flame, Hand, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Link } from 'react-router'
@@ -7,6 +7,7 @@ import { useMe } from '@/features/auth/me'
 import { useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
 import { currentStreak } from '@/lib/stats/streak'
+import { coupleStreak, isLive } from '@/lib/club'
 import { dailySeries, estimatedFinish, pacePerDay, weekDays } from '@/lib/stats/insights'
 import { formatMinutes, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, Session } from '@/lib/types'
@@ -20,6 +21,8 @@ import { useEntered } from '@/components/motion'
 import { LogSessionSheet } from '@/features/session/LogSessionSheet'
 import { Timer } from '@/features/session/Timer'
 import { ReactionBar } from '@/features/us/ReactionBar'
+import { NudgeSheet, useNudgedToday } from '@/features/us/NudgeSheet'
+import { ClubCards, PartnerLiveCard, RecommendationCards, TogetherStartCards } from '@/features/us/TodayCouple'
 
 const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
@@ -41,6 +44,11 @@ export function TodayPage() {
   const active = (readings.data ?? []).filter((r) => r.status === 'reading')
   const dates = new Set(sessions.data?.map((s) => s.read_on) ?? [])
   const streak = currentStreak(dates, today)
+  const partnerDates = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
+  const duo = coupleStreak(dates, partnerDates, today)
+  const [nudging, setNudging] = useState(false)
+  const nudged = useNudgedToday()
+  const late = new Date().getHours() >= 19
   const week = weekDays(today)
   const series = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] })
   const weeklyPages = series.reduce((sum, day) => sum + day.pages, 0)
@@ -71,8 +79,12 @@ export function TodayPage() {
         </Link>
       </header>
 
+      <PartnerLiveCard style={{ '--k': 1 } as CSSProperties} />
+      <TogetherStartCards />
+      <RecommendationCards />
+
       <section className="card rise space-y-3" style={{ '--k': 1 } as CSSProperties} aria-label="Tu racha de lectura">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-amber"
             style={{ background: 'color-mix(in oklab, var(--amber) 14%, var(--surface))' }}
@@ -80,38 +92,88 @@ export function TodayPage() {
             <Flame size={14} fill="currentColor" aria-hidden />
             {streak} días
           </span>
+          {partner && duo > 0 && (
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber" aria-label={`${duo} días leyendo los dos`}>
+              <span className="flex -space-x-1" aria-hidden>
+                <span className="h-3 w-3 rounded-full ring-2 ring-surface" style={{ background: `var(--${profile.accent})` }} />
+                <span className="h-3 w-3 rounded-full ring-2 ring-surface" style={{ background: `var(--${partner.accent})` }} />
+              </span>
+              {duo} juntos
+            </span>
+          )}
           <p className="text-xs text-muted">
-            {dates.has(today) ? 'Hoy ya has leído' : 'Lee hoy para no perder la racha'}
+            {dates.has(today)
+              ? partner && !partnerDates.has(today)
+                ? `Falta ${partner.display_name}`
+                : 'Hoy ya has leído'
+              : partner && partnerDates.has(today)
+                ? `${partner.display_name} ya ha leído: te toca`
+                : 'Lee hoy para no perder la racha'}
           </p>
         </div>
         <div className="grid grid-cols-7 gap-1.5">
           {week.map((date, index) => {
             const done = dates.has(date)
+            const theirs = partnerDates.has(date)
+            const both = done && theirs
             const isToday = date === today
             return (
               <div
-                key={`${date}-${done}`}
+                key={`${date}-${done}-${theirs}`}
                 className="flex flex-col items-center gap-1 text-[11px] text-muted"
-                aria-label={`${fmt(date, 'EEEE')}: ${done ? 'leído' : 'sin sesión'}`}
+                aria-label={`${fmt(date, 'EEEE')}: ${
+                  partner
+                    ? both
+                      ? 'leísteis los dos'
+                      : done
+                        ? 'leíste tú'
+                        : theirs
+                          ? `leyó ${partner.display_name}`
+                          : 'sin sesiones'
+                    : done
+                      ? 'leído'
+                      : 'sin sesión'
+                }`}
               >
-                <span
-                  className={`grid h-8 w-8 place-items-center rounded-full ${
-                    done
-                      ? 'bg-accent text-surface'
-                      : isToday
-                        ? 'border-2 border-dashed border-accent bg-surface'
-                        : 'bg-border'
-                  }`}
-                  style={{
-                    animation: isToday
-                      ? done
-                        ? 'gb-pop .45s var(--spring)'
-                        : 'gb-breathe 2s var(--ease) infinite'
-                      : undefined,
-                  }}
-                >
-                  {done && <Check size={17} strokeWidth={3} aria-hidden />}
-                </span>
+                {partner ? (
+                  <span
+                    className={`relative grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-border ${
+                      isToday && !both ? 'outline-2 outline-offset-2 outline-dashed outline-muted' : ''
+                    }`}
+                    style={{
+                      boxShadow: both ? '0 0 0 2px var(--surface), 0 0 0 3.5px var(--amber)' : undefined,
+                      animation: isToday ? (both ? 'gb-pop .45s var(--spring)' : undefined) : undefined,
+                    }}
+                  >
+                    <span
+                      className="absolute inset-y-0 left-0 w-1/2 transition-colors duration-500"
+                      style={{ background: done ? `var(--${profile.accent})` : 'transparent' }}
+                    />
+                    <span
+                      className="absolute inset-y-0 right-0 w-1/2 transition-colors duration-500"
+                      style={{ background: theirs ? `var(--${partner.accent})` : 'transparent' }}
+                    />
+                  </span>
+                ) : (
+                  <span
+                    className={`grid h-8 w-8 place-items-center rounded-full ${
+                      done
+                        ? 'bg-accent text-surface'
+                        : isToday
+                          ? 'border-2 border-dashed border-accent bg-surface'
+                          : 'bg-border'
+                    }`}
+                    style={{
+                      animation: isToday
+                        ? done
+                          ? 'gb-pop .45s var(--spring)'
+                          : 'gb-breathe 2s var(--ease) infinite'
+                        : undefined,
+                    }}
+                  >
+                    {done && <Check size={17} strokeWidth={3} aria-hidden />}
+                  </span>
+                )}
                 {DAYS[index]}
               </div>
             )
@@ -177,6 +239,8 @@ export function TodayPage() {
         </section>
       )}
 
+      <ClubCards />
+
       <section
         className="rise grid grid-cols-2 gap-3"
         style={{ '--k': 3 } as CSSProperties}
@@ -220,7 +284,7 @@ export function TodayPage() {
         </Link>
       </section>
 
-      {partner && (
+      {partner && !isLive(partner) && (
         <section
           className="card rise flex items-center gap-2.5"
           style={{ '--k': 4 } as CSSProperties}
@@ -253,9 +317,20 @@ export function TodayPage() {
               />
             )}
           </Link>
-          {latest && <ReactionBar targetType="session" targetId={latest.id} ownerId={partner.id} />}
+          {!partnerToday && late && !nudged ? (
+            <button
+              className="btn min-h-9 shrink-0 px-3 text-xs"
+              style={{ background: `color-mix(in oklab, var(--${partner.accent}) 15%, var(--surface))`, color: `var(--${partner.accent})` }}
+              onClick={() => setNudging(true)}
+            >
+              <Hand size={15} /> Toque
+            </button>
+          ) : (
+            latest && <ReactionBar targetType="session" targetId={latest.id} ownerId={partner.id} />
+          )}
         </section>
       )}
+      <NudgeSheet open={nudging} onClose={() => setNudging(false)} />
       {pending > 0 && (
         <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted" role="status">
           <CloudUpload size={13} aria-hidden />

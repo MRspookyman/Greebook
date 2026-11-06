@@ -21,6 +21,31 @@ function currentStreak(dates: Set<string>, today: string): number {
   return count
 }
 
+/** Consecutive days on which both read (today counts once both have; otherwise up to yesterday). */
+function coupleStreak(mine: Set<string>, theirs: Set<string>, today: string): number {
+  const both = new Set([...mine].filter((date) => theirs.has(date)))
+  return currentStreak(both, today)
+}
+
+// deno-lint-ignore no-explicit-any
+async function readDates(admin: any, userId: string, today: string, stopAtToday: boolean): Promise<Set<string>> {
+  const dates = new Set<string>()
+  for (let from = 0; ; from += 1000) {
+    const { data: sessions, error } = await admin
+      .from('sessions')
+      .select('read_on')
+      .eq('user_id', userId)
+      .lte('read_on', today)
+      .order('read_on', { ascending: false })
+      .order('id')
+      .range(from, from + 999)
+    if (error) throw error
+    for (const session of sessions ?? []) dates.add(session.read_on)
+    if (!sessions || sessions.length < 1000 || (stopAtToday && dates.has(today))) break
+  }
+  return dates
+}
+
 Deno.serve(async (request: Request) => {
   const secret = Deno.env.get('CRON_SECRET')
   if (!secret || request.headers.get('Authorization') !== `Bearer ${secret}`)
@@ -32,7 +57,7 @@ Deno.serve(async (request: Request) => {
     })
     const { data: profiles, error } = await admin
       .from('profiles')
-      .select('id, timezone, reminder_time, last_reminded_on')
+      .select('id, timezone, reminder_time, last_reminded_on, partner_id')
       .eq('notify_reminder', true)
     if (error) throw error
     const now = new Date()
@@ -54,27 +79,36 @@ Deno.serve(async (request: Request) => {
         const today = `${values.year}-${values.month}-${values.day}`
         const time = `${values.hour}:${values.minute}:${values.second}`
         if (profile.last_reminded_on === today || time < profile.reminder_time) continue
-        const dates = new Set<string>()
-        for (let from = 0; ; from += 1000) {
-          const { data: sessions, error: sessionsError } = await admin
-            .from('sessions')
-            .select('read_on')
-            .eq('user_id', profile.id)
-            .lte('read_on', today)
-            .order('read_on', { ascending: false })
-            .order('id')
-            .range(from, from + 999)
-          if (sessionsError) throw sessionsError
-          for (const session of sessions ?? []) dates.add(session.read_on)
-          if (!sessions || sessions.length < 1000 || dates.has(today)) break
-        }
+        const dates = await readDates(admin, profile.id, today, true)
         if (dates.has(today)) continue
         const streak = currentStreak(dates, today)
-        const devices = await sendToUser(admin, profile.id, {
+        let message = {
           title: '📖 ¿Un ratito de lectura hoy?',
           body: streak ? `Tu racha es de ${streak} ${streak === 1 ? 'día' : 'días'}` : 'Empieza una racha nueva',
           url: '/',
-        })
+        }
+        if (profile.partner_id) {
+          const partnerDates = await readDates(admin, profile.partner_id, today, false)
+          if (partnerDates.has(today)) {
+            const { data: partner, error: partnerError } = await admin
+              .from('profiles')
+              .select('display_name')
+              .eq('id', profile.partner_id)
+              .single()
+            if (partnerError) throw partnerError
+            // If I read today too, the couple streak grows by one.
+            const next = coupleStreak(new Set([...dates, today]), partnerDates, today)
+            message = {
+              title: `💚💙 ${partner.display_name} ya ha leído hoy`,
+              body:
+                next > 1
+                  ? `Te falta a ti para llegar a ${next} días leyendo los dos`
+                  : 'Lee un poco y empezáis una racha juntos',
+              url: '/',
+            }
+          }
+        }
+        const devices = await sendToUser(admin, profile.id, message)
         // No device subscribed yet: keep today's reminder pending for when one is.
         if (devices === 0) continue
         const { error: updateError } = await admin

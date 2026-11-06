@@ -6,30 +6,66 @@ interface Marker {
   value: number
   accent: Accent
   label: string
+  /** Text on the flag, e.g. "p. 214". Defaults to the initial. */
+  caption?: string
 }
 
-/** One shared track with a marker per person (joint reading); markers glide in from the start. */
-export function DualProgressBar({ a, b }: { a: Marker; b: Marker }) {
+interface Stop {
+  /** 0..1 */
+  value: number
+  /** Both have passed it. */
+  done: boolean
+  label: string
+}
+
+/**
+ * One shared track: my flag hangs below it and my partner's stands above it, so they never
+ * cover each other however close we are. Optional stops (club de dos) sit on the track.
+ */
+export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; stops?: Stop[] }) {
   const entered = useEntered()
+  const clamp = (v: number) => Math.min(1, Math.max(0, v)) * 100
+  const flag = (m: Marker, below: boolean) => {
+    const pct = clamp(m.value)
+    return (
+      <div
+        key={m.label + below}
+        className={`absolute flex -translate-x-1/2 items-center text-[10px] font-semibold ${below ? 'top-[34px] flex-col' : 'bottom-[34px] flex-col-reverse'}`}
+        style={{ left: entered ? `${pct}%` : 0, color: `var(--${m.accent})`, transition: 'left 1.2s var(--ease)' }}
+        title={`${m.label}: ${Math.round(pct)} %`}
+      >
+        <span className="h-2 w-0.5 bg-current" />
+        <span
+          className="num whitespace-nowrap rounded-[7px] px-1.5 py-px text-surface"
+          style={{ background: `var(--${m.accent})` }}
+        >
+          {m.label.charAt(0).toUpperCase()}
+          {m.caption ? ` · ${m.caption}` : ''}
+        </span>
+      </div>
+    )
+  }
   return (
-    <div className="relative my-3 h-2.5 rounded-md bg-border" aria-label={`${a.label} y ${b.label}`}>
-      {[a, b].map((m) => {
-        const pct = Math.min(1, Math.max(0, m.value)) * 100
-        return (
-          <div
-            key={m.accent}
-            className="absolute top-1/2 grid h-[26px] w-[26px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[3px] border-surface text-[10px] font-bold text-surface"
-            style={{
-              left: entered ? `${pct}%` : 0,
-              background: `var(--${m.accent})`,
-              transition: 'left 1.2s var(--ease)',
-            }}
-            title={`${m.label}: ${Math.round(pct)} %`}
-          >
-            {m.label.charAt(0).toUpperCase()}
-          </div>
-        )
-      })}
+    <div className="relative mx-3 h-[62px]" role="img" aria-label={`${a.label}: ${Math.round(clamp(a.value))} %. ${b.label}: ${Math.round(clamp(b.value))} %`}>
+      <div className="absolute inset-x-0 top-[28px] h-1.5 rounded-full bg-border" />
+      <div
+        className="absolute top-[28px] left-0 h-1.5 rounded-full opacity-50"
+        style={{
+          width: entered ? `${clamp(Math.min(a.value, b.value))}%` : 0,
+          background: 'var(--amber)',
+          transition: 'width 1.2s var(--ease)',
+        }}
+      />
+      {stops.map((stop) => (
+        <span
+          key={stop.label}
+          className={`absolute top-[23px] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-amber ${stop.done ? 'bg-amber' : 'bg-surface'}`}
+          style={{ left: `${clamp(stop.value)}%` }}
+          title={stop.label}
+        />
+      ))}
+      {flag(b, false)}
+      {flag(a, true)}
     </div>
   )
 }

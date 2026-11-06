@@ -1,12 +1,13 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { ListFilter, Plus, Search, Star, X } from 'lucide-react'
+import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
 import { Segmented } from '@/components/Segmented'
 import { useMe } from '@/features/auth/me'
 import { useReadings } from '@/lib/data'
-import type { ReadingStatus } from '@/lib/types'
+import type { ReadingStatus, ReadingWithBook } from '@/lib/types'
 import { progressFraction } from '@/lib/units'
 
 const segments: { value: ReadingStatus; label: string; empty: string }[] = [
@@ -21,34 +22,111 @@ const sorts = [
   { value: 'rating', label: 'Nota' },
 ] as const
 
+type Owner = 'all' | 'mine' | 'theirs' | 'both'
+const OWNERS: Owner[] = ['all', 'mine', 'theirs', 'both']
+const OWNER_KEY = 'gb.library.owner'
+
+interface Entry {
+  reading: ReadingWithBook
+  mine: boolean
+  theirs: boolean
+}
+
+/**
+ * Cards for one status. A book we both have in that status shows once (my reading, both
+ * avatars). «De los dos» keeps only books we both have, in any status.
+ */
+function libraryEntries(
+  mine: ReadingWithBook[],
+  theirs: ReadingWithBook[],
+  status: ReadingStatus,
+  owner: Owner,
+): Entry[] {
+  const myBooks = new Set(mine.map((r) => r.book_id))
+  const theirBooks = new Set(theirs.map((r) => r.book_id))
+  const myHere = mine.filter((r) => r.status === status)
+  const theirHere = theirs.filter((r) => r.status === status)
+  const myHereBooks = new Set(myHere.map((r) => r.book_id))
+  const theirHereBooks = new Set(theirHere.map((r) => r.book_id))
+  const list: Entry[] =
+    owner === 'mine'
+      ? myHere.map((r) => ({ reading: r, mine: true, theirs: theirHereBooks.has(r.book_id) }))
+      : owner === 'theirs'
+        ? theirHere.map((r) => ({ reading: r, mine: myHereBooks.has(r.book_id), theirs: true }))
+        : [
+            ...myHere.map((r) => ({ reading: r, mine: true, theirs: theirHereBooks.has(r.book_id) })),
+            ...theirHere
+              .filter((r) => !myHereBooks.has(r.book_id))
+              .map((r) => ({ reading: r, mine: false, theirs: true })),
+          ]
+  const seen = new Set<string>()
+  return list.filter((entry) => {
+    const key = `${entry.reading.user_id}:${entry.reading.book_id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return owner !== 'both' || (myBooks.has(entry.reading.book_id) && theirBooks.has(entry.reading.book_id))
+  })
+}
+
+function loadOwner(): Owner {
+  try {
+    const saved = localStorage.getItem(OWNER_KEY) as Owner | null
+    return saved && OWNERS.includes(saved) ? saved : 'all'
+  } catch {
+    return 'all'
+  }
+}
+
 export function LibraryPage() {
-  const { userId } = useMe()
+  const { userId, profile, partner } = useMe()
   const readings = useReadings(userId)
+  const partnerReadings = useReadings(partner?.id)
+  const [owner, setOwnerState] = useState<Owner>(loadOwner)
   const [status, setStatus] = useState<ReadingStatus>('reading')
   const [filter, setFilter] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [showAbandoned, setShowAbandoned] = useState(false)
   const [sort, setSort] = useState<(typeof sorts)[number]['value']>('recent')
   const searchRef = useRef<HTMLInputElement>(null)
+  const effectiveOwner: Owner = partner ? owner : 'mine'
   const normalized = filter.trim().toLocaleLowerCase('es')
-  const all = readings.data ?? []
-  const visible = all
-    .filter(
-      (reading) =>
-        reading.status === status &&
-        [reading.book.title, ...reading.book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized)),
+  const mineList = readings.data ?? []
+  const theirList = partner ? (partnerReadings.data ?? []) : []
+  const visible = libraryEntries(mineList, theirList, status, effectiveOwner)
+    .filter(({ reading }) =>
+      [reading.book.title, ...reading.book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized)),
     )
-    .sort((a, b) => {
+    .sort(({ reading: a }, { reading: b }) => {
       if (sort === 'title') return a.book.title.localeCompare(b.book.title, 'es')
       if (sort === 'rating' && a.rating !== b.rating) return (b.rating ?? -1) - (a.rating ?? -1)
       return b.updated_at.localeCompare(a.updated_at)
     })
+  const loading = readings.isPending || (!!partner && effectiveOwner !== 'mine' && partnerReadings.isPending)
+
+  function setOwner(value: Owner) {
+    setOwnerState(value)
+    try {
+      localStorage.setItem(OWNER_KEY, value)
+    } catch {
+      /* Remembering the filter is optional. */
+    }
+  }
 
   function toggleSearch() {
     if (searchOpen) setFilter('')
     else window.requestAnimationFrame(() => searchRef.current?.focus())
     setSearchOpen(!searchOpen)
   }
+
+  const emptyTitle = normalized
+    ? 'No hay libros con ese título o autor'
+    : effectiveOwner === 'mine'
+      ? segments.find((s) => s.value === status)!.empty
+      : effectiveOwner === 'theirs'
+        ? `${partner?.display_name} no tiene libros aquí`
+        : effectiveOwner === 'both'
+          ? 'Aún no compartís ningún libro aquí'
+          : 'No hay libros aquí'
 
   return (
     <section className="space-y-4">
@@ -81,13 +159,27 @@ export function LibraryPage() {
           <Plus size={23} />
         </Link>
       </header>
+      {partner && (
+        <Segmented
+          options={[
+            { value: 'all', label: 'Todos' },
+            { value: 'mine', label: 'Míos' },
+            { value: 'theirs', label: <span className="truncate">De {partner.display_name}</span> },
+            { value: 'both', label: 'De los dos' },
+          ]}
+          value={owner}
+          onChange={setOwner}
+          aria-label="De quién son los libros"
+          className="[&_button]:min-h-9 [&_button]:text-xs"
+        />
+      )}
       <Segmented
         options={segments
           .filter((segment) => showAbandoned || segment.value !== 'abandoned')
           .map(({ value, label }) => ({
             value,
             label,
-            count: all.filter((reading) => reading.status === value).length,
+            count: libraryEntries(mineList, theirList, value, effectiveOwner).length,
           }))}
         value={status}
         onChange={setStatus}
@@ -116,7 +208,7 @@ export function LibraryPage() {
           <ListFilter size={21} className={showAbandoned ? 'text-accent' : ''} />
         </button>
       </div>
-      {readings.isPending ? (
+      {loading ? (
         <div className="grid animate-pulse grid-cols-3 gap-3" role="status">
           <span className="sr-only">Cargando tu biblioteca…</span>
           {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -130,16 +222,16 @@ export function LibraryPage() {
           </button>
         </EmptyState>
       ) : visible.length === 0 ? (
-        <EmptyState
-          title={normalized ? 'No hay libros con ese título o autor' : segments.find((s) => s.value === status)!.empty}
-        >
-          <Link className="btn btn-primary" to="/biblioteca/buscar">
-            Buscar un libro
-          </Link>
+        <EmptyState title={emptyTitle}>
+          {effectiveOwner !== 'theirs' && effectiveOwner !== 'both' && (
+            <Link className="btn btn-primary" to="/biblioteca/buscar">
+              Buscar un libro
+            </Link>
+          )}
         </EmptyState>
       ) : (
-        <div key={status} className="grid grid-cols-3 gap-x-3 gap-y-5">
-          {visible.map((reading, index) => (
+        <div key={`${status}-${effectiveOwner}`} className="grid grid-cols-3 gap-x-3 gap-y-5">
+          {visible.map(({ reading, mine, theirs }, index) => (
             <Link
               key={reading.id}
               to={`/libro/${reading.id}`}
@@ -147,6 +239,23 @@ export function LibraryPage() {
               style={{ '--k': index } as CSSProperties}
             >
               <Cover book={reading.book}>
+                {partner && (
+                  <span
+                    className="absolute top-1.5 left-1.5 flex -space-x-1.5"
+                    aria-label={mine && theirs ? 'De los dos' : mine ? 'Tuyo' : `De ${partner.display_name}`}
+                  >
+                    {mine && (
+                      <span className="rounded-full ring-2 ring-surface">
+                        <Avatar person={profile} size={18} />
+                      </span>
+                    )}
+                    {theirs && (
+                      <span className="rounded-full ring-2 ring-surface">
+                        <Avatar person={partner} size={18} />
+                      </span>
+                    )}
+                  </span>
+                )}
                 {reading.status === 'reading' && (
                   <span className="num absolute right-1.5 bottom-1.5 grid h-9 w-9 place-items-center rounded-full bg-surface font-sans text-[11px] font-semibold text-ink">
                     {Math.round(progressFraction(reading) * 100)} %

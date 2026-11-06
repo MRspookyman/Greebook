@@ -3,9 +3,10 @@ export type ThemePref = 'system' | 'light' | 'dark'
 export type Format = 'paper' | 'audio'
 export type Unit = 'pages' | 'minutes'
 export type ReadingStatus = 'want' | 'reading' | 'finished' | 'abandoned'
-export type NoteKind = 'note' | 'quote'
-export type ReactionEmoji = '❤️' | '🔥' | '📚'
-export type ReactionTarget = 'session' | 'reading'
+export type NoteKind = 'note' | 'quote' | 'message'
+export const REACTION_EMOJIS = ['❤️', '🔥', '📚', '😂', '😮', '👏'] as const
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number]
+export type ReactionTarget = 'session' | 'reading' | 'note'
 
 export interface Profile {
   id: string
@@ -21,6 +22,11 @@ export interface Profile {
   last_reminded_on: string | null
   theme: ThemePref
   onboarded_at: string | null
+  /** Reading whose timer is running right now (presence). */
+  reading_now_id: string | null
+  reading_now_since: string | null
+  /** Last time the Nosotros tab was opened (unread badge). */
+  last_seen_us_at: string | null
 }
 
 export interface Book {
@@ -82,6 +88,8 @@ export interface Note {
   body: string
   page: number | null
   shared: boolean
+  /** Club de dos: the note this one answers. */
+  reply_to: string | null
   created_at: string
 }
 
@@ -92,4 +100,43 @@ export interface Reaction {
   target_id: string
   emoji: ReactionEmoji
   created_at: string
+}
+
+export type RecommendationStatus = 'pending' | 'accepted' | 'dismissed'
+
+export interface Recommendation {
+  id: string
+  book_id: string
+  from_user: string
+  to_user: string
+  message: string | null
+  /** «Leámoslo juntos»: both start on `start_on` and a club opens. */
+  together: boolean
+  start_on: string | null
+  status: RecommendationStatus
+  created_at: string
+}
+
+/** Recommendation joined with its book (`select('*, book:books(*)')`). */
+export interface RecommendationWithBook extends Recommendation {
+  book: Book
+}
+
+export interface Nudge {
+  id: string
+  from_user: string
+  to_user: string
+  message: string
+  sent_on: string
+  created_at: string
+}
+
+/** Shared monthly page goal; `user_a < user_b`. */
+export interface Challenge {
+  user_a: string
+  user_b: string
+  month: string // 'yyyy-MM'
+  pages_goal: number
+  created_by: string
+  updated_at: string
 }

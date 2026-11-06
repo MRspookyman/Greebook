@@ -1,6 +1,7 @@
 import { Play, Square } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { ReadingWithBook } from '@/lib/types'
+import { setReadingNow } from '@/lib/presence'
 import { LogSessionSheet } from './LogSessionSheet'
 
 type TimerState = { readingId: string; startedAt: number }
@@ -56,12 +57,14 @@ export function startTimer(reading: ReadingWithBook): boolean {
   if (timer?.readingId === reading.id) return true
   if (timer && !window.confirm('Ya hay un cronómetro activo. ¿Quieres descartarlo y empezar este?')) return false
   setTimer({ readingId: reading.id, startedAt: Date.now() })
+  void setReadingNow(reading.id)
   return true
 }
 
 export function stopTimer(): number {
   const minutes = timer ? Math.max(1, Math.ceil((Date.now() - timer.startedAt) / 60000)) : 1
   setTimer(null)
+  void setReadingNow(null)
   return minutes
 }
 
