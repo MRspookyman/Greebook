@@ -1,9 +1,9 @@
 // Configura los avisos push en un proyecto de Supabase.
 // Uso (tras `npx supabase login`): node scripts/configurar-avisos.mjs <project-ref>
 // Lee los secretos de `secretos.local` (no versionado), los sube a Supabase, despliega
-// las dos Edge Functions e imprime el SQL del cron y los datos de los webhooks.
+// las dos Edge Functions y genera «avisos-sql.local» (cron + avisos de pareja) para el SQL editor.
 import { execSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 const ref = process.argv[2]
 if (!ref || !/^[a-z0-9]{20}$/.test(ref)) {
@@ -19,23 +19,27 @@ const secrets = Object.fromEntries(
 )
 
 const run = (cmd) => execSync(cmd, { stdio: 'inherit' })
-run(`npx -y supabase@latest link --project-ref ${ref}`)
-run('npx -y supabase@latest secrets set --env-file secretos.local')
-run('npx -y supabase@latest functions deploy send-reminders --no-verify-jwt')
-run('npx -y supabase@latest functions deploy notify-partner --no-verify-jwt')
+// --project-ref on each command avoids `supabase link` (which prompts for the DB password);
+// --use-api bundles the functions on Supabase's side, so Docker isn't needed;
+// --yes confirms the changes up front (running this script is the confirmation).
+run(`npx -y supabase@latest secrets set --project-ref ${ref} --env-file secretos.local --yes`)
+run(`npx -y supabase@latest functions deploy send-reminders --project-ref ${ref} --no-verify-jwt --use-api --yes`)
+run(`npx -y supabase@latest functions deploy notify-partner --project-ref ${ref} --no-verify-jwt --use-api --yes`)
 
-const cron = readFileSync('supabase/migrations/0002_cron.sql', 'utf8')
-  .replaceAll('<project-ref>', ref)
-  .replaceAll('<CRON_SECRET>', secrets.CRON_SECRET)
+const fill = (file) =>
+  readFileSync(file, 'utf8')
+    .replaceAll('<project-ref>', ref)
+    .replaceAll('<CRON_SECRET>', secrets.CRON_SECRET)
+    .replaceAll('<WEBHOOK_SECRET>', secrets.WEBHOOK_SECRET)
+
+// Contains secrets: written to a git-ignored file (*.local), never committed.
+const out = 'avisos-sql.local'
+writeFileSync(
+  out,
+  `${fill('supabase/migrations/0002_cron.sql')}\n\n${fill('supabase/migrations/0004_partner_notifications.sql')}\n`,
+)
 
 console.log(`
-──────────── 1) Pega esto en el SQL Editor de Supabase y pulsa Run ────────────
-${cron}
-──────────── 2) Database → Webhooks → Create (crea DOS) ────────────
-  URL:       https://${ref}.supabase.co/functions/v1/notify-partner   (POST)
-  Cabecera:  x-webhook-secret: ${secrets.WEBHOOK_SECRET}
-  Webhook A: tabla readings,  evento Update
-  Webhook B: tabla reactions, evento Insert
-──────────── 3) Cloudflare Pages → variable VITE_VAPID_PUBLIC_KEY ────────────
-  ${secrets.VAPID_PUBLIC_KEY}
+Listo. Último paso: abre «${out}», copia todo, pégalo en Supabase → SQL Editor y pulsa Run.
+(Programa el recordatorio cada 15 min y activa los avisos de pareja.)
 `)

@@ -53,13 +53,13 @@ export async function sendToUser(
   supabaseAdmin: SupabaseClient,
   userId: string,
   payload: NotificationPayload,
-): Promise<void> {
+): Promise<number> {
   const { data, error } = await supabaseAdmin
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
     .eq('user_id', userId)
   if (error) throw error
-  if (!data?.length) return
+  if (!data?.length) return 0
   const app = await (server ??= applicationServer())
   const results = await Promise.allSettled(
     data.map(async (subscription) => {
@@ -84,4 +84,5 @@ export async function sendToUser(
   )
   const failed = results.find((result) => result.status === 'rejected')
   if (failed?.status === 'rejected') throw failed.reason
+  return data.length
 }

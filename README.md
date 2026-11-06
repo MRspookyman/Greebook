@@ -28,11 +28,11 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    (no versionado; si lo pierdes, crea uno igual con `npx web-push generate-vapid-keys` y dos cadenas aleatorias).
    - `npx supabase login`
    - `node scripts/configurar-avisos.mjs <project-ref>`: sube los secretos, despliega `send-reminders` y
-     `notify-partner` e imprime el SQL del cron (pégalo en el SQL editor) y los datos de los dos webhooks
-     (**Database → Webhooks**: `readings` UPDATE y `reactions` INSERT).
-6. **Cloudflare Pages**: conecta el repositorio; build `npm run build`, salida `dist`; variables
-   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_BOOKS_KEY`, `VITE_VAPID_PUBLIC_KEY`
-   de Supabase. `public/_redirects` ya sirve la SPA.
+     `notify-partner` y genera `avisos-sql.local` (cron cada 15 min + triggers de avisos de pareja, con los
+     secretos ya puestos): pégalo entero en el SQL editor. No hace falta crear «Database Webhooks».
+6. **Cloudflare Workers**: conecta el repositorio (build `npm run build`, deploy `npx wrangler deploy`;
+   `wrangler.jsonc` sirve `dist` como SPA) y añade como *build variables* `VITE_SUPABASE_URL`,
+   `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_BOOKS_KEY`, `VITE_VAPID_PUBLIC_KEY` y `NODE_VERSION=22`.
 
 ## Personalizar el regalo
 

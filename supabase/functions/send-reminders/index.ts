@@ -70,11 +70,13 @@ Deno.serve(async (request: Request) => {
         }
         if (dates.has(today)) continue
         const streak = currentStreak(dates, today)
-        await sendToUser(admin, profile.id, {
+        const devices = await sendToUser(admin, profile.id, {
           title: '📖 ¿Un ratito de lectura hoy?',
           body: streak ? `Tu racha es de ${streak} ${streak === 1 ? 'día' : 'días'}` : 'Empieza una racha nueva',
           url: '/',
         })
+        // No device subscribed yet: keep today's reminder pending for when one is.
+        if (devices === 0) continue
         const { error: updateError } = await admin
           .from('profiles')
           .update({ last_reminded_on: today })
