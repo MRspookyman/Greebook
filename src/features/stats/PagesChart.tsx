@@ -36,7 +36,7 @@ export function PagesChart({ points }: { points: ChartPoint[] }) {
           >
             <span className="flex min-h-11 flex-1 items-end">
               <span
-                className={`block w-full rounded-t-[5px] ${point.key === peak ? 'bg-amber' : 'bg-accent'}`}
+                className={`block w-full rounded-t-[5px] ${point.pages === 0 ? 'bg-border' : point.key === peak ? 'bg-amber' : 'bg-accent'}`}
                 style={{
                   height: entered ? `${Math.max(3, (point.pages / maximum) * 100)}%` : '0%',
                   opacity: selected && selected !== point.key ? 0.5 : 1,

@@ -1,0 +1,11 @@
+// Cloudflare Workers (static assets). The name must match the Worker created in the dashboard.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "greenbook",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // SPA: unknown paths (/libro/…, /stats) serve index.html.
+    "not_found_handling": "single-page-application"
+  }
+}

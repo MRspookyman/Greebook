@@ -304,8 +304,8 @@ export function UsPage() {
                       <div className="line-clamp-2">
                         Terminó <strong>{event.reading.book.title}</strong>
                         {event.reading.rating != null && (
-                          <div className="inline-flex items-center gap-1 align-middle">
-                            <span> · </span>
+                          <div className="ml-1 inline-flex items-center gap-1 align-middle">
+                            <span aria-hidden>·</span>
                             <Stars value={event.reading.rating} size={12} />
                           </div>
                         )}

@@ -131,14 +131,15 @@ export function StatsPage() {
                   <p className="stat-number mt-1 text-[29px] leading-none">
                     <CountUp value={metric.value} format={metric.format ?? formatNumber} />
                   </p>
-                  {metric.detail && <p className="mt-1 text-xs text-muted">{metric.detail}</p>}
-                  {change !== null && (
+                  {change !== null ? (
                     <p
                       className={`mt-1 text-[11px] font-medium leading-tight ${change < 0 ? 'text-danger' : 'text-green'}`}
                     >
-                      {change > 0 ? '+' : ''}
-                      {change} % vs {PREVIOUS_LABELS[period]}
+                      {change > 0 ? '+' : change < 0 ? '−' : ''}
+                      {Math.abs(change)} % vs {PREVIOUS_LABELS[period]}
                     </p>
+                  ) : (
+                    metric.detail && <p className="mt-1 text-xs text-muted">{metric.detail}</p>
                   )}
                 </article>
               )

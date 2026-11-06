@@ -293,7 +293,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                   <div key={session.id} className="flex items-center gap-2 border-b border-dashed border-border">
                     {editable ? (
                       <button
-                        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-xs"
+                        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left text-xs"
                         aria-label={`${label}: +${session.end_pos - session.start_pos} ${reading.unit === 'pages' ? 'páginas' : 'minutos'}. Editar última sesión`}
                         disabled={disabled}
                         onClick={() => setEditing(session)}
