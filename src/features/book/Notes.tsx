@@ -8,7 +8,7 @@ import type { Note, NoteKind } from '@/lib/types'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Segmented } from '@/components/Segmented'
 import { toast } from '@/components/toast'
-import { Switch } from '@/components/Switch'
+import { TraceSheet } from '@/features/us/TraceSheet'
 import { useOnline } from '@/features/session/useOnline'
 
 export function Notes({ readingId }: { readingId: string }) {
@@ -20,7 +20,7 @@ export function Notes({ readingId }: { readingId: string }) {
   const [editing, setEditing] = useState<Note | null>(null)
   const [body, setBody] = useState('')
   const [page, setPage] = useState('')
-  const [shared, setShared] = useState(false)
+  const [traceOpen, setTraceOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const notes = query.data?.filter((note) => note.user_id === userId) ?? []
   function create() {
@@ -28,7 +28,6 @@ export function Notes({ readingId }: { readingId: string }) {
     setKind('note')
     setBody('')
     setPage('')
-    setShared(false)
     setOpen(true)
   }
   function edit(note: Note) {
@@ -36,7 +35,6 @@ export function Notes({ readingId }: { readingId: string }) {
     setKind(note.kind)
     setBody(note.body)
     setPage(note.page === null ? '' : String(note.page))
-    setShared(note.shared)
     setOpen(true)
   }
   async function save() {
@@ -46,7 +44,7 @@ export function Notes({ readingId }: { readingId: string }) {
       return
     }
     setBusy(true)
-    const values = { body: body.trim(), page: page ? Number(page) : null, shared, kind }
+    const values = { body: body.trim(), page: page ? Number(page) : null, kind }
     try {
       const result = editing
         ? await supabase.from('notes').update(values).eq('id', editing.id).eq('user_id', userId)
@@ -92,7 +90,7 @@ export function Notes({ readingId }: { readingId: string }) {
             <p className="mt-1.5 text-[11px] text-muted">
               {note.kind === 'quote' ? 'Cita' : 'Nota'}
               {note.page !== null ? ` · p. ${note.page}` : ''}
-              {note.shared ? ' · Compartida' : ' · Privada'}
+              {' · Privada'}
             </p>
           </div>
           <button
@@ -108,6 +106,10 @@ export function Notes({ readingId }: { readingId: string }) {
       <button className="btn btn-soft w-full" disabled={!online || busy} onClick={create}>
         <Plus size={17} /> {online ? 'Añadir nota/cita' : 'Sin conexión'}
       </button>
+      <button className="min-h-11 text-left text-xs text-muted" onClick={() => setTraceOpen(true)}>
+        Para compartir una frase, déjasela a {partner?.display_name ?? 'tu pareja'}
+      </button>
+      <TraceSheet open={traceOpen} onClose={() => setTraceOpen(false)} />
       <BottomSheet open={open} onClose={() => setOpen(false)} title={editing ? 'Editar nota/cita' : 'Añadir nota/cita'}>
         <form
           className="space-y-4"
@@ -148,9 +150,6 @@ export function Notes({ readingId }: { readingId: string }) {
                 onChange={(event) => setPage(event.target.value)}
               />
             </label>
-            <Switch checked={shared} onChange={setShared}>
-              <span className="text-sm">Compartir con {partner?.display_name ?? 'tu pareja'}</span>
-            </Switch>
             <button className="btn btn-primary w-full" disabled={!body.trim()}>
               {!online ? 'Sin conexión' : busy ? 'Guardando…' : 'Guardar'}
             </button>

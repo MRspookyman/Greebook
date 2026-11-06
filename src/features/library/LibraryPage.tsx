@@ -1,231 +1,143 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
-import { ListFilter, Plus, Search, Star, X } from 'lucide-react'
-import { Avatar } from '@/components/Avatar'
-import { BottomSheet } from '@/components/BottomSheet'
+import { Plus, Search, Star } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
 import { Segmented } from '@/components/Segmented'
+import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
-import { useReadings } from '@/lib/data'
-import type { ReadingStatus, ReadingWithBook } from '@/lib/types'
+import { useReadings, useTogether } from '@/lib/data'
+import type { ReadingStatus, TogetherItemWithBook } from '@/lib/types'
 import { progressFraction } from '@/lib/units'
+import { useRooms } from '@/features/us/rooms'
+import { answerTogether, startTogether } from '@/features/us/together'
+import { todayISO } from '@/lib/dates'
 
-const segments: { value: ReadingStatus; label: string; empty: string }[] = [
-  { value: 'reading', label: 'Leyendo', empty: 'Aún no estás leyendo nada' },
-  { value: 'want', label: 'Pendientes', empty: 'Tu próxima lectura está por descubrir' },
-  { value: 'finished', label: 'Leídos', empty: 'Aquí guardarás los libros que termines' },
-  { value: 'abandoned', label: 'Dejados', empty: 'No tienes libros dejados' },
-]
-const sorts = [
-  { value: 'recent', label: 'Recientes' },
-  { value: 'title', label: 'Título' },
-  { value: 'rating', label: 'Nota' },
+const segments = [
+  { value: 'reading', label: 'Leyendo' },
+  { value: 'want', label: 'Pendientes' },
+  { value: 'finished', label: 'Leídos' },
+  { value: 'together', label: 'Juntos' },
 ] as const
 
-type Owner = 'all' | 'mine' | 'theirs' | 'both'
-const OWNERS: Owner[] = ['all', 'mine', 'theirs', 'both']
-const OWNER_KEY = 'gb.library.owner'
-
-interface Entry {
-  reading: ReadingWithBook
-  mine: boolean
-  theirs: boolean
-}
-
-/**
- * Cards for one status. A book we both have in that status shows once (my reading, both
- * avatars). «De los dos» keeps only books we both have, in any status.
- */
-function libraryEntries(
-  mine: ReadingWithBook[],
-  theirs: ReadingWithBook[],
-  status: ReadingStatus,
-  owner: Owner,
-): Entry[] {
-  const myBooks = new Set(mine.map((r) => r.book_id))
-  const theirBooks = new Set(theirs.map((r) => r.book_id))
-  const myHere = mine.filter((r) => r.status === status)
-  const theirHere = theirs.filter((r) => r.status === status)
-  const myHereBooks = new Set(myHere.map((r) => r.book_id))
-  const theirHereBooks = new Set(theirHere.map((r) => r.book_id))
-  const list: Entry[] =
-    owner === 'mine'
-      ? myHere.map((r) => ({ reading: r, mine: true, theirs: theirHereBooks.has(r.book_id) }))
-      : owner === 'theirs'
-        ? theirHere.map((r) => ({ reading: r, mine: myHereBooks.has(r.book_id), theirs: true }))
-        : [
-            ...myHere.map((r) => ({ reading: r, mine: true, theirs: theirHereBooks.has(r.book_id) })),
-            ...theirHere
-              .filter((r) => !myHereBooks.has(r.book_id))
-              .map((r) => ({ reading: r, mine: false, theirs: true })),
-          ]
-  const seen = new Set<string>()
-  return list.filter((entry) => {
-    const key = `${entry.reading.user_id}:${entry.reading.book_id}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return owner !== 'both' || (myBooks.has(entry.reading.book_id) && theirBooks.has(entry.reading.book_id))
-  })
-}
-
-function loadOwner(): Owner {
-  try {
-    const saved = localStorage.getItem(OWNER_KEY) as Owner | null
-    return saved && OWNERS.includes(saved) ? saved : 'all'
-  } catch {
-    return 'all'
-  }
-}
+type View = ReadingStatus | 'together'
 
 export function LibraryPage() {
-  const { userId, profile, partner } = useMe()
+  const { userId } = useMe()
   const readings = useReadings(userId)
-  const partnerReadings = useReadings(partner?.id)
-  const [owner, setOwnerState] = useState<Owner>(loadOwner)
-  const [status, setStatus] = useState<ReadingStatus>('reading')
-  const [filter, setFilter] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [sort, setSort] = useState<(typeof sorts)[number]['value']>('recent')
-  const searchRef = useRef<HTMLInputElement>(null)
-  const effectiveOwner: Owner = partner ? owner : 'mine'
-  const normalized = filter.trim().toLocaleLowerCase('es')
-  const mineList = readings.data ?? []
-  const theirList = partner ? (partnerReadings.data ?? []) : []
-  const visible = libraryEntries(mineList, theirList, status, effectiveOwner)
-    .filter(({ reading }) =>
-      [reading.book.title, ...reading.book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized)),
-    )
-    .sort(({ reading: a }, { reading: b }) => {
+  const together = useTogether()
+  const rooms = useRooms()
+  const [view, setView] = useState<View>('reading')
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<'recent' | 'title' | 'rating'>('recent')
+  const normalized = search.trim().toLocaleLowerCase('es')
+  const matches = (book: { title: string; authors: string[] }) =>
+    [book.title, ...book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized))
+  const visible = (readings.data ?? [])
+    .filter((reading) => reading.status === view && matches(reading.book))
+    .sort((a, b) => {
       if (sort === 'title') return a.book.title.localeCompare(b.book.title, 'es')
-      if (sort === 'rating' && a.rating !== b.rating) return (b.rating ?? -1) - (a.rating ?? -1)
+      if (sort === 'rating' && view === 'finished') return (b.rating ?? -1) - (a.rating ?? -1)
       return b.updated_at.localeCompare(a.updated_at)
     })
-  const loading = readings.isPending || (!!partner && effectiveOwner !== 'mine' && partnerReadings.isPending)
-  const emptyLibrary =
-    readings.isSuccess && (!partner || partnerReadings.isSuccess) && mineList.length === 0 && theirList.length === 0
-  const filtersActive = (partner && owner !== 'all') || status === 'abandoned'
-
-  function selectStatus(value: ReadingStatus) {
-    setStatus(value)
-    if (value !== 'finished' && sort === 'rating') setSort('recent')
-  }
-
-  function setOwner(value: Owner) {
-    setOwnerState(value)
-    try {
-      localStorage.setItem(OWNER_KEY, value)
-    } catch {
-      /* Remembering the filter is optional. */
-    }
-  }
-
-  function toggleSearch() {
-    if (searchOpen) setFilter('')
-    else window.requestAnimationFrame(() => searchRef.current?.focus())
-    setSearchOpen(!searchOpen)
-  }
-
-  const emptyTitle = normalized
-    ? 'No hay libros con ese título o autor'
-    : effectiveOwner === 'mine'
-      ? segments.find((s) => s.value === status)!.empty
-      : effectiveOwner === 'theirs'
-        ? `${partner?.display_name} no tiene libros aquí`
-        : effectiveOwner === 'both'
-          ? 'Aún no compartís ningún libro aquí'
-          : 'No hay libros aquí'
-
-  if (emptyLibrary) {
-    return (
-      <section className="space-y-4">
-        <header className="flex min-h-11 items-center justify-between gap-2">
-          <h1>Biblioteca</h1>
-          <Link to="/biblioteca/buscar" className="icon-btn shrink-0" aria-label="Buscar y añadir un libro">
-            <Plus size={23} />
-          </Link>
-        </header>
-        <EmptyState title="Tu próxima lectura está por descubrir">
-          <Link className="btn btn-primary" to="/biblioteca/buscar">
-            Buscar un libro
-          </Link>
-        </EmptyState>
-      </section>
-    )
-  }
-
+  const list = (together.data ?? []).filter(
+    (item) => !rooms.some((room) => room.book.id === item.book_id) && matches(item.book),
+  )
+  const sharedRooms = rooms.filter((room) => matches(room.book))
   return (
     <section className="space-y-4">
-      <header className="flex min-h-11 items-center justify-between gap-2">
-        <h1 className={searchOpen ? 'sr-only' : 'min-w-0 flex-1'}>Biblioteca</h1>
-        <div
-          className="relative flex shrink-0 items-center overflow-hidden rounded-2xl transition-[width] duration-500 [transition-timing-function:var(--spring)]"
-          style={{ width: searchOpen ? 'calc(100% - 52px)' : 44 }}
-        >
-          <input
-            ref={searchRef}
-            className={`input pr-12 ${searchOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-            type="search"
-            aria-label="Buscar por título o autor"
-            placeholder="Título o autor"
-            value={filter}
-            disabled={!searchOpen}
-            onChange={(event) => setFilter(event.target.value)}
-          />
-          <button
-            className="icon-btn absolute right-0"
-            onClick={toggleSearch}
-            aria-label={searchOpen ? 'Cerrar búsqueda' : 'Buscar en tu biblioteca'}
-            aria-expanded={searchOpen}
-          >
-            {searchOpen ? <X size={20} /> : <Search size={20} />}
-          </button>
-        </div>
-        <Link to="/biblioteca/buscar" className="icon-btn shrink-0" aria-label="Buscar y añadir un libro">
+      <header className="flex min-h-11 items-center justify-between">
+        <h1>Biblioteca</h1>
+        <Link to="/biblioteca/buscar" className="icon-btn" aria-label="Buscar y añadir un libro">
           <Plus size={23} />
         </Link>
       </header>
+      <label className="relative block">
+        <Search className="pointer-events-none absolute top-3 left-3 text-muted" size={19} />
+        <input
+          className="input pl-10"
+          type="search"
+          aria-label="Buscar por título o autor"
+          placeholder="Título o autor"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </label>
       <Segmented
-        options={segments
-          .filter((segment) => status === 'abandoned' || segment.value !== 'abandoned')
-          .map(({ value, label }) => ({
-            value,
-            label,
-            count: libraryEntries(mineList, theirList, value, effectiveOwner).length,
-          }))}
-        value={status}
-        onChange={selectStatus}
-        aria-label="Estado de lectura"
+        options={(view === 'abandoned'
+          ? [...segments, { value: 'abandoned' as const, label: 'Dejados' }]
+          : [...segments]
+        ).map((segment) => ({
+          ...segment,
+          count:
+            segment.value === 'together'
+              ? rooms.length +
+                (together.data ?? []).filter((item) => !rooms.some((room) => room.book.id === item.book_id)).length
+              : (readings.data ?? []).filter((reading) => reading.status === segment.value).length,
+        }))}
+        value={view}
+        onChange={setView}
+        aria-label="Vista de biblioteca"
       />
-      <div className="flex items-center gap-2">
-        {sorts
-          .filter((option) => status === 'finished' || option.value !== 'rating')
-          .map((option) => (
-            <button
-              key={option.value}
-              className="chip min-h-11"
-              aria-pressed={sort === option.value}
-              onClick={() => setSort(option.value)}
-            >
-              {option.label}
+      <div className="flex flex-wrap items-center gap-2">
+        {view !== 'together' &&
+          (['recent', 'title', ...(view === 'finished' ? (['rating'] as const) : [])] as const).map((value) => (
+            <button key={value} className="chip min-h-11" aria-pressed={sort === value} onClick={() => setSort(value)}>
+              {value === 'recent' ? 'Recientes' : value === 'title' ? 'Título' : 'Nota'}
             </button>
           ))}
         <button
-          className="icon-btn relative ml-auto shrink-0"
-          aria-label="Filtros"
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(true)}
+          className="btn btn-ghost ml-auto text-xs"
+          aria-pressed={view === 'abandoned'}
+          onClick={() => setView(view === 'abandoned' ? 'reading' : 'abandoned')}
         >
-          <ListFilter size={21} className={filtersActive ? 'text-accent' : ''} />
-          {filtersActive && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent" aria-hidden />}
+          Ver dejados
         </button>
       </div>
-      {loading ? (
-        <div className="grid animate-pulse grid-cols-3 gap-3" role="status">
-          <span className="sr-only">Cargando tu biblioteca…</span>
-          {[0, 1, 2, 3, 4, 5].map((n) => (
-            <div key={n} className="aspect-[2/3] rounded-lg bg-border" />
+      {view === 'together' ? (
+        <div className="space-y-4">
+          {sharedRooms.length > 0 && (
+            <section className="space-y-3">
+              <h2>Salas abiertas</h2>
+              {sharedRooms.map((room) => (
+                <Link
+                  key={room.book.id}
+                  className="card pressable flex items-center gap-3"
+                  to={`/sala/${room.book.id}`}
+                >
+                  <Cover book={room.book} width={48} />
+                  <div className="min-w-0">
+                    <p className="font-serif">{room.book.title}</p>
+                    <p className="text-xs text-muted">Abrir la sala</p>
+                  </div>
+                </Link>
+              ))}
+            </section>
+          )}
+          <section className="space-y-3">
+            <h2>Queremos leer juntos</h2>
+            {together.isPending && <p className="text-sm text-muted">Cargando vuestros libros…</p>}
+            {together.isError && (
+              <button className="btn btn-secondary" onClick={() => void together.refetch()}>
+                Reintentar
+              </button>
+            )}
+            {together.isSuccess && !list.length && (
+              <p className="text-sm text-muted">
+                {normalized
+                  ? 'No hay libros con ese título o autor.'
+                  : 'Añadid vuestro próximo libro desde su ficha con «Leerlo juntos».'}
+              </p>
+            )}
+            {list.map((item) => (
+              <TogetherBook key={item.id} item={item} />
+            ))}
+          </section>
+        </div>
+      ) : readings.isPending ? (
+        <div className="grid animate-pulse grid-cols-3 gap-3" role="status" aria-label="Cargando biblioteca">
+          {[0, 1, 2].map((index) => (
+            <div key={index} className="aspect-[2/3] rounded-lg bg-border" />
           ))}
         </div>
       ) : readings.isError ? (
@@ -234,49 +146,27 @@ export function LibraryPage() {
             Reintentar
           </button>
         </EmptyState>
-      ) : visible.length === 0 ? (
-        <EmptyState title={emptyTitle}>
-          {effectiveOwner !== 'theirs' && effectiveOwner !== 'both' && (
-            <Link className="btn btn-primary" to="/biblioteca/buscar">
-              Buscar un libro
-            </Link>
-          )}
+      ) : !visible.length ? (
+        <EmptyState
+          title={normalized ? 'No hay libros con ese título o autor' : 'Tu próxima lectura está por descubrir'}
+        >
+          <Link className="btn btn-primary" to="/biblioteca/buscar">
+            Buscar un libro
+          </Link>
         </EmptyState>
       ) : (
-        <div key={`${status}-${effectiveOwner}`} className="grid grid-cols-3 gap-x-3 gap-y-5">
-          {visible.map(({ reading, mine, theirs }, index) => (
-            <Link
-              key={reading.id}
-              to={`/libro/${reading.id}`}
-              className="rise pressable flex min-w-0 flex-col gap-2"
-              style={{ '--k': index } as CSSProperties}
-            >
+        <div className="grid grid-cols-3 gap-x-3 gap-y-5">
+          {visible.map((reading) => (
+            <Link key={reading.id} to={`/libro/${reading.id}`} className="pressable flex min-w-0 flex-col gap-2">
               <Cover book={reading.book}>
-                {partner && (
-                  <span
-                    className="absolute top-1.5 left-1.5 flex -space-x-1.5"
-                    aria-label={mine && theirs ? 'De los dos' : mine ? 'Tuyo' : `De ${partner.display_name}`}
-                  >
-                    {mine && (
-                      <span className="rounded-full ring-2 ring-surface">
-                        <Avatar person={profile} size={18} />
-                      </span>
-                    )}
-                    {theirs && (
-                      <span className="rounded-full ring-2 ring-surface">
-                        <Avatar person={partner} size={18} />
-                      </span>
-                    )}
-                  </span>
-                )}
                 {reading.status === 'reading' && (
-                  <span className="num absolute right-1.5 bottom-1.5 grid h-9 w-9 place-items-center rounded-full bg-surface font-sans text-[11px] font-semibold text-ink">
+                  <span className="absolute right-1 bottom-1 rounded-full bg-surface px-2 py-1 text-xs">
                     {Math.round(progressFraction(reading) * 100)} %
                   </span>
                 )}
                 {reading.status === 'finished' && reading.rating !== null && (
-                  <span className="num absolute right-0 bottom-0 left-0 flex items-center justify-center gap-1 bg-surface/95 py-1.5 font-sans text-xs font-semibold text-ink">
-                    <Star size={13} className="fill-amber text-amber" />
+                  <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-surface py-1 text-xs">
+                    <Star size={13} />
                     {reading.rating.toLocaleString('es')}
                   </span>
                 )}
@@ -286,34 +176,86 @@ export function LibraryPage() {
           ))}
         </div>
       )}
-      <BottomSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtros">
-        <div className="space-y-4">
-          {partner && (
-            <Segmented
-              options={[
-                { value: 'all', label: 'Todos' },
-                { value: 'mine', label: 'Míos' },
-                { value: 'theirs', label: <span className="truncate">De {partner.display_name}</span> },
-                { value: 'both', label: 'De los dos' },
-              ]}
-              value={owner}
-              onChange={setOwner}
-              aria-label="De quién son los libros"
-              className="[&_button]:text-xs"
+    </section>
+  )
+}
+
+function TogetherBook({ item }: { item: TogetherItemWithBook }) {
+  const { userId } = useMe()
+  const [busy, setBusy] = useState(false)
+  const [date, setDate] = useState(todayISO())
+  async function act(action: () => Promise<unknown>) {
+    if (busy) return
+    setBusy(true)
+    try {
+      await action()
+    } catch {
+      toast('No se pudo actualizar el libro')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <article className="card space-y-3">
+      <div className="flex gap-3">
+        <Cover book={item.book} width={52} />
+        <div className="min-w-0">
+          <p className="font-serif">{item.book.title}</p>
+          {item.reason && <p className="mt-1 text-sm text-muted">{item.reason}</p>}
+        </div>
+      </div>
+      {item.start_on ? (
+        <p className="text-sm text-muted">Para empezar el {item.start_on}</p>
+      ) : item.partner_answer === 'yes' ? (
+        <div className="space-y-2">
+          <p className="text-sm">¿Empezamos?</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void act(() => startTogether(item.id, todayISO()))}
+            >
+              Hoy
+            </button>
+            <input
+              className="input min-w-0 flex-1"
+              type="date"
+              aria-label="Fecha para empezar juntos"
+              min={todayISO()}
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
             />
-          )}
+            <button
+              className="btn btn-soft"
+              disabled={busy || !date}
+              onClick={() => void act(() => startTogether(item.id, date))}
+            >
+              Elegir fecha
+            </button>
+          </div>
+        </div>
+      ) : item.added_by !== userId ? (
+        <div className="flex flex-wrap gap-2">
           <button
-            className="btn btn-secondary w-full"
-            aria-pressed={status === 'abandoned'}
-            onClick={() => {
-              selectStatus('abandoned')
-              setFiltersOpen(false)
-            }}
+            className="btn btn-primary"
+            disabled={busy}
+            onClick={() => void act(() => answerTogether(item.id, 'yes'))}
           >
-            Ver dejados
+            Me apetece
+          </button>
+          <button
+            className="btn btn-ghost"
+            disabled={busy || item.partner_answer === 'later'}
+            onClick={() => void act(() => answerTogether(item.id, 'later'))}
+          >
+            {item.partner_answer === 'later' ? 'Para otro día' : 'Otro día'}
           </button>
         </div>
-      </BottomSheet>
-    </section>
+      ) : (
+        <p className="text-xs text-muted">
+          {item.partner_answer === 'later' ? 'Lo guardáis para otro día' : 'Esperando a que a tu pareja le apetezca'}
+        </p>
+      )}
+    </article>
   )
 }

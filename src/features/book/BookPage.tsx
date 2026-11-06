@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
 import { ArrowLeft, MoreHorizontal, Play, Plus, Square } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
-import { qk, useNotes, useReadings, useSessions } from '@/lib/data'
+import { qk, useMessages, useNotes, useReadings, useSessions, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { formatDays, formatMinutes, parseHMM, progressFraction, toHMM } from '@/lib/units'
+import { formatDays, formatMinutes, formatUnitValue, parseHMM, progressFraction, toHMM } from '@/lib/units'
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -23,8 +23,11 @@ import { LogSessionSheet } from '@/features/session/LogSessionSheet'
 import { startTimer, stopTimer, useActiveTimer } from '@/features/session/Timer'
 import { useOnline } from '@/features/session/useOnline'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
-import { ReactionBar } from '@/features/us/ReactionBar'
-import { JointReadingSection } from '@/features/us/JointReadingSection'
+import { DualProgressBar } from '@/components/DualProgressBar'
+import { MessageCard } from '@/features/us/MessageCard'
+import { TraceSheet } from '@/features/us/TraceSheet'
+import { useRooms } from '@/features/us/rooms'
+import { addTogether } from '@/features/us/together'
 import { Notes } from './Notes'
 
 const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
@@ -225,7 +228,6 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 </button>
               )}
             </div>
-            <ReactionBar targetType="reading" targetId={reading.id} ownerId={reading.user_id} />
           </div>
         </div>
       </div>
@@ -336,14 +338,13 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     ) : (
                       <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-xs">{content}</div>
                     )}
-                    {!own && <ReactionBar targetType="session" targetId={session.id} ownerId={reading.user_id} />}
                   </div>
                 )
               })}
             </div>
           )}
           {tab === 'notes' && own && <Notes readingId={reading.id} />}
-          {tab === 'joint' && <JointReadingSection reading={reading} />}
+          {tab === 'joint' && <BookTogether reading={reading} />}
         </div>
       </div>
       {own &&
@@ -397,6 +398,128 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <ReadingEditor reading={reading} disabled={disabled} onSave={patch} onClose={() => setEditingReading(false)} />
       )}
     </div>
+  )
+}
+
+function BookTogether({ reading }: { reading: ReadingWithBook }) {
+  const { userId, profile, partner } = useMe()
+  const room = useRooms().find((item) => item.book.id === reading.book_id)
+  const messages = useMessages()
+  const together = useTogether()
+  const myReadings = useReadings(userId)
+  const ownReading =
+    reading.user_id === userId ? reading : myReadings.data?.find((item) => item.book_id === reading.book_id)
+  const [traceOpen, setTraceOpen] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [reasonOpen, setReasonOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const listed = together.data?.some((item) => item.book_id === reading.book_id)
+  const recent = (messages.data ?? [])
+    .filter((message) => message.book_id === reading.book_id && message.kind !== 'reply')
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .slice(-2)
+
+  async function add() {
+    setAdding(true)
+    try {
+      await addTogether(reading.book_id)
+      setReasonOpen(true)
+      toast('Añadido a lo que queréis leer juntos')
+    } catch {
+      toast('No se pudo añadir el libro')
+    } finally {
+      setAdding(false)
+    }
+  }
+  async function saveReason() {
+    if (!reason.trim() || adding) return
+    setAdding(true)
+    try {
+      const { error } = await supabase
+        .from('together_items')
+        .update({ reason: reason.trim() })
+        .eq('book_id', reading.book_id)
+        .eq('added_by', userId)
+      if (error) throw error
+      await queryClient.invalidateQueries({ queryKey: qk.together() })
+      setReasonOpen(false)
+    } catch {
+      toast('No se pudo guardar el motivo')
+    } finally {
+      setAdding(false)
+    }
+  }
+  return (
+    <section className="space-y-3 py-2">
+      {room ? (
+        <>
+          <DualProgressBar
+            a={{
+              value: progressFraction(room.mine),
+              accent: profile.accent,
+              label: 'Tú',
+              caption: formatUnitValue(room.mine.unit, room.mine.current_position),
+            }}
+            b={{
+              value: progressFraction(room.theirs),
+              accent: partner?.accent ?? 'blue',
+              label: partner?.display_name ?? 'Tu pareja',
+              caption: formatUnitValue(room.theirs.unit, room.theirs.current_position),
+            }}
+          />
+          <Link className="btn btn-primary w-full" to={`/sala/${reading.book_id}`}>
+            Abrir la sala
+          </Link>
+          {recent.map((message) => (
+            <MessageCard key={message.id} message={message} variant="bubble" showBook={false} />
+          ))}
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-muted">Un libro para encontraros, cuando a los dos os apetezca.</p>
+          {listed ? (
+            <Link className="btn btn-soft w-full" to="/nosotros">
+              En «Queremos leer juntos»
+            </Link>
+          ) : (
+            <button className="btn btn-primary w-full" disabled={adding || !partner} onClick={() => void add()}>
+              {adding ? 'Añadiendo…' : 'Leerlo juntos'}
+            </button>
+          )}
+          {reasonOpen && (
+            <form
+              className="space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void saveReason()
+              }}
+            >
+              <label className="lbl">
+                ¿Por qué te apetece? (opcional)
+                <input
+                  className="input mt-2"
+                  maxLength={500}
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                />
+              </label>
+              <div className="flex gap-2">
+                <button className="btn btn-soft" disabled={adding || !reason.trim()}>
+                  Dejar el motivo
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setReasonOpen(false)}>
+                  Ahora no
+                </button>
+              </div>
+            </form>
+          )}
+          <button className="btn btn-soft w-full" disabled={!partner} onClick={() => setTraceOpen(true)}>
+            Dejarle algo sobre este libro
+          </button>
+        </>
+      )}
+      <TraceSheet open={traceOpen} onClose={() => setTraceOpen(false)} reading={ownReading ?? reading} />
+    </section>
   )
 }
 

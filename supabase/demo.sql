@@ -1,14 +1,16 @@
 -- Greenbook: datos de ejemplo para ver la app llena (Gordita y Gordito).
 -- Ejecutar completo en Supabase → SQL Editor.
--- ⚠️ BORRA antes todos los libros, lecturas, sesiones, notas, reacciones y sorpresas vistas.
---    Las cuentas y los perfiles se conservan. Para vaciar después: supabase/reset.sql
+-- BORRA antes los datos de lectura y pareja; conserva cuentas y perfiles.
+-- Requiere las migraciones hasta 0007. Para vaciar después: supabase/reset.sql.
 
 begin;
 
 delete from reactions;
-delete from nudges;
-delete from recommendations;
-delete from challenges;
+delete from messages;
+delete from message_pings;
+delete from invites;
+delete from together_items;
+delete from couple_goals;
 update profiles set reading_now_id = null, reading_now_since = null;
 delete from notes;
 delete from sessions;
@@ -236,18 +238,38 @@ insert into sessions (id, reading_id, user_id, read_on, start_pos, end_pos, minu
   ('4885032a-f97b-4c77-9e28-8261ac874ad7', '5c9faad8-b49a-4dd3-a7bd-9d41f4069277', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 64, 90, 107, 30),
   ('43a6c93c-6bd6-441c-bf8d-9b63166dfdaa', '5c9faad8-b49a-4dd3-a7bd-9d41f4069277', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 63, 107, 118, 22);
 insert into readings (id, user_id, book_id, format, unit, total_units, current_position, status, started_on, finished_on, rating, moods) values ('ba82e745-b0fd-4ea0-86e2-b5e378316eda', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '0535bacf-209d-4654-9769-16dec92b7326', 'paper', 'pages', 432, 0, 'want', null, null, null, array[]::text[]);
-insert into notes (reading_id, user_id, kind, body, page, shared) values ('2a5dd163-3372-48b2-87c1-d338cc167d1c', '0ef9b6d1-cfba-4921-8850-e98390566181', 'quote', 'Los libros son espejos: sólo se ve en ellos lo que uno ya lleva dentro.', 120, true);
-insert into notes (reading_id, user_id, kind, body, page, shared) values ('2a5dd163-3372-48b2-87c1-d338cc167d1c', '0ef9b6d1-cfba-4921-8850-e98390566181', 'quote', 'Cada libro tiene alma, el alma de quien lo escribió y el alma de quienes lo leyeron y vivieron y soñaron con él.', 330, true);
-insert into notes (reading_id, user_id, kind, body, page, shared) values ('2a5dd163-3372-48b2-87c1-d338cc167d1c', '0ef9b6d1-cfba-4921-8850-e98390566181', 'note', 'Me apetece muchísimo pasear por el Barrio Gótico después de esto.', null, false);
-insert into notes (reading_id, user_id, kind, body, page, shared) values ('f94ae4a0-a8bb-429c-be64-91e28df0e7ec', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'note', '¡No me esperaba lo del Cementerio de los Libros Olvidados!', 40, true);
-insert into notes (reading_id, user_id, kind, body, page, shared) values ('db512234-3a10-44f9-b099-7b789ea1b7c2', '0ef9b6d1-cfba-4921-8850-e98390566181', 'note', 'Me ha dejado tocada. Tienes que leerlo.', null, true);
-insert into notes (reading_id, user_id, kind, body, page, shared) values ('a232f40c-1886-4cea-8814-e2d631532ab4', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'quote', 'Es la pregunta, no la respuesta, lo que nos hace crecer.', 512, true);
-insert into reactions (user_id, target_type, target_id, emoji) values ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'reading', 'db512234-3a10-44f9-b099-7b789ea1b7c2', '❤️');
-insert into reactions (user_id, target_type, target_id, emoji) values ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'reading', '2be6989c-8156-4a27-8833-81cad8b80824', '❤️');
-insert into reactions (user_id, target_type, target_id, emoji) values ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'session', '5e2cbc87-9bce-4de5-a3fc-4f61a18f469c', '❤️');
-insert into reactions (user_id, target_type, target_id, emoji) values ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'session', 'dd383126-f3db-453e-9ef4-a43b0caba7cb', '❤️');
-insert into reactions (user_id, target_type, target_id, emoji) values ('0ef9b6d1-cfba-4921-8850-e98390566181', 'reading', 'a232f40c-1886-4cea-8814-e2d631532ab4', '❤️');
-insert into reactions (user_id, target_type, target_id, emoji) values ('0ef9b6d1-cfba-4921-8850-e98390566181', 'session', 'e4f967fd-3db4-4233-a765-699aec116f38', '❤️');
-insert into reactions (user_id, target_type, target_id, emoji) values ('0ef9b6d1-cfba-4921-8850-e98390566181', 'session', 'cbf722a1-f606-4e4e-a54b-b6cd7f783d96', '❤️');
+-- Las notas son siempre privadas.
+insert into notes (reading_id, user_id, kind, body, page) values
+  ('2a5dd163-3372-48b2-87c1-d338cc167d1c', '0ef9b6d1-cfba-4921-8850-e98390566181', 'quote', 'Los libros son espejos: sólo se ve en ellos lo que uno ya lleva dentro.', 120),
+  ('2a5dd163-3372-48b2-87c1-d338cc167d1c', '0ef9b6d1-cfba-4921-8850-e98390566181', 'quote', 'Cada libro tiene alma, el alma de quien lo escribió y el alma de quienes lo leyeron y vivieron y soñaron con él.', 330),
+  ('2a5dd163-3372-48b2-87c1-d338cc167d1c', '0ef9b6d1-cfba-4921-8850-e98390566181', 'note', 'Me apetece muchísimo pasear por el Barrio Gótico después de esto.', null),
+  ('f94ae4a0-a8bb-429c-be64-91e28df0e7ec', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'note', '¡No me esperaba lo del Cementerio de los Libros Olvidados!', 40),
+  ('db512234-3a10-44f9-b099-7b789ea1b7c2', '0ef9b6d1-cfba-4921-8850-e98390566181', 'note', 'Me ha dejado tocada. Tienes que leerlo.', null),
+  ('a232f40c-1886-4cea-8814-e2d631532ab4', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'quote', 'Es la pregunta, no la respuesta, lo que nos hace crecer.', 512);
+
+-- Huellas: la de la página 330 sigue bloqueada para Gordito (va por la 300).
+insert into messages (id, from_user, to_user, kind, book_id, page, emotion, body, created_at) values
+  ('10000000-0000-4000-8000-000000000001', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 120, 'love', 'Esta frase me ha recordado a ti.', now() - interval '2 days'),
+  ('10000000-0000-4000-8000-000000000002', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 330, 'twist', 'Cuando llegues aquí necesito que hablemos de este giro.', now() - interval '1 hour'),
+  ('10000000-0000-4000-8000-000000000003', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '0ef9b6d1-cfba-4921-8850-e98390566181', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 280, 'thinking', 'Un paseo por Barcelona contigo, por favor.', now() - interval '1 day'),
+  ('10000000-0000-4000-8000-000000000004', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'room', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 200, null, '¿Qué libro salvarías del Cementerio de los Libros Olvidados?', now() - interval '3 days');
+insert into messages (id, from_user, to_user, kind, book_id, page, body, reply_to, created_at) values
+  ('10000000-0000-4000-8000-000000000005', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '0ef9b6d1-cfba-4921-8850-e98390566181', 'reply', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 200, 'El que tuviera tus notas en los márgenes.', '10000000-0000-4000-8000-000000000004', now() - interval '3 days' + interval '10 minutes');
+update messages set read_at = now() - interval '1 day'
+where id in ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000005');
+insert into reactions (user_id, target_type, target_id, emoji) values
+  ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'message', '10000000-0000-4000-8000-000000000001', '❤️'),
+  ('0ef9b6d1-cfba-4921-8850-e98390566181', 'message', '10000000-0000-4000-8000-000000000005', '❤️');
+
+insert into together_items (book_id, added_by, partner_id, reason, partner_answer) values
+  ('0535bacf-209d-4654-9769-16dec92b7326', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'Para nuestras charlas sobre el universo.', null),
+  ('d48f1216-e50f-42d8-8636-b751729b8b29', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '0ef9b6d1-cfba-4921-8850-e98390566181', 'Me apetece descubrirlo contigo.', 'yes'),
+  ('20d191bb-41f4-4fc7-b135-6bbb15681c00', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'Para una tarde tranquila.', 'later');
+
+insert into invites (from_user, to_user, starts_at, status, responded_at, start_notified_at, created_at) values
+  ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '0ef9b6d1-cfba-4921-8850-e98390566181', (current_date - 7 + time '20:00') at time zone 'Europe/Madrid', 'accepted', now() - interval '7 days', now() - interval '7 days', now() - interval '7 days'),
+  ('0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', (current_date + time '21:30') at time zone 'Europe/Madrid', 'pending', null, null, now());
+insert into couple_goals (user_a, user_b, month, kind, target, proposed_by) values
+  ('0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', to_char(current_date, 'YYYY-MM'), 'ratitos', 4, '0ef9b6d1-cfba-4921-8850-e98390566181');
 
 commit;

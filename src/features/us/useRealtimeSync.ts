@@ -5,13 +5,13 @@ import { qk } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
 
 const TABLES = [
-  'sessions',
-  'readings',
+  'message_pings',
+  'invites',
+  'together_items',
+  'couple_goals',
   'reactions',
-  'notes',
-  'recommendations',
-  'nudges',
-  'challenges',
+  'readings',
+  'sessions',
   'profiles',
 ] as const
 
@@ -27,32 +27,31 @@ export function useRealtimeSync(): void {
         const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as {
           id?: string
           user_id?: string
-          reading_id?: string
           month?: string
         }
+        if (table === 'message_pings' || table === 'readings') {
+          void qc.invalidateQueries({ queryKey: qk.messages() })
+        }
         switch (table) {
+          case 'message_pings':
+            return
+          case 'invites':
+            void qc.invalidateQueries({ queryKey: qk.invites() })
+            return
+          case 'together_items':
+            void qc.invalidateQueries({ queryKey: qk.together() })
+            return
+          case 'couple_goals':
+            void qc.invalidateQueries({ queryKey: row.month ? qk.coupleGoal(row.month) : ['couple-goal'] })
+            return
           case 'reactions':
             void qc.invalidateQueries({ queryKey: qk.reactions() })
             return
-          case 'notes':
-            void qc.invalidateQueries({ queryKey: qk.sharedNotes() })
-            if (row.reading_id) void qc.invalidateQueries({ queryKey: qk.notes(row.reading_id) })
-            return
-          case 'recommendations':
-            void qc.invalidateQueries({ queryKey: qk.recommendations() })
-            return
-          case 'nudges':
-            void qc.invalidateQueries({ queryKey: qk.nudges() })
-            return
-          case 'challenges':
-            void qc.invalidateQueries({ queryKey: ['challenge'] })
-            return
           case 'profiles':
-            if (row.id) void qc.invalidateQueries({ queryKey: qk.profile(row.id) })
+            for (const id of row.id ? [row.id] : ids) void qc.invalidateQueries({ queryKey: qk.profile(id) })
             return
         }
-        const affected = row.user_id ? [row.user_id] : ids
-        for (const id of affected) {
+        for (const id of row.user_id ? [row.user_id] : ids) {
           void qc.invalidateQueries({ queryKey: table === 'sessions' ? qk.sessions(id) : qk.readings(id) })
         }
       })

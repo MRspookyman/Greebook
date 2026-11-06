@@ -1,12 +1,13 @@
 import { supabase } from '@/lib/supabase'
 import { todayISO } from '@/lib/dates'
-import type { Note, Profile, ReadingWithBook, Session } from '@/lib/types'
+import type { Message, Note, Profile, ReadingWithBook, Session } from '@/lib/types'
 
 interface ExportData {
   profile: Profile
   readings: ReadingWithBook[]
   sessions: Session[]
   notes: Note[]
+  messages: Message[]
 }
 
 export class ExportFetchError extends Error {
@@ -68,7 +69,7 @@ function readingsCsv(readings: ReadingWithBook[]): string {
 }
 
 export async function exportGreenbook(userId: string): Promise<void> {
-  const [profileResult, readings, sessions, notes] = await Promise.all([
+  const [profileResult, readings, sessions, notes, messages] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     allRows<ReadingWithBook>((from, to) =>
       supabase.from('readings').select('*, book:books(*)').eq('user_id', userId).order('id').range(from, to),
@@ -77,11 +78,20 @@ export async function exportGreenbook(userId: string): Promise<void> {
       supabase.from('sessions').select('*').eq('user_id', userId).order('id').range(from, to),
     ),
     allRows<Note>((from, to) => supabase.from('notes').select('*').eq('user_id', userId).order('id').range(from, to)),
+    allRows<Message>((from, to) =>
+      supabase
+        .from('messages_visible')
+        .select('*')
+        .or(`from_user.eq.${userId},to_user.eq.${userId}`)
+        .eq('locked', false)
+        .order('id')
+        .range(from, to),
+    ),
   ]).catch(() => {
     throw new ExportFetchError()
   })
   if (profileResult.error) throw new ExportFetchError()
-  const data: ExportData = { profile: profileResult.data as Profile, readings, sessions, notes }
+  const data: ExportData = { profile: profileResult.data as Profile, readings, sessions, notes, messages }
   const date = todayISO()
   const files = [
     new File([JSON.stringify(data, null, 2)], `greenbook-${date}.json`, { type: 'application/json;charset=utf-8' }),

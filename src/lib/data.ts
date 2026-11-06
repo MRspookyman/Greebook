@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import type {
-  Challenge,
+  CoupleGoal,
+  Invite,
+  Message,
   Note,
-  Nudge,
   Profile,
   Reaction,
   ReadingWithBook,
-  RecommendationWithBook,
   Session,
+  TogetherItemWithBook,
 } from './types'
 
 /**
@@ -21,18 +22,18 @@ export const qk = {
   readings: (userId: string) => ['readings', userId] as const,
   /** Every session of a user. */
   sessions: (userId: string) => ['sessions', userId] as const,
-  /** Notes visible to me for one reading (own, or partner's shared ones). */
+  /** My private notes for one reading. */
   notes: (readingId: string) => ['notes', readingId] as const,
-  /** Every reaction visible to me (mine + partner's). */
+  /** Every ❤️ visible to me (mine + partner's). */
   reactions: () => ['reactions'] as const,
-  /** Every shared note of the couple (mine + partner's): club de dos and activity. */
-  sharedNotes: () => ['shared-notes'] as const,
-  /** Recommendations sent or received. */
-  recommendations: () => ['recommendations'] as const,
-  /** Nudges sent or received (latest first). */
-  nudges: () => ['nudges'] as const,
-  /** Monthly couple challenge. */
-  challenge: (month: string) => ['challenge', month] as const,
+  /** Every couple message (huellas, sala, respuestas) via `messages_visible`. */
+  messages: () => ['messages'] as const,
+  /** Ratito invitations sent or received. */
+  invites: () => ['invites'] as const,
+  /** «Queremos leer juntos» list. */
+  together: () => ['together'] as const,
+  /** Cooperative goal for a month ('yyyy-MM'). */
+  coupleGoal: (month: string) => ['couple-goal', month] as const,
 }
 
 const PAGE = 1000
@@ -136,57 +137,57 @@ export function useReactions() {
   })
 }
 
-export function useSharedNotes(enabled = true) {
+/** All couple messages, oldest first. Locked ones come without body/emotion. */
+export function useMessages(enabled = true) {
   return useQuery({
-    queryKey: qk.sharedNotes(),
+    queryKey: qk.messages(),
     enabled,
     queryFn: () =>
-      fetchAll<Note>((from, to) =>
-        supabase.from('notes').select('*').eq('shared', true).order('created_at', { ascending: true }).range(from, to),
+      fetchAll<Message>((from, to) =>
+        supabase.from('messages_visible').select('*').order('created_at', { ascending: true }).range(from, to),
       ),
   })
 }
 
-export function useRecommendations(enabled = true) {
+export function useInvites(enabled = true) {
   return useQuery({
-    queryKey: qk.recommendations(),
+    queryKey: qk.invites(),
     enabled,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('recommendations')
-        .select('*, book:books(*)')
-        .order('created_at', { ascending: false })
-        .limit(100)
-      if (error) throw error
-      return data as RecommendationWithBook[]
-    },
-  })
-}
-
-export function useNudges(enabled = true) {
-  return useQuery({
-    queryKey: qk.nudges(),
-    enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('nudges')
+        .from('invites')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(50)
+        .limit(200)
       if (error) throw error
-      return data as Nudge[]
+      return data as Invite[]
     },
   })
 }
 
-export function useChallenge(month: string, enabled = true) {
+export function useTogether(enabled = true) {
   return useQuery({
-    queryKey: qk.challenge(month),
+    queryKey: qk.together(),
     enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.from('challenges').select('*').eq('month', month).maybeSingle()
+      const { data, error } = await supabase
+        .from('together_items')
+        .select('*, book:books(*)')
+        .order('created_at', { ascending: false })
       if (error) throw error
-      return data as Challenge | null
+      return data as TogetherItemWithBook[]
+    },
+  })
+}
+
+export function useCoupleGoal(month: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.coupleGoal(month),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('couple_goals').select('*').eq('month', month).maybeSingle()
+      if (error) throw error
+      return data as CoupleGoal | null
     },
   })
 }

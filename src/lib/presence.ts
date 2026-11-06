@@ -4,8 +4,8 @@ import { supabase } from './supabase'
 import type { Profile } from './types'
 
 /**
- * «Leyendo ahora»: mirrors the running timer on my profile so my partner sees it (and gets
- * one push per night). Best effort: offline it simply doesn't show.
+ * «Leyendo ahora»: mirrors the running timer for soft presence only, without notifications.
+ * Best effort: offline it simply doesn't show.
  */
 export async function setReadingNow(readingId: string | null): Promise<void> {
   try {

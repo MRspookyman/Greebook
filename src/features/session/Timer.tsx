@@ -3,6 +3,9 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { ReadingWithBook } from '@/lib/types'
 import { setReadingNow } from '@/lib/presence'
 import { LogSessionSheet } from './LogSessionSheet'
+import { useMe } from '@/features/auth/me'
+import { useInvites, useReadings } from '@/lib/data'
+import { isInviteExpired } from '@/features/us/ratito'
 
 type TimerState = { readingId: string; startedAt: number }
 function load(): TimerState | null {
@@ -51,6 +54,26 @@ export function useActiveTimer(): TimerState | null {
     () => timer,
     () => null,
   )
+}
+
+/** An intentional «Ahora» acceptance starts the sender's timer too, once per device. */
+export function useRatitoTimer(): void {
+  const { userId } = useMe()
+  const invites = useInvites()
+  const readings = useReadings(userId)
+  useEffect(() => {
+    const reading = readings.data
+      ?.filter((item) => item.status === 'reading')
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
+    if (!reading) return
+    for (const invite of invites.data ?? []) {
+      if (invite.status !== 'accepted' || invite.starts_at || isInviteExpired(invite)) continue
+      const key = `gb.ratito.${userId}.${invite.id}`
+      if (localStorage.getItem(key)) continue
+      localStorage.setItem(key, 'started')
+      if (!timer) startTimer(reading)
+    }
+  }, [invites.data, readings.data, userId])
 }
 
 export function startTimer(reading: ReadingWithBook): boolean {

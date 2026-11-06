@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router'
 import { BarChart3, Heart, Library, Plus, Sun, type LucideIcon } from 'lucide-react'
-import { useUsUnread } from '@/features/us/unread'
+import { usePendingForMe } from '@/features/us/messages'
 
 const LEFT: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Hoy', icon: Sun },
@@ -31,7 +31,7 @@ function Tab({ to, label, icon: Icon, badge = 0 }: { to: string; label: string; 
                 transition: 'transform 0.35s var(--spring)',
               }}
             />
-            {badge > 0 && !isActive && (
+            {badge > 0 && (
               <span
                 className="num absolute -top-1.5 -right-2.5 grid h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white"
                 style={{ animation: 'gb-pop .5s var(--spring)' }}
@@ -48,9 +48,9 @@ function Tab({ to, label, icon: Icon, badge = 0 }: { to: string; label: string; 
   )
 }
 
-/** Hoy · Biblioteca · + · Stats · Nosotros. The central + registers a session from anywhere. */
+/** Hoy · Biblioteca · + · Stats · Nosotros. */
 export function TabBar({ onAdd }: { onAdd: () => void }) {
-  const unread = useUsUnread()
+  const { count: unread } = usePendingForMe()
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/90 pb-safe backdrop-blur-md">
       <div className="mx-auto grid max-w-xl grid-cols-5 items-center px-2.5 pt-1.5">
@@ -60,7 +60,7 @@ export function TabBar({ onAdd }: { onAdd: () => void }) {
         <button
           type="button"
           onClick={onAdd}
-          aria-label="Registrar sesión"
+          aria-label="Abrir acciones"
           className="-mt-6 grid h-[54px] w-[54px] place-items-center justify-self-center rounded-[18px] bg-accent text-surface shadow-[0_10px_22px_-8px_var(--accent)] transition-transform duration-300 [transition-timing-function:var(--spring)] active:scale-90"
         >
           <Plus size={26} />

@@ -6,6 +6,10 @@ import { useRealtimeSync } from '@/features/us/useRealtimeSync'
 import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { SurpriseHost } from '@/features/surprises/SurpriseHost'
 import { LogSessionSheet } from '@/features/session/LogSessionSheet'
+import { BottomSheet } from '@/components/BottomSheet'
+import { TraceSheet } from '@/features/us/TraceSheet'
+import { RatitoSheet } from '@/features/us/RatitoSheet'
+import { useRatitoTimer } from '@/features/session/Timer'
 
 const TAB_ORDER = ['/', '/biblioteca', '/stats', '/nosotros']
 
@@ -18,10 +22,11 @@ function depthOf(path: string): number {
 export function Layout() {
   const { profile } = useMe()
   const location = useLocation()
-  const [adding, setAdding] = useState(false)
+  const [action, setAction] = useState<'menu' | 'log' | 'trace' | 'ratito' | null>(null)
   const prev = useRef(location.pathname)
   useRealtimeSync()
   useOfflineSync()
+  useRatitoTimer()
 
   const from = depthOf(location.pathname) >= depthOf(prev.current) ? '16px' : '-16px'
   prev.current = location.pathname
@@ -44,8 +49,23 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
-      <TabBar onAdd={() => setAdding(true)} />
-      <LogSessionSheet open={adding} onClose={() => setAdding(false)} />
+      <TabBar onAdd={() => setAction('menu')} />
+      <BottomSheet open={action === 'menu'} onClose={() => setAction(null)} title="¿Qué te apetece?">
+        <div className="space-y-2 pt-2">
+          <button className="btn btn-soft min-h-16 w-full justify-start text-base" onClick={() => setAction('log')}>
+            📖 Registrar lectura
+          </button>
+          <button className="btn btn-soft min-h-16 w-full justify-start text-base" onClick={() => setAction('trace')}>
+            💌 Dejarle algo
+          </button>
+          <button className="btn btn-soft min-h-16 w-full justify-start text-base" onClick={() => setAction('ratito')}>
+            ☕ Invitar a un ratito
+          </button>
+        </div>
+      </BottomSheet>
+      <LogSessionSheet open={action === 'log'} onClose={() => setAction(null)} />
+      <TraceSheet open={action === 'trace'} onClose={() => setAction(null)} />
+      <RatitoSheet open={action === 'ratito'} onClose={() => setAction(null)} />
       <SurpriseHost />
     </>
   )

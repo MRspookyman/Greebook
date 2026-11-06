@@ -6,8 +6,9 @@
  * 4. Replace the two placeholders in migrations/0002_cron.sql and apply it once.
  *    It stores the secret in Vault and schedules this endpoint every 15 minutes.
  */
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendToUser } from '../_shared/push.ts'
+import { localDate } from '../_shared/time.ts'
 
 // UTC arithmetic is only over local ISO dates, never over timezone-offset instants.
 function currentStreak(dates: Set<string>, today: string): number {
@@ -21,14 +22,7 @@ function currentStreak(dates: Set<string>, today: string): number {
   return count
 }
 
-/** Consecutive days on which both read (today counts once both have; otherwise up to yesterday). */
-function coupleStreak(mine: Set<string>, theirs: Set<string>, today: string): number {
-  const both = new Set([...mine].filter((date) => theirs.has(date)))
-  return currentStreak(both, today)
-}
-
-// deno-lint-ignore no-explicit-any
-async function readDates(admin: any, userId: string, today: string, stopAtToday: boolean): Promise<Set<string>> {
+async function readDates(admin: SupabaseClient, userId: string, today: string): Promise<Set<string>> {
   const dates = new Set<string>()
   for (let from = 0; ; from += 1000) {
     const { data: sessions, error } = await admin
@@ -41,7 +35,7 @@ async function readDates(admin: any, userId: string, today: string, stopAtToday:
       .range(from, from + 999)
     if (error) throw error
     for (const session of sessions ?? []) dates.add(session.read_on)
-    if (!sessions || sessions.length < 1000 || (stopAtToday && dates.has(today))) break
+    if (!sessions || sessions.length < 1000 || dates.has(today)) break
   }
   return dates
 }
@@ -57,7 +51,7 @@ Deno.serve(async (request: Request) => {
     })
     const { data: profiles, error } = await admin
       .from('profiles')
-      .select('id, timezone, reminder_time, last_reminded_on, partner_id')
+      .select('id, timezone, reminder_time, last_reminded_on')
       .eq('notify_reminder', true)
     if (error) throw error
     const now = new Date()
@@ -79,34 +73,13 @@ Deno.serve(async (request: Request) => {
         const today = `${values.year}-${values.month}-${values.day}`
         const time = `${values.hour}:${values.minute}:${values.second}`
         if (profile.last_reminded_on === today || time < profile.reminder_time) continue
-        const dates = await readDates(admin, profile.id, today, true)
+        const dates = await readDates(admin, profile.id, today)
         if (dates.has(today)) continue
         const streak = currentStreak(dates, today)
-        let message = {
+        const message = {
           title: '📖 ¿Un ratito de lectura hoy?',
-          body: streak ? `Tu racha es de ${streak} ${streak === 1 ? 'día' : 'días'}` : 'Empieza una racha nueva',
+          body: streak ? `Tu racha es de ${streak} ${streak === 1 ? 'día' : 'días'}` : 'Cuando te apetezca',
           url: '/',
-        }
-        if (profile.partner_id) {
-          const partnerDates = await readDates(admin, profile.partner_id, today, false)
-          if (partnerDates.has(today)) {
-            const { data: partner, error: partnerError } = await admin
-              .from('profiles')
-              .select('display_name')
-              .eq('id', profile.partner_id)
-              .single()
-            if (partnerError) throw partnerError
-            // If I read today too, the couple streak grows by one.
-            const next = coupleStreak(new Set([...dates, today]), partnerDates, today)
-            message = {
-              title: `💚💙 ${partner.display_name} ya ha leído hoy`,
-              body:
-                next > 1
-                  ? `Te falta a ti para llegar a ${next} días leyendo los dos`
-                  : 'Lee un poco y empezáis una racha juntos',
-              url: '/',
-            }
-          }
         }
         const devices = await sendToUser(admin, profile.id, message)
         // No device subscribed yet: keep today's reminder pending for when one is.
@@ -120,6 +93,44 @@ Deno.serve(async (request: Request) => {
       } catch (error) {
         failures.push(error)
         console.error('Reminder failed', profile.id, error)
+      }
+    }
+    const { data: invites, error: inviteError } = await admin
+      .from('invites')
+      .select('id, from_user, to_user, starts_at')
+      .eq('status', 'accepted')
+      .is('start_notified_at', null)
+      .lte('starts_at', now.toISOString())
+      .gte('starts_at', new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString())
+    if (inviteError) throw inviteError
+    for (const invite of invites ?? []) {
+      try {
+        const { data: participants, error: participantError } = await admin
+          .from('profiles')
+          .select('id, timezone, notify_partner')
+          .in('id', [invite.from_user, invite.to_user])
+        if (participantError) throw participantError
+        for (const participant of participants ?? []) {
+          if (
+            !participant.notify_partner ||
+            localDate(new Date(invite.starts_at), participant.timezone) !== localDate(now, participant.timezone)
+          )
+            continue
+          await sendToUser(admin, participant.id, {
+            title: '☕ Es la hora de vuestro ratito',
+            body: 'Un momento para leer juntos',
+            url: `/nosotros#i-${invite.id}`,
+          })
+          sent++
+        }
+        const { error: updateError } = await admin
+          .from('invites')
+          .update({ start_notified_at: now.toISOString() })
+          .eq('id', invite.id)
+        if (updateError) throw updateError
+      } catch (error) {
+        failures.push(error)
+        console.error('Ratito reminder failed', invite.id, error)
       }
     }
     return Response.json({ sent, failed: failures.length }, { status: failures.length ? 500 : 200 })

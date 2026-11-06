@@ -17,7 +17,9 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 
 ## Puesta en marcha (proyecto único `greenbook`; antes del regalo se vacían los datos de prueba)
 
-1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql` y después `0003_drop_ebook.sql`.
+1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`, `0003_drop_ebook.sql`,
+   `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql` y `0007_rincon.sql`
+   en ese orden. Configura los marcadores de URL y secretos de los avisos con el paso 5.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.
@@ -28,8 +30,11 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    (no versionado; si lo pierdes, crea uno igual con `npx web-push generate-vapid-keys` y dos cadenas aleatorias).
    - `npx supabase login`
    - `node scripts/configurar-avisos.mjs <project-ref>`: sube los secretos, despliega `send-reminders` y
-     `notify-partner` y genera `avisos-sql.local` (cron cada 15 min + triggers de avisos de pareja, con los
-     secretos ya puestos): pégalo entero en el SQL editor. No hace falta crear «Database Webhooks».
+     `notify-partner` y genera `avisos-sql.local` (0002 + 0004 + 0006: cron cada 15 min y webhook
+     de pareja que nunca bloquea escrituras, con los secretos ya puestos): pégalo entero en el SQL editor.
+     Conserva los triggers de 0007. No hace falta crear «Database Webhooks». Solo se avisa de huellas,
+     respuestas, desbloqueos, ratitos, propuestas para leer juntos, retos propuestos y libros terminados;
+     no de sesiones, corazones ni presencia. El recordatorio diario propio es independiente y neutral.
 6. **Cloudflare Workers**: conecta el repositorio (build `npm run build`, deploy `npx wrangler deploy`;
    `wrangler.jsonc` sirve `dist` como SPA) y añade como *build variables* `VITE_SUPABASE_URL`,
    `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_BOOKS_KEY`, `VITE_VAPID_PUBLIC_KEY` y `NODE_VERSION=22`.

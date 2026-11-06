@@ -1,536 +1,327 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link } from 'react-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { formatDistanceToNowStrict } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { Hand, MessageCircle } from 'lucide-react'
-import { useMe } from '@/features/auth/me'
+import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router'
 import { Avatar } from '@/components/Avatar'
-import { DualProgressBar } from '@/components/DualProgressBar'
-import { EmptyState } from '@/components/EmptyState'
-import { Segmented } from '@/components/Segmented'
-import { Stars } from '@/components/Stars'
-import { useEntered } from '@/components/motion'
-import { clubStops } from '@/lib/club'
-import { qk, useNudges, useReactions, useReadings, useRecommendations, useSessions, useSharedNotes } from '@/lib/data'
+import { BottomSheet } from '@/components/BottomSheet'
+import { Cover } from '@/components/Cover'
+import { useMe } from '@/features/auth/me'
+import { useInvites, useMessages, useReactions, useReadings, useSessions, useTogether } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
-import { isSpoiler } from '@/lib/spoilers'
-import { summarize } from '@/lib/stats/aggregate'
-import { periodRange, type Period } from '@/lib/stats/insights'
-import { supabase } from '@/lib/supabase'
-import type { Profile, ReactionTarget, ReadingWithBook, Session } from '@/lib/types'
-import { formatUnitDelta, progressFraction } from '@/lib/units'
-import { ChallengeCard } from './ChallengeCard'
-import { useSortedClubs } from './joint'
-import { jointDistance } from './jointDistance'
-import { NudgeSheet, useNudgedToday } from './NudgeSheet'
-import { ReactionBar } from './ReactionBar'
-import { sessionGroups } from './sessionGroups'
+import type { Profile, ReadingWithBook } from '@/lib/types'
+import { InviteCard } from './InviteCard'
+import { MessageCard } from './MessageCard'
+import { GoalProposal, MemoriesCard } from './MemoriesCard'
+import { TogetherCard } from './TogetherCard'
+import { localMonth, monthMemories } from './memories'
+import { usePendingForMe } from './messages'
+import { useRooms } from './rooms'
+import { isInviteExpired } from './ratito'
+import { addTogether } from './together'
 
-const periods = [
-  { value: 'week', label: 'Semana' },
-  { value: 'month', label: 'Mes' },
-  { value: 'year', label: 'Año' },
-] satisfies { value: Period; label: string }[]
-
-type FeedFilter = 'all' | 'me' | 'quotes'
-
-interface FeedEvent {
-  key: string
-  sort: string
-  author: Profile
-  forMe: boolean
-  quote: boolean
-  text: ReactNode
-  link?: string
-  reply?: string
-  react?: { type: ReactionTarget; id: string; owner: string }
+function monthLabel(month: string) {
+  const date = new Date(`${month}-01T12:00:00`)
+  const name = new Intl.DateTimeFormat('es', { month: 'long' }).format(date)
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${date.getFullYear()}`
 }
 
-function Comparison({
-  label,
-  a,
-  b,
-  mine,
-  partner,
-  hours = false,
-}: {
-  label: string
-  a: number
-  b: number
-  mine: Profile
-  partner: Profile
-  hours?: boolean
-}) {
-  const entered = useEntered()
-  const max = Math.max(a, b, 1)
-  const format = new Intl.NumberFormat('es', { maximumFractionDigits: hours ? 1 : 0 })
+function ReadingNow({ person, readings }: { person: Profile; readings: ReadingWithBook[] }) {
+  const current = readings.filter((reading) => reading.status === 'reading')
+  const since = person.reading_now_since ? new Date(person.reading_now_since).getTime() : 0
+  const live = Date.now() - since >= 0 && Date.now() - since < 2 * 60 * 60 * 1000
   return (
-    <div className="grid grid-cols-[1fr_86px_1fr] items-center gap-2">
-      <div className="flex justify-end" aria-hidden>
-        <div
-          className="h-2.5 rounded-full"
-          style={{
-            width: entered ? `${(a / max) * 100}%` : 0,
-            background: `var(--${mine.accent})`,
-            transition: 'width 1s var(--ease)',
-          }}
-        />
-      </div>
-      <div className="text-center text-xs leading-4">
-        <p className="text-muted">{label}</p>
-        <p
-          className="num font-semibold"
-          aria-label={`${mine.display_name}: ${format.format(a)}; ${partner.display_name}: ${format.format(b)}`}
-        >
-          {format.format(a)} · {format.format(b)}
-        </p>
-      </div>
-      <div aria-hidden>
-        <div
-          className="h-2.5 rounded-full"
-          style={{
-            width: entered ? `${(b / max) * 100}%` : 0,
-            background: `var(--${partner.accent})`,
-            transition: 'width 1s var(--ease)',
-          }}
-        />
-      </div>
+    <div className="min-w-0 flex-1 space-y-2">
+      <p className="text-xs font-medium text-muted">{person.display_name}</p>
+      {current.length ? (
+        current.map((reading) => (
+          <Link key={reading.id} to={`/libro/${reading.id}`} className="flex min-h-11 items-center gap-2">
+            <Cover book={reading.book} width={28} />
+            <div className="min-w-0">
+              <p className="line-clamp-2 text-sm">{reading.book.title}</p>
+              {live && person.reading_now_id === reading.id && <p className="text-xs text-accent">leyendo ahora</p>}
+            </div>
+          </Link>
+        ))
+      ) : (
+        <p className="text-sm text-muted">El próximo libro os espera</p>
+      )}
     </div>
   )
 }
 
-function hoursInRange(sessions: Session[], readings: ReadingWithBook[], from: string, to: string) {
-  const byId = new Map(readings.map((reading) => [reading.id, reading]))
-  const minutes = sessions.reduce((total, session) => {
-    if (session.read_on < from || session.read_on > to) return total
-    const reading = byId.get(session.reading_id)
-    if (!reading) return total
-    return total + (reading.unit === 'minutes' ? session.end_pos - session.start_pos : (session.minutes ?? 0))
-  }, 0)
-  return minutes / 60
-}
-
-const ago = (iso: string) => formatDistanceToNowStrict(new Date(iso), { addSuffix: true, locale: es })
-const short = (text: string, n = 90) => (text.length > n ? `${text.slice(0, n - 1)}…` : text)
-
-/** Marks Nosotros as seen a moment after opening it; returns the previous mark for highlighting. */
-function useSeenMark(): string | null {
-  const { userId, profile } = useMe()
-  const qc = useQueryClient()
-  const [before] = useState(profile.last_seen_us_at)
-  useEffect(() => {
-    const id = window.setTimeout(async () => {
-      const now = new Date().toISOString()
-      qc.setQueryData<Profile>(qk.profile(userId), (old) => (old ? { ...old, last_seen_us_at: now } : old))
-      await supabase.from('profiles').update({ last_seen_us_at: now }).eq('id', userId)
-    }, 1200)
-    return () => window.clearTimeout(id)
-  }, [userId, qc])
-  return before
-}
-
 export function UsPage() {
   const { userId, profile, partner } = useMe()
-  const myReadings = useReadings(userId)
-  const theirReadings = useReadings(partner?.id)
-  const mySessions = useSessions(userId)
-  const theirSessions = useSessions(partner?.id)
-  const notes = useSharedNotes(!!partner)
-  const reactions = useReactions()
-  const nudges = useNudges(!!partner)
-  const recs = useRecommendations(!!partner)
-  const clubs = useSortedClubs()
-  const nudgedToday = useNudgedToday()
-  const seenBefore = useSeenMark()
-  const [period, setPeriod] = useState<Period>('week')
-  const [filter, setFilter] = useState<FeedFilter>('all')
-  const [nudging, setNudging] = useState(false)
-  const [limit, setLimit] = useState(5)
+  const location = useLocation()
+  const mineQuery = useReadings(userId)
+  const theirsQuery = useReadings(partner?.id)
+  const mine = mineQuery.data ?? []
+  const theirs = theirsQuery.data ?? []
+  const mineSessions = useSessions(userId).data ?? []
+  const theirSessions = useSessions(partner?.id).data ?? []
+  const messagesQuery = useMessages()
+  const messages = messagesQuery.data ?? []
+  const invites = useInvites().data ?? []
+  const reactions = useReactions().data ?? []
+  const together = useTogether().data ?? []
+  const { items } = usePendingForMe()
+  const pendingTogetherIds = new Set(items.flatMap((item) => (item.type === 'together' ? [item.item.id] : [])))
+  const listedTogether = together.filter((item) => !pendingTogetherIds.has(item.id))
+  const goalPendingAbove = items.some((item) => item.type === 'goal')
+  const rooms = useRooms()
+  const [adding, setAdding] = useState(false)
+  const [bookId, setBookId] = useState('')
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const month = todayISO().slice(0, 7)
+  const readings = [...mine, ...theirs]
+  const sessions = [...mineSessions, ...theirSessions]
+  const summarize = (value: string) =>
+    monthMemories(value, readings, sessions, invites, messages, reactions, userId, partner?.id ?? '')
+  const summary = summarize(month)
+  const previousMonths = [
+    ...new Set([
+      ...sessions.map((session) => session.read_on.slice(0, 7)),
+      ...readings.flatMap((reading) => (reading.finished_on ? [reading.finished_on.slice(0, 7)] : [])),
+      ...invites
+        .filter((invite) => invite.status === 'accepted')
+        .map((invite) => localMonth(invite.starts_at ?? invite.created_at)),
+      ...messages
+        .filter((message) => reactions.some((reaction) => reaction.target_id === message.id))
+        .map((message) => localMonth(message.created_at)),
+    ]),
+  ]
+    .filter((value) => value < month)
+    .sort()
+    .reverse()
+  const candidates = [
+    ...new Map(
+      readings
+        .filter((reading) => reading.status === 'want' && !together.some((item) => item.book_id === reading.book_id))
+        .map((reading) => [reading.book_id, reading.book]),
+    ).values(),
+  ]
+  const linkedId = location.hash.startsWith('#m-') ? location.hash.slice(3) : null
+  const linkedMessage = linkedId ? messages.find((message) => message.id === linkedId) : undefined
+  const linkedAlreadyPending = items.some((item) => item.type === 'message' && item.message.id === linkedId)
+  useEffect(() => {
+    if (!linkedId || !messages.length) return
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`m-${linkedId}`)?.scrollIntoView({ block: 'center', behavior: 'auto' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [linkedId, messages])
 
-  const header = (
-    <header className="flex min-h-11 items-center justify-between gap-3">
-      <h1 className="font-serif text-[28px] font-semibold">Nosotros</h1>
-      {partner && (
-        <button
-          className="btn min-h-10 px-3.5 text-sm"
-          style={{
-            background: `color-mix(in oklab, var(--${partner.accent}) 15%, var(--surface))`,
-            color: `var(--${partner.accent})`,
-          }}
-          onClick={() => setNudging(true)}
-          aria-label={nudgedToday ? 'Ya le has dado un toque hoy' : `Dar un toque a ${partner.display_name}`}
-        >
-          <Hand size={17} /> {nudgedToday ? 'Toque enviado' : 'Toque'}
-        </button>
-      )}
-    </header>
-  )
-  if (!partner) {
+  if (!partner)
     return (
-      <div className="space-y-4">
-        {header}
-        <EmptyState title="Un espacio para los dos">
-          Cuando vuestros perfiles estén emparejados, aquí aparecerán vuestras lecturas.
-        </EmptyState>
-      </div>
+      <section className="card">
+        <h1>Rincón de los dos</h1>
+        <p>Vuestro rincón estará aquí al vincular las dos cuentas.</p>
+      </section>
     )
-  }
-  const queries = [myReadings, theirReadings, mySessions, theirSessions]
-  if (queries.some((query) => query.isPending)) {
-    return (
-      <div className="space-y-4">
-        {header}
-        <div role="status" aria-label="Cargando vuestras lecturas" className="animate-pulse space-y-4">
-          <div className="h-28 rounded-[20px] bg-track" />
-          <div className="h-11 rounded-xl bg-track" />
-          <div className="h-52 rounded-[20px] bg-track" />
-        </div>
-      </div>
-    )
-  }
-  if (queries.some((query) => query.isError)) {
-    return (
-      <div className="space-y-4">
-        {header}
-        <p>No se pudieron cargar vuestras lecturas.</p>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => {
-            for (const query of queries) void query.refetch()
-          }}
-        >
-          Reintentar
-        </button>
-      </div>
-    )
-  }
-  const mine = myReadings.data ?? []
-  const theirs = theirReadings.data ?? []
-  const ms = mySessions.data ?? []
-  const ps = theirSessions.data ?? []
-  const today = todayISO()
-  const range = { ...periodRange(period, today), to: today }
-  const a = summarize(ms, mine, range)
-  const b = summarize(ps, theirs, range)
-  const readingById = new Map([...mine, ...theirs].map((reading) => [reading.id, reading]))
-  const noteById = new Map((notes.data ?? []).map((note) => [note.id, note]))
-  const sessionById = new Map(ms.map((session) => [session.id, session]))
-  const myReadingOf = (bookId: string) =>
-    mine
-      .filter((r) => r.book_id === bookId)
-      .sort((x, y) => Number(y.status !== 'finished') - Number(x.status !== 'finished'))[0]
-
-  // ── Feed ──
-  const events: FeedEvent[] = []
-  for (const { session, reading, delta } of sessionGroups(ps, theirs)) {
-    events.push({
-      key: `s-${session.id}`,
-      sort: session.created_at,
-      author: partner,
-      forMe: false,
-      quote: false,
-      link: `/libro/${reading.id}`,
-      text: (
-        <>
-          +{formatUnitDelta(reading.unit, delta)} en <strong>{reading.book.title}</strong>
-        </>
-      ),
-      react: { type: 'session', id: session.id, owner: partner.id },
-    })
-  }
-  for (const reading of theirs) {
-    if (reading.status !== 'finished' || !reading.finished_on) continue
-    events.push({
-      key: `f-${reading.id}`,
-      sort: reading.updated_at,
-      author: partner,
-      forMe: false,
-      quote: false,
-      link: `/libro/${reading.id}`,
-      text: (
-        <>
-          Terminó <strong>{reading.book.title}</strong>
-          {reading.rating != null && (
-            <span className="ml-1 inline-flex items-center gap-1 align-middle">
-              <span aria-hidden>·</span>
-              <Stars value={reading.rating} size={12} />
-            </span>
-          )}
-        </>
-      ),
-      react: { type: 'reading', id: reading.id, owner: partner.id },
-    })
-  }
-  for (const note of notes.data ?? []) {
-    const reading = readingById.get(note.reading_id)
-    if (!reading) continue
-    const fromPartner = note.user_id === partner.id
-    const parent = note.reply_to ? noteById.get(note.reply_to) : undefined
-    const toMe = fromPartner && parent?.user_id === userId
-    const myReading = myReadingOf(reading.book_id)
-    const hidden = fromPartner && !!myReading && isSpoiler(note, myReading, reading.book)
-    if (!fromPartner && note.kind !== 'quote') continue
-    const what = note.kind === 'quote' ? 'una cita' : note.kind === 'note' ? 'una nota' : null
-    events.push({
-      key: `n-${note.id}`,
-      sort: note.created_at,
-      author: fromPartner ? partner : profile,
-      forMe: toMe,
-      quote: note.kind === 'quote',
-      link: `/club/${reading.book_id}`,
-      reply: fromPartner && !hidden ? `/club/${reading.book_id}?responder=${note.id}` : undefined,
-      text: (
-        <>
-          {toMe
-            ? `Respondió a tu ${parent?.kind === 'quote' ? 'cita' : 'mensaje'}`
-            : what
-              ? `${fromPartner ? 'Compartió' : 'Compartiste'} ${what} de `
-              : 'Escribió en el club de '}
-          {!toMe && <strong>{reading.book.title}</strong>}
-          {hidden ? (
-            <span className="block text-xs text-muted">En la p. {note.page}, por delante de ti</span>
-          ) : (
-            <span className={`mt-1 block ${note.kind === 'quote' ? 'font-serif' : ''}`}>
-              {note.kind === 'quote' ? `«${short(note.body, 140)}»` : short(note.body)}
-            </span>
-          )}
-        </>
-      ),
-      react: fromPartner && !hidden ? { type: 'note', id: note.id, owner: partner.id } : undefined,
-    })
-  }
-  for (const reaction of reactions.data ?? []) {
-    if (reaction.user_id !== partner.id) continue
-    const target =
-      reaction.target_type === 'note'
-        ? noteById.get(reaction.target_id)
-        : reaction.target_type === 'session'
-          ? sessionById.get(reaction.target_id)
-          : readingById.get(reaction.target_id)
-    if (!target || target.user_id !== userId) continue
-    const reading = 'reading_id' in target ? readingById.get(target.reading_id) : (target as ReadingWithBook)
-    events.push({
-      key: `r-${reaction.id}`,
-      sort: reaction.created_at,
-      author: partner,
-      forMe: true,
-      quote: false,
-      link: reading
-        ? reaction.target_type === 'note'
-          ? `/club/${reading.book_id}`
-          : `/libro/${reading.id}`
-        : undefined,
-      text: (
-        <>
-          Reaccionó {reaction.emoji} a tu{' '}
-          {reaction.target_type === 'note' ? 'mensaje' : reaction.target_type === 'session' ? 'sesión' : 'lectura'}
-          {reading && (
-            <>
-              {' '}
-              de <strong>{reading.book.title}</strong>
-            </>
-          )}
-        </>
-      ),
-    })
-  }
-  for (const nudge of nudges.data ?? []) {
-    if (nudge.to_user !== userId) continue
-    events.push({
-      key: `t-${nudge.id}`,
-      sort: nudge.created_at,
-      author: partner,
-      forMe: true,
-      quote: false,
-      text: <>Te dio un toque: «{nudge.message}»</>,
-    })
-  }
-  for (const rec of recs.data ?? []) {
-    if (rec.to_user !== userId) continue
-    events.push({
-      key: `c-${rec.id}`,
-      sort: rec.created_at,
-      author: partner,
-      forMe: true,
-      quote: false,
-      link: rec.status === 'pending' ? '/' : undefined,
-      text: (
-        <>
-          Te recomendó <strong>{rec.book.title}</strong>
-          {rec.together && ' para leerlo juntos'}
-          {rec.message && <span className="mt-1 block text-xs text-muted">«{short(rec.message)}»</span>}
-        </>
-      ),
-    })
-  }
-  events.sort((x, y) => y.sort.localeCompare(x.sort))
-  const isNew = (event: FeedEvent) => event.author.id === partner.id && (!seenBefore || event.sort > seenBefore)
-  const forMeCount = events.filter((event) => event.forMe && isNew(event)).length
-  const shown = events.filter((event) => (filter === 'me' ? event.forMe : filter === 'quotes' ? event.quote : true))
-
-  const myDay = ms.some((session) => session.read_on === today)
-  const partnerDay = ps.some((session) => session.read_on === today)
-  const headline =
-    myDay && partnerDay
-      ? 'Hoy habéis leído los dos 💚💙'
-      : myDay || partnerDay
-        ? `${myDay ? profile.display_name : partner.display_name} ya ha leído hoy`
-        : 'Todavía estáis a tiempo de leer hoy'
 
   return (
-    <div className="space-y-3.5">
-      {header}
-      <ChallengeCard />
-
-      <section className="card space-y-3" aria-label="Vuestras lecturas cara a cara">
-        <Segmented options={periods} value={period} onChange={setPeriod} aria-label="Periodo de comparación" />
-        <div className="flex justify-center gap-4 text-[13px] font-semibold">
-          <span className="max-w-[45%] truncate" style={{ color: `var(--${profile.accent})` }}>
-            {profile.display_name}
-          </span>
-          <span className="max-w-[45%] truncate" style={{ color: `var(--${partner.accent})` }}>
-            {partner.display_name}
-          </span>
+    <div className="space-y-5 pb-4 rise">
+      <header className="flex items-center gap-3">
+        <div className="flex -space-x-3">
+          <Avatar person={profile} size={42} />
+          <Avatar person={partner} size={42} />
         </div>
-        <div key={period} className="space-y-3">
-          <Comparison label="Páginas" a={a.pages} b={b.pages} mine={profile} partner={partner} />
-          <Comparison label="Libros" a={a.booksFinished} b={b.booksFinished} mine={profile} partner={partner} />
-          <Comparison label="Días" a={a.activeDays} b={b.activeDays} mine={profile} partner={partner} />
-          <Comparison
-            label="Horas"
-            a={hoursInRange(ms, mine, range.from, range.to)}
-            b={hoursInRange(ps, theirs, range.from, range.to)}
-            mine={profile}
-            partner={partner}
-            hours
-          />
+        <div>
+          <h1 className="text-2xl">Rincón de los dos</h1>
+          <p className="text-xs text-muted">{summary.daysTogether} días leyendo los dos este mes</p>
         </div>
-        <p className="text-center text-[11px] text-muted">{headline}</p>
-      </section>
-      {clubs.map(({ joint: j }) => (
-        <Link
-          key={j.book.id}
-          to={`/club/${j.book.id}`}
-          className="card pressable block space-y-1"
-          aria-label={`Club de dos: ${j.book.title}`}
-        >
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <h2 className="flex shrink-0 items-center gap-1.5 font-sans text-xs font-semibold">
-              <MessageCircle size={14} /> Club de dos
-            </h2>
-            <span className="truncate text-muted">{j.book.title}</span>
-          </div>
-          <DualProgressBar
-            a={{
-              value: progressFraction(j.mine),
-              accent: profile.accent,
-              label: profile.display_name,
-              caption: j.mine.unit === 'pages' ? String(j.mine.current_position) : undefined,
-            }}
-            b={{
-              value: progressFraction(j.theirs),
-              accent: partner.accent,
-              label: partner.display_name,
-              caption: j.theirs.unit === 'pages' ? String(j.theirs.current_position) : undefined,
-            }}
-            stops={clubStops(j.mine).map((page) => ({
-              value: page / j.mine.total_units,
-              done: j.mine.current_position >= page && progressFraction(j.theirs) * j.mine.total_units >= page,
-              label: `Parada p. ${page}`,
-            }))}
-          />
-          <p className="text-xs text-muted">{jointDistance(j.mine, j.theirs, partner.display_name)}</p>
-        </Link>
-      ))}
-
-      <Segmented
-        options={[
-          { value: 'all', label: 'Todo' },
-          { value: 'me', label: 'Para mí', count: forMeCount || undefined },
-          { value: 'quotes', label: 'Citas' },
-        ]}
-        value={filter}
-        onChange={(value) => {
-          setFilter(value)
-          setLimit(5)
-        }}
-        aria-label="Filtrar actividad"
-      />
-      {shown.length ? (
-        <section className="card py-1" aria-label="Actividad">
-          <div className="divide-y divide-dashed divide-border">
-            {shown.slice(0, limit).map((event, index) => {
-              const fresh = isNew(event)
-              const body = (
-                <div className="min-w-0 text-[13px] leading-[1.35]">
-                  <div className="line-clamp-4">{event.text}</div>
-                </div>
-              )
-              return (
-                <article
-                  key={event.key}
-                  className={`rise flex gap-2.5 py-2.5 ${fresh ? '-ml-3.5 border-l-[3px] [border-left-style:solid] pl-[11px]' : ''}`}
-                  style={
-                    {
-                      '--k': Math.min(index, 10),
-                      borderLeftColor: fresh ? `var(--${partner.accent})` : undefined,
-                    } as CSSProperties
-                  }
-                >
-                  <Avatar person={event.author} size={30} />
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    {event.link ? (
-                      <Link to={event.link} className="block">
-                        {body}
-                      </Link>
-                    ) : (
-                      body
-                    )}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {event.react && (
-                        <ReactionBar
-                          targetType={event.react.type}
-                          targetId={event.react.id}
-                          ownerId={event.react.owner}
-                        />
-                      )}
-                      {event.reply && (
-                        <Link to={event.reply} className="chip min-h-9 px-3 text-xs">
-                          Responder
-                        </Link>
-                      )}
-                      <span className="text-[11px] text-muted">{ago(event.sort)}</span>
-                    </div>
+      </header>
+      {(mineQuery.isPending || theirsQuery.isPending || messagesQuery.isPending) && (
+        <p className="text-sm text-muted" role="status">
+          Abriendo vuestro rincón…
+        </p>
+      )}
+      {(mineQuery.isError || theirsQuery.isError || messagesQuery.isError) && (
+        <p className="text-sm text-danger" role="alert">
+          No se ha podido cargar todo el rincón. Vuelve a abrirlo cuando tengas conexión.
+        </p>
+      )}
+      {(items.length > 0 || linkedMessage) && (
+        <section className="space-y-3" aria-label="Para ti">
+          <h2 className="text-lg">Para ti</h2>
+          {items.map((item) => {
+            switch (item.type) {
+              case 'message':
+                return <MessageCard key={`m-${item.message.id}`} message={item.message} />
+              case 'invite':
+                return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} />
+              case 'together':
+                return (
+                  <div className="card" key={`t-${item.item.id}`}>
+                    <TogetherCard item={item.item} />
                   </div>
-                </article>
+                )
+              case 'goal':
+                return (
+                  <div className="card" key={`g-${item.goal.month}`}>
+                    <GoalProposal goal={item.goal} />
+                  </div>
+                )
+            }
+          })}
+          {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} />}
+        </section>
+      )}
+      <section className="card space-y-3" aria-label="Ahora mismo">
+        <h2 className="text-lg">Ahora mismo</h2>
+        <div className="flex gap-4">
+          <ReadingNow person={profile} readings={mine} />
+          <ReadingNow person={partner} readings={theirs} />
+        </div>
+        {invites
+          .filter(
+            (invite) =>
+              !isInviteExpired(invite) &&
+              (invite.status === 'accepted' || (invite.from_user === userId && invite.status === 'pending')),
+          )
+          .map((invite) => (
+            <InviteCard key={invite.id} invite={invite} />
+          ))}
+        {rooms.length > 0 && (
+          <div className="border-t border-border pt-2">
+            {rooms.map((room) => {
+              const unread = messages.filter(
+                (message) =>
+                  message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
+              ).length
+              return (
+                <Link
+                  key={room.book.id}
+                  to={`/sala/${room.book.id}`}
+                  className="flex min-h-11 items-center justify-between gap-2 text-sm"
+                >
+                  <span>Vuestra sala · {room.book.title}</span>
+                  <span className="text-accent">{unread ? `${unread} por abrir` : 'Entrar →'}</span>
+                </Link>
               )
             })}
           </div>
-          {shown.length > limit && (
-            <button className="btn btn-ghost w-full text-sm" onClick={() => setLimit(limit + 12)}>
-              Ver más actividad
-            </button>
+        )}
+      </section>
+      <section className="card space-y-3" aria-label="Queremos leer juntos">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg">Queremos leer juntos</h2>
+          <button className="btn btn-ghost" onClick={() => setAdding(true)}>
+            + Añadir
+          </button>
+        </div>
+        {!together.length && (
+          <p className="text-sm text-muted">Un libro que os apetezca compartir, para cuando llegue el momento.</p>
+        )}
+        {pendingTogetherIds.size > 0 && (
+          <p className="text-sm text-muted">{pendingTogetherIds.size} esperando vuestra respuesta arriba</p>
+        )}
+        {listedTogether.slice(0, 1).map((item) => (
+          <TogetherCard key={item.id} item={item} />
+        ))}
+        {listedTogether.length > 1 && (
+          <details>
+            <summary className="min-h-11 cursor-pointer py-3 text-sm">
+              Ver {listedTogether.length - 1} {listedTogether.length === 2 ? 'libro' : 'libros'} más
+            </summary>
+            <div className="space-y-5">
+              {listedTogether.slice(1).map((item) => (
+                <TogetherCard key={item.id} item={item} />
+              ))}
+            </div>
+          </details>
+        )}
+      </section>
+      <section className="space-y-3" aria-label="Vuestros recuerdos">
+        <h2 className="text-lg">Vuestros recuerdos</h2>
+        <div className="card space-y-3">
+          <h3 className="font-serif">{monthLabel(month)}</h3>
+          <MemoriesCard summary={summary} goalPendingAbove={goalPendingAbove} />
+        </div>
+        {previousMonths.length > 0 && (
+          <details className="card">
+            <summary className="min-h-11 cursor-pointer py-3 text-sm">
+              Meses anteriores ({previousMonths.length})
+            </summary>
+            <div className="space-y-3">
+              {previousMonths.map((value) => {
+                const past = summarize(value)
+                return (
+                  <details key={value}>
+                    <summary className="min-h-11 cursor-pointer py-3 text-sm">
+                      {monthLabel(value)} · {past.books.length} libros · {past.daysTogether} días juntos
+                    </summary>
+                    <MemoriesCard summary={past} />
+                  </details>
+                )
+              })}
+            </div>
+          </details>
+        )}
+      </section>
+      <BottomSheet open={adding} onClose={() => setAdding(false)} title="Queremos leer juntos">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!bookId) return
+            setBusy(true)
+            setError('')
+            void addTogether(bookId, reason)
+              .then(() => {
+                setAdding(false)
+                setBookId('')
+                setReason('')
+              })
+              .catch((cause: unknown) => {
+                setError(cause instanceof Error ? cause.message : 'No se pudo añadir el libro')
+              })
+              .finally(() => setBusy(false))
+          }}
+        >
+          {candidates.length > 0 ? (
+            <label className="lbl">
+              Un libro de vuestras listas
+              <select
+                className="min-h-11 w-full"
+                required
+                value={bookId}
+                onChange={(event) => setBookId(event.target.value)}
+              >
+                <option value="">Elegid un libro…</option>
+                {candidates.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {book.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="text-sm text-muted">Añadid un libro a «Quiero leer» para encontrarlo aquí.</p>
           )}
-        </section>
-      ) : notes.isPending ? (
-        <p role="status" className="text-sm text-muted">
-          Cargando actividad…
-        </p>
-      ) : (
-        <EmptyState
-          title={
-            filter === 'me'
-              ? 'Aún no hay nada para ti'
-              : filter === 'quotes'
-                ? 'Aún no habéis compartido citas'
-                : `${partner.display_name} aún no ha registrado nada`
-          }
-        />
-      )}
-
-      <NudgeSheet open={nudging} onClose={() => setNudging(false)} />
+          <label className="lbl">
+            ¿Por qué este? (opcional)
+            <textarea
+              className="min-h-20 w-full"
+              maxLength={300}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-primary" disabled={busy || !bookId}>
+              Añadir
+            </button>
+            <Link to="/biblioteca/buscar" className="btn btn-ghost" onClick={() => setAdding(false)}>
+              Buscar otro libro
+            </Link>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   )
 }

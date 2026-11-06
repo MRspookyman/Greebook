@@ -6,7 +6,7 @@ interface Marker {
   value: number
   accent: Accent
   label: string
-  /** Text on the flag, e.g. "p. 214". Defaults to the initial. */
+  /** Extra text on the flag after the name, e.g. "p. 214". */
   caption?: string
 }
 
@@ -39,7 +39,7 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
           className="num whitespace-nowrap rounded-[7px] px-1.5 py-px text-surface"
           style={{ background: `var(--${m.accent})` }}
         >
-          {m.label.charAt(0).toUpperCase()}
+          {m.label}
           {m.caption ? ` · ${m.caption}` : ''}
         </span>
       </div>

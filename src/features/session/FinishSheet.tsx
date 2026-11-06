@@ -17,10 +17,12 @@ export function FinishSheet({
   reading,
   readOn,
   onClose,
+  showToast = true,
 }: {
   reading: ReadingWithBook
   readOn: string
   onClose: () => void
+  showToast?: boolean
 }) {
   const [rating, setRating] = useState(reading.rating ?? 0)
   const [moods, setMoods] = useState(reading.moods)
@@ -51,7 +53,7 @@ export function FinishSheet({
         .eq('user_id', reading.user_id)
       if (error) throw error
       await queryClient.invalidateQueries({ queryKey: qk.readings(reading.user_id) })
-      toast('Un libro más en tu historia', reading.book.title)
+      if (showToast) toast('Un libro más en tu historia', reading.book.title)
       close()
     } catch (error) {
       toast('No se pudo terminar el libro', error instanceof Error ? error.message : 'Inténtalo de nuevo')

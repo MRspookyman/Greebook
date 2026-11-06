@@ -1,13 +1,12 @@
 import { useRef, useState, type CSSProperties } from 'react'
-import { Check, CloudUpload, Flame, Hand, Plus } from 'lucide-react'
+import { Check, CloudUpload, Flame, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Link } from 'react-router'
 import { useMe } from '@/features/auth/me'
-import { useReadings, useSessions } from '@/lib/data'
+import { useInvites, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
 import { currentStreak } from '@/lib/stats/streak'
-import { coupleStreak } from '@/lib/club'
 import { dailySeries, estimatedFinish, pacePerDay, weekDays } from '@/lib/stats/insights'
 import { formatDays, formatMinutes, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, Session } from '@/lib/types'
@@ -19,9 +18,9 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
 import { LogSessionSheet } from '@/features/session/LogSessionSheet'
 import { Timer } from '@/features/session/Timer'
-import { ReactionBar } from '@/features/us/ReactionBar'
-import { NudgeSheet, useNudgedToday } from '@/features/us/NudgeSheet'
-import { TodayCouple } from '@/features/us/TodayCouple'
+import { usePendingForMe } from '@/features/us/messages'
+import { InviteCard } from '@/features/us/InviteCard'
+import { isInviteExpired } from '@/features/us/ratito'
 import { recentReadings } from './recentReadings'
 
 const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -32,6 +31,7 @@ export function TodayPage() {
   const sessions = useSessions(userId)
   const partnerReadings = useReadings(partner?.id)
   const partnerSessions = useSessions(partner?.id)
+  const invites = useInvites()
   const pending = usePendingSessionCount()
   const [logging, setLogging] = useState<ReadingWithBook | null>(null)
   const [cardIndex, setCardIndex] = useState(0)
@@ -45,10 +45,15 @@ export function TodayPage() {
   const dates = new Set(sessions.data?.map((s) => s.read_on) ?? [])
   const streak = currentStreak(dates, today)
   const partnerDates = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
-  const duo = coupleStreak(dates, partnerDates, today)
-  const [nudging, setNudging] = useState(false)
-  const nudged = useNudgedToday()
-  const late = new Date().getHours() >= 19
+  const duo = [...dates].filter((date) => date.startsWith(today.slice(0, 7)) && partnerDates.has(date)).length
+  const forMe = usePendingForMe()
+  const priority = forMe.items.find((item) => item.type === 'invite') ?? forMe.items[0]
+  const inlineInvite =
+    priority?.type === 'invite'
+      ? priority.invite
+      : invites.data?.find(
+          (invite) => invite.from_user === userId && invite.status === 'accepted' && !isInviteExpired(invite),
+        )
   const week = weekDays(today)
   const series = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] })
   const weeklyPages = series.reduce((sum, day) => sum + day.pages, 0)
@@ -62,7 +67,18 @@ export function TodayPage() {
     null,
   )
   const latestReading = partnerReadings.data?.find((r) => r.id === latest?.reading_id)
-  const partnerToday = partnerSessions.data?.some((session) => session.read_on === today)
+  const liveReading = partnerReadings.data?.find((reading) => reading.id === partner?.reading_now_id)
+  const live =
+    !!partner?.reading_now_since && Date.now() - new Date(partner.reading_now_since).getTime() < 2 * 60 * 60 * 1000
+  const pendingId = priority
+    ? priority.type === 'message'
+      ? priority.message.id
+      : priority.type === 'invite'
+        ? priority.invite.id
+        : priority.type === 'together'
+          ? priority.item.id
+          : null
+    : null
 
   return (
     <div className="space-y-3.5">
@@ -91,7 +107,7 @@ export function TodayPage() {
             <Flame size={14} fill="currentColor" aria-hidden />
             {formatDays(streak)}
           </span>
-          {partner && duo > 0 && (
+          {partner && (
             <span
               className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber"
               aria-label={`${formatDays(duo)} leyendo los dos`}
@@ -106,7 +122,7 @@ export function TodayPage() {
                   style={{ background: `var(--${partner.accent})` }}
                 />
               </span>
-              {formatDays(duo)} juntos
+              {duo} días leyendo los dos este mes
             </span>
           )}
           <p className="text-xs text-muted">
@@ -114,7 +130,7 @@ export function TodayPage() {
               ? 'Hoy ya has leído'
               : streak === 0
                 ? 'Empieza tu racha hoy'
-                : 'Lee hoy para no perder la racha'}
+                : 'Un ratito para ti, cuando quieras'}
           </p>
         </div>
         <div className="grid grid-cols-7 gap-1.5">
@@ -187,6 +203,36 @@ export function TodayPage() {
         </div>
       </section>
 
+      {partner && inlineInvite ? (
+        <InviteCard invite={inlineInvite} compact />
+      ) : (
+        partner &&
+        (priority || (live && liveReading) || (latest && latestReading)) && (
+          <Link
+            to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
+            className="flex min-h-11 items-center gap-2 text-xs"
+          >
+            <Avatar person={partner} size={28} />
+            <span className="line-clamp-2">
+              {partner.display_name}{' '}
+              {priority
+                ? priority.type === 'invite'
+                  ? 'te invita a un ratito'
+                  : priority.type === 'together'
+                    ? 'quiere leer contigo'
+                    : priority.type === 'goal'
+                      ? 'te propone un reto para los dos'
+                      : `te dejó algo · ${forMe.count}`
+                : live && liveReading
+                  ? `está leyendo «${liveReading.book.title}»`
+                  : latest && latestReading
+                    ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
+                    : ''}
+            </span>
+          </Link>
+        )
+      )}
+
       {readings.isPending ? (
         <div className="card h-[218px] animate-pulse" aria-label="Cargando lecturas" />
       ) : readings.isError && !readings.data ? (
@@ -245,57 +291,6 @@ export function TodayPage() {
         </section>
       )}
 
-      <TodayCouple>
-        {partner && (
-          <section
-            className="card rise flex items-center gap-2.5"
-            style={{ '--k': 4 } as CSSProperties}
-            aria-label="Última lectura de tu pareja"
-          >
-            <Link
-              to="/nosotros"
-              aria-label={`Ver la actividad de ${partner.display_name}`}
-              className="flex min-h-11 items-center"
-            >
-              <Avatar person={partner} size={38} />
-            </Link>
-            <Link to="/nosotros" className="min-w-0 flex-1 space-y-1.5">
-              <p className="text-xs leading-snug">
-                <strong>{partner.display_name}</strong>{' '}
-                {partnerToday && latest && latestReading ? (
-                  <>
-                    leyó {formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)}{' '}
-                    {formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}
-                  </>
-                ) : (
-                  'aún no ha leído hoy'
-                )}
-              </p>
-              {latestReading && (
-                <ProgressBar
-                  value={progressFraction(latestReading)}
-                  color={`var(--${partner.accent})`}
-                  className="h-1.5"
-                />
-              )}
-            </Link>
-            {!partnerToday && late && !nudged ? (
-              <button
-                className="btn min-h-9 shrink-0 px-3 text-xs"
-                style={{
-                  background: `color-mix(in oklab, var(--${partner.accent}) 15%, var(--surface))`,
-                  color: `var(--${partner.accent})`,
-                }}
-                onClick={() => setNudging(true)}
-              >
-                <Hand size={15} /> Toque
-              </button>
-            ) : (
-              latest && <ReactionBar targetType="session" targetId={latest.id} ownerId={partner.id} />
-            )}
-          </section>
-        )}
-      </TodayCouple>
       <section className="grid grid-cols-2 gap-3" aria-label="Resumen de lectura">
         <Link
           to="/perfil"
@@ -331,7 +326,6 @@ export function TodayPage() {
           </div>
         </Link>
       </section>
-      <NudgeSheet open={nudging} onClose={() => setNudging(false)} />
       {pending > 0 && (
         <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted" role="status">
           <CloudUpload size={13} aria-hidden />

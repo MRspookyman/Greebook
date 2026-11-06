@@ -3,10 +3,7 @@ export type ThemePref = 'system' | 'light' | 'dark'
 export type Format = 'paper' | 'audio'
 export type Unit = 'pages' | 'minutes'
 export type ReadingStatus = 'want' | 'reading' | 'finished' | 'abandoned'
-export type NoteKind = 'note' | 'quote' | 'message'
-export const REACTION_EMOJIS = ['❤️', '🔥', '📚', '😂', '😮', '👏'] as const
-export type ReactionEmoji = (typeof REACTION_EMOJIS)[number]
-export type ReactionTarget = 'session' | 'reading' | 'note'
+export type NoteKind = 'note' | 'quote'
 
 export interface Profile {
   id: string
@@ -22,11 +19,9 @@ export interface Profile {
   last_reminded_on: string | null
   theme: ThemePref
   onboarded_at: string | null
-  /** Reading whose timer is running right now (presence). */
+  /** Reading whose timer is running right now (soft presence on Hoy; no push). */
   reading_now_id: string | null
   reading_now_since: string | null
-  /** Last time the Nosotros tab was opened (unread badge). */
-  last_seen_us_at: string | null
 }
 
 export interface Book {
@@ -80,6 +75,7 @@ export interface Session {
   created_at: string
 }
 
+/** Private diary note/quote of one reading (only its author sees it). */
 export interface Note {
   id: string
   reading_id: string
@@ -87,56 +83,80 @@ export interface Note {
   kind: NoteKind
   body: string
   page: number | null
-  shared: boolean
-  /** Club de dos: the note this one answers. */
-  reply_to: string | null
   created_at: string
 }
 
+export type MessageKind = 'trace' | 'room' | 'reply'
+export type Emotion = 'love' | 'twist' | 'laugh' | 'moved' | 'thinking'
+
+/**
+ * Couple message as read from the `messages_visible` view. `trace` = huella («Dejarle algo»),
+ * `room` = message in a book's sala, `reply` = answer to another message.
+ * When `locked` (the recipient hasn't reached `page` yet) `body` and `emotion` are null.
+ */
+export interface Message {
+  id: string
+  from_user: string
+  to_user: string
+  kind: MessageKind
+  book_id: string | null
+  page: number | null
+  reply_to: string | null
+  read_at: string | null
+  opened_early: boolean
+  created_at: string
+  locked: boolean
+  emotion: Emotion | null
+  body: string | null
+}
+
+/** ❤️ on a partner's message. */
 export interface Reaction {
   id: string
   user_id: string
-  target_type: ReactionTarget
+  target_type: 'message'
   target_id: string
-  emoji: ReactionEmoji
+  emoji: '❤️'
   created_at: string
 }
 
-export type RecommendationStatus = 'pending' | 'accepted' | 'dismissed'
+export type InviteStatus = 'pending' | 'accepted' | 'declined'
 
-export interface Recommendation {
+/** Invitation to a «ratito» of reading together. `starts_at` null = now. */
+export interface Invite {
   id: string
-  book_id: string
   from_user: string
   to_user: string
-  message: string | null
-  /** «Leámoslo juntos»: both start on `start_on` and a club opens. */
-  together: boolean
-  start_on: string | null
-  status: RecommendationStatus
+  starts_at: string | null
+  status: InviteStatus
+  responded_at: string | null
   created_at: string
 }
 
-/** Recommendation joined with its book (`select('*, book:books(*)')`). */
-export interface RecommendationWithBook extends Recommendation {
+/** «Queremos leer juntos» list item. */
+export interface TogetherItem {
+  id: string
+  book_id: string
+  added_by: string
+  partner_id: string
+  reason: string | null
+  partner_answer: 'yes' | 'later' | null
+  start_on: string | null
+  created_at: string
+}
+
+export interface TogetherItemWithBook extends TogetherItem {
   book: Book
 }
 
-export interface Nudge {
-  id: string
-  from_user: string
-  to_user: string
-  message: string
-  sent_on: string
-  created_at: string
-}
-
-/** Shared monthly page goal; `user_a < user_b`. */
-export interface Challenge {
+/** Cooperative goal of the month; `user_a < user_b`. */
+export interface CoupleGoal {
   user_a: string
   user_b: string
   month: string // 'yyyy-MM'
-  pages_goal: number
-  created_by: string
-  updated_at: string
+  kind: 'ratitos' | 'days'
+  target: number
+  proposed_by: string
+  accepted_at: string | null
+  created_at: string
 }

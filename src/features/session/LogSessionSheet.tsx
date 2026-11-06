@@ -15,6 +15,8 @@ import { formatUnitDelta, formatUnitValue, toHMM } from '@/lib/units'
 import type { ReadingWithBook } from '@/lib/types'
 import { logSession } from '@/lib/offline/sessionQueue'
 import { FinishSheet } from './FinishSheet'
+import { TraceComposer } from '@/features/us/TraceSheet'
+import { useOnline } from './useOnline'
 
 type Props = {
   open: boolean
@@ -40,7 +42,8 @@ export function LogSessionSheet(props: Props) {
 }
 
 function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinutes }: Props) {
-  const { userId } = useMe()
+  const { userId, partner } = useMe()
+  const online = useOnline()
   const readings = useReadings(userId)
   const sessions = useSessions(userId)
   const bookRoute = useMatch('/libro/:readingId')
@@ -72,6 +75,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
   const [finished, setFinished] = useState<ReadingWithBook | null>(null)
   const [closing, setClosing] = useState(false)
   const [finishReady, setFinishReady] = useState(false)
+  const [saved, setSaved] = useState<{ reading: ReadingWithBook; label: string } | null>(null)
   useEffect(() => {
     if (!finished) return
     const timeout = window.setTimeout(() => setFinishReady(true), 330)
@@ -110,10 +114,20 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
       const dates = new Set(sessions.data?.map((s) => s.read_on) ?? [])
       dates.add(date)
       const streak = currentStreak(dates, today)
-      toast(`+${formatUnitDelta(reading.unit, end - reading.current_position)}`, `Racha de ${streak} días`)
-      setClosing(true)
-      if (end === reading.total_units) setFinished({ ...reading, current_position: end })
-      else onClose()
+      const label = `+${formatUnitDelta(reading.unit, end - reading.current_position)}`
+      if (partner && online) {
+        setSaved({
+          reading: { ...reading, current_position: end },
+          label: `${label} · racha de ${streak} días`,
+        })
+      } else {
+        toast(label, `Racha de ${streak} días`)
+        if (end !== reading.total_units) onClose()
+      }
+      if (end === reading.total_units) {
+        setClosing(true)
+        setFinished({ ...reading, current_position: end })
+      }
     } catch (e) {
       toast('No se pudo registrar la sesión', e instanceof Error ? e.message : 'Inténtalo de nuevo')
     } finally {
@@ -127,7 +141,9 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
   return (
     <>
       <BottomSheet open={open && !closing} onClose={onClose}>
-        {!reading ? (
+        {saved ? (
+          <TraceComposer reading={saved.reading} savedLabel={saved.label} onClose={onClose} />
+        ) : !reading ? (
           <div className="space-y-3 py-3">
             {readings.isPending ? (
               <p className="text-muted">Cargando libros…</p>
@@ -279,7 +295,19 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
           </form>
         )}
       </BottomSheet>
-      {finished && finishReady && <FinishSheet reading={finished} readOn={date} onClose={onClose} />}
+      {finished && finishReady && (
+        <FinishSheet
+          reading={finished}
+          readOn={date}
+          showToast={!saved}
+          onClose={() => {
+            setFinished(null)
+            setFinishReady(false)
+            if (saved) setClosing(false)
+            else onClose()
+          }}
+        />
+      )}
     </>
   )
 }
