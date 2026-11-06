@@ -6,7 +6,7 @@ import { useMe } from '@/features/auth/me'
 import { LogSessionSheet } from '@/features/session/LogSessionSheet'
 import { useReadings, useSessions } from '@/lib/data'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { activityByDay, summarize } from '@/lib/stats/aggregate'
+import { activityByDay, summarize, timeSpent } from '@/lib/stats/aggregate'
 import { dailySeries, monthlySeries, pctChange, periodRange, previousRange, type Period } from '@/lib/stats/insights'
 import { level, levelColor } from '@/lib/stats/intensity'
 import { DaySheet } from './DaySheet'
@@ -50,8 +50,8 @@ export function StatsPage() {
     { label: 'Páginas', value: summary.pages, previous: previous.pages },
     {
       label: 'Tiempo',
-      value: summary.audioMinutes + summary.readingMinutes,
-      previous: previous.audioMinutes + previous.readingMinutes,
+      value: timeSpent(sessions, readings, { ...range, to: today }),
+      previous: timeSpent(sessions, readings, previousRange(period, today)),
       format: formatTime,
     },
     {
@@ -148,7 +148,7 @@ export function StatsPage() {
           <section className="card" aria-labelledby="pages-chart-heading">
             <header className="mb-2 flex items-center justify-between gap-2">
               <h2 id="pages-chart-heading" className="text-sm font-semibold">
-                {period === 'year' ? 'Páginas por mes' : 'Páginas por día'}
+                {view === 'map' ? 'Calendario' : period === 'year' ? 'Páginas por mes' : 'Páginas por día'}
               </h2>
               <div className="w-36 shrink-0">
                 <Segmented

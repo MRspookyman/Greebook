@@ -4,7 +4,16 @@ import { useMe } from '@/features/auth/me'
 import { qk } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
 
-const TABLES = ['sessions', 'readings', 'reactions', 'notes', 'recommendations', 'nudges', 'challenges', 'profiles'] as const
+const TABLES = [
+  'sessions',
+  'readings',
+  'reactions',
+  'notes',
+  'recommendations',
+  'nudges',
+  'challenges',
+  'profiles',
+] as const
 
 export function useRealtimeSync(): void {
   const { userId, partner } = useMe()

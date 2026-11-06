@@ -7,9 +7,9 @@ import { useMe } from '@/features/auth/me'
 import { useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
 import { currentStreak } from '@/lib/stats/streak'
-import { coupleStreak, isLive } from '@/lib/club'
+import { coupleStreak } from '@/lib/club'
 import { dailySeries, estimatedFinish, pacePerDay, weekDays } from '@/lib/stats/insights'
-import { formatMinutes, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
+import { formatDays, formatMinutes, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { Avatar } from '@/components/Avatar'
@@ -17,12 +17,12 @@ import { Cover } from '@/components/Cover'
 import { Ring } from '@/components/Ring'
 import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
-import { useEntered } from '@/components/motion'
 import { LogSessionSheet } from '@/features/session/LogSessionSheet'
 import { Timer } from '@/features/session/Timer'
 import { ReactionBar } from '@/features/us/ReactionBar'
 import { NudgeSheet, useNudgedToday } from '@/features/us/NudgeSheet'
-import { ClubCards, PartnerLiveCard, RecommendationCards, TogetherStartCards } from '@/features/us/TodayCouple'
+import { TodayCouple } from '@/features/us/TodayCouple'
+import { recentReadings } from './recentReadings'
 
 const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
@@ -36,12 +36,12 @@ export function TodayPage() {
   const [logging, setLogging] = useState<ReadingWithBook | null>(null)
   const [cardIndex, setCardIndex] = useState(0)
   const carousel = useRef<HTMLDivElement>(null)
-  const entered = useEntered()
   const today = todayISO()
   const dateLabel = fmt(today, "EEEE, d 'de' MMMM")
-  const finished =
-    readings.data?.filter((r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4))).length ?? 0
-  const active = (readings.data ?? []).filter((r) => r.status === 'reading')
+  const active = recentReadings(
+    (readings.data ?? []).filter((r) => r.status === 'reading'),
+    sessions.data ?? [],
+  )
   const dates = new Set(sessions.data?.map((s) => s.read_on) ?? [])
   const streak = currentStreak(dates, today)
   const partnerDates = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
@@ -53,13 +53,16 @@ export function TodayPage() {
   const series = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] })
   const weeklyPages = series.reduce((sum, day) => sum + day.pages, 0)
   const maxPages = Math.max(1, ...series.map((day) => day.pages))
+  const finished = (readings.data ?? []).filter(
+    (r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4)),
+  ).length
+  const goal = profile.yearly_goal
   const latest = partnerSessions.data?.reduce<Session | null>(
     (last, session) => (!last || session.created_at > last.created_at ? session : last),
     null,
   )
   const latestReading = partnerReadings.data?.find((r) => r.id === latest?.reading_id)
   const partnerToday = partnerSessions.data?.some((session) => session.read_on === today)
-  const goal = profile.yearly_goal
 
   return (
     <div className="space-y-3.5">
@@ -79,10 +82,6 @@ export function TodayPage() {
         </Link>
       </header>
 
-      <PartnerLiveCard style={{ '--k': 1 } as CSSProperties} />
-      <TogetherStartCards />
-      <RecommendationCards />
-
       <section className="card rise space-y-3" style={{ '--k': 1 } as CSSProperties} aria-label="Tu racha de lectura">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span
@@ -90,24 +89,31 @@ export function TodayPage() {
             style={{ background: 'color-mix(in oklab, var(--amber) 14%, var(--surface))' }}
           >
             <Flame size={14} fill="currentColor" aria-hidden />
-            {streak} días
+            {formatDays(streak)}
           </span>
           {partner && duo > 0 && (
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber" aria-label={`${duo} días leyendo los dos`}>
+            <span
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber"
+              aria-label={`${formatDays(duo)} leyendo los dos`}
+            >
               <span className="flex -space-x-1" aria-hidden>
-                <span className="h-3 w-3 rounded-full ring-2 ring-surface" style={{ background: `var(--${profile.accent})` }} />
-                <span className="h-3 w-3 rounded-full ring-2 ring-surface" style={{ background: `var(--${partner.accent})` }} />
+                <span
+                  className="h-3 w-3 rounded-full ring-2 ring-surface"
+                  style={{ background: `var(--${profile.accent})` }}
+                />
+                <span
+                  className="h-3 w-3 rounded-full ring-2 ring-surface"
+                  style={{ background: `var(--${partner.accent})` }}
+                />
               </span>
-              {duo} juntos
+              {formatDays(duo)} juntos
             </span>
           )}
           <p className="text-xs text-muted">
             {dates.has(today)
-              ? partner && !partnerDates.has(today)
-                ? `Falta ${partner.display_name}`
-                : 'Hoy ya has leído'
-              : partner && partnerDates.has(today)
-                ? `${partner.display_name} ya ha leído: te toca`
+              ? 'Hoy ya has leído'
+              : streak === 0
+                ? 'Empieza tu racha hoy'
                 : 'Lee hoy para no perder la racha'}
           </p>
         </div>
@@ -239,19 +245,64 @@ export function TodayPage() {
         </section>
       )}
 
-      <ClubCards />
-
-      <section
-        className="rise grid grid-cols-2 gap-3"
-        style={{ '--k': 3 } as CSSProperties}
-        aria-label="Resumen de lectura"
-      >
+      <TodayCouple>
+        {partner && (
+          <section
+            className="card rise flex items-center gap-2.5"
+            style={{ '--k': 4 } as CSSProperties}
+            aria-label="Última lectura de tu pareja"
+          >
+            <Link
+              to="/nosotros"
+              aria-label={`Ver la actividad de ${partner.display_name}`}
+              className="flex min-h-11 items-center"
+            >
+              <Avatar person={partner} size={38} />
+            </Link>
+            <Link to="/nosotros" className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-xs leading-snug">
+                <strong>{partner.display_name}</strong>{' '}
+                {partnerToday && latest && latestReading ? (
+                  <>
+                    leyó {formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)}{' '}
+                    {formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}
+                  </>
+                ) : (
+                  'aún no ha leído hoy'
+                )}
+              </p>
+              {latestReading && (
+                <ProgressBar
+                  value={progressFraction(latestReading)}
+                  color={`var(--${partner.accent})`}
+                  className="h-1.5"
+                />
+              )}
+            </Link>
+            {!partnerToday && late && !nudged ? (
+              <button
+                className="btn min-h-9 shrink-0 px-3 text-xs"
+                style={{
+                  background: `color-mix(in oklab, var(--${partner.accent}) 15%, var(--surface))`,
+                  color: `var(--${partner.accent})`,
+                }}
+                onClick={() => setNudging(true)}
+              >
+                <Hand size={15} /> Toque
+              </button>
+            ) : (
+              latest && <ReactionBar targetType="session" targetId={latest.id} ownerId={partner.id} />
+            )}
+          </section>
+        )}
+      </TodayCouple>
+      <section className="grid grid-cols-2 gap-3" aria-label="Resumen de lectura">
         <Link
           to="/perfil"
-          className="card pressable flex items-center gap-2"
+          className="card pressable flex items-center gap-2 py-3"
           aria-label={`${finished} de ${goal} libros en ${today.slice(0, 4)}. Editar objetivo`}
         >
-          <Ring value={finished / goal} size={52} stroke={6} />
+          <Ring value={finished / goal} size={48} stroke={6} />
           <div className="min-w-0">
             <p className="font-serif text-2xl font-semibold leading-none">
               {finished}
@@ -262,74 +313,24 @@ export function TodayPage() {
         </Link>
         <Link
           to="/stats"
-          className="card pressable space-y-2"
+          className="card pressable space-y-2 py-3"
           aria-label={`Esta semana ${weeklyPages} páginas. Ver estadísticas`}
         >
           <div className="flex items-baseline justify-between gap-1">
             <span className="text-[10px] text-muted">Esta semana</span>
             <span className="whitespace-nowrap text-xs font-semibold">{weeklyPages} pág</span>
           </div>
-          <div className="flex h-10 items-end gap-1.5" aria-hidden>
-            {series.map((day, index) => (
+          <div className="flex h-8 items-end gap-1.5" aria-hidden>
+            {series.map((day) => (
               <span
                 key={day.date}
-                className={`flex-1 rounded-t bg-accent ${day.date > today ? 'opacity-25' : day.date === today ? '' : 'opacity-85'}`}
-                style={{
-                  height: entered ? `${Math.max(4, (day.pages / maxPages) * 100)}%` : '0%',
-                  transition: `height .9s var(--ease) ${index * 55}ms`,
-                }}
+                className={`flex-1 rounded-t bg-accent ${day.date > today ? 'opacity-25' : ''}`}
+                style={{ height: `${Math.max(4, (day.pages / maxPages) * 100)}%` }}
               />
             ))}
           </div>
         </Link>
       </section>
-
-      {partner && !isLive(partner) && (
-        <section
-          className="card rise flex items-center gap-2.5"
-          style={{ '--k': 4 } as CSSProperties}
-          aria-label="Última lectura de tu pareja"
-        >
-          <Link
-            to="/nosotros"
-            aria-label={`Ver la actividad de ${partner.display_name}`}
-            className="flex min-h-11 items-center"
-          >
-            <Avatar person={partner} size={38} />
-          </Link>
-          <Link to="/nosotros" className="min-w-0 flex-1 space-y-1.5">
-            <p className="text-xs leading-snug">
-              <strong>{partner.display_name}</strong>{' '}
-              {partnerToday && latest && latestReading ? (
-                <>
-                  leyó {formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)}{' '}
-                  {formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}
-                </>
-              ) : (
-                'aún no ha leído hoy'
-              )}
-            </p>
-            {latestReading && (
-              <ProgressBar
-                value={progressFraction(latestReading)}
-                color={`var(--${partner.accent})`}
-                className="h-1.5"
-              />
-            )}
-          </Link>
-          {!partnerToday && late && !nudged ? (
-            <button
-              className="btn min-h-9 shrink-0 px-3 text-xs"
-              style={{ background: `color-mix(in oklab, var(--${partner.accent}) 15%, var(--surface))`, color: `var(--${partner.accent})` }}
-              onClick={() => setNudging(true)}
-            >
-              <Hand size={15} /> Toque
-            </button>
-          ) : (
-            latest && <ReactionBar targetType="session" targetId={latest.id} ownerId={partner.id} />
-          )}
-        </section>
-      )}
       <NudgeSheet open={nudging} onClose={() => setNudging(false)} />
       {pending > 0 && (
         <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted" role="status">

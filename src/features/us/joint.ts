@@ -32,11 +32,7 @@ export function useJointBooks(): JointBook[] {
 }
 
 /** Shared notes and messages of one book, from both of us (any of our readings of it). */
-export function clubNotes(
-  notes: Note[],
-  bookId: string,
-  readings: Pick<ReadingWithBook, 'id' | 'book_id'>[],
-): Note[] {
+export function clubNotes(notes: Note[], bookId: string, readings: Pick<ReadingWithBook, 'id' | 'book_id'>[]): Note[] {
   const ids = new Set(readings.filter((r) => r.book_id === bookId).map((r) => r.id))
   return notes.filter((note) => ids.has(note.reading_id))
 }
@@ -81,4 +77,28 @@ export function useClubUnread(bookId: string): { count: number; latest: Note | n
     count: fromPartner.filter((note) => note.created_at > seen).length,
     latest: fromPartner.at(-1) ?? null,
   }
+}
+
+/** All open clubs, with unread messages first; updates when a club is marked seen. */
+export function useSortedClubs() {
+  const { userId, partner } = useMe()
+  const joint = useJointBooks()
+  const notes = useSharedNotes(!!partner)
+  const mine = useReadings(userId)
+  const theirs = useReadings(partner?.id)
+  useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    () => joint.map((j) => seenAt(j.book.id)).join('|'),
+  )
+  return joint
+    .map((j) => ({
+      joint: j,
+      unread: clubNotes(notes.data ?? [], j.book.id, [...(mine.data ?? []), ...(theirs.data ?? [])]).filter(
+        (note) => note.user_id === partner?.id && note.created_at > seenAt(j.book.id),
+      ).length,
+    }))
+    .sort((a, b) => b.unread - a.unread)
 }

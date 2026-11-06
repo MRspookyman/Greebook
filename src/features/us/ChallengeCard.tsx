@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { endOfMonth, startOfMonth, subMonths } from 'date-fns'
+import { endOfMonth, startOfMonth, subDays, subMonths } from 'date-fns'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Stepper } from '@/components/Stepper'
 import { toast } from '@/components/toast'
@@ -49,6 +49,12 @@ export function ChallengeCard() {
     }),
   )
   const goal = challenge.data?.pages_goal
+  const recentFrom = toISODate(subDays(now, 29))
+  const hasRecentSessions = [...(mySessions.data ?? []), ...(theirSessions.data ?? [])].some(
+    (session) => session.read_on >= recentFrom && session.read_on <= today,
+  )
+  if (!goal && !hasRecentSessions) return null
+  const hasAverage = [1, 2, 3].some((n) => pagesOf(subMonths(now, n)).some((pages) => pages > 0))
   const total = mine + theirs
   const daysInMonth = endOfMonth(now).getDate()
   const daysLeft = daysInMonth - now.getDate()
@@ -135,7 +141,8 @@ export function ChallengeCard() {
       ) : (
         <div className="flex items-center gap-3">
           <p className="flex-1 text-xs text-muted">
-            Una meta de páginas que llenáis entre los dos. Según vuestra media, os proponemos {nf.format(suggestion)}.
+            Una meta de páginas que llenáis entre los dos.{' '}
+            {hasAverage ? 'Según vuestra media, os proponemos' : 'Podéis empezar con'} {nf.format(suggestion)}.
           </p>
           <button
             className="btn btn-primary min-h-9 shrink-0 px-3 text-xs"

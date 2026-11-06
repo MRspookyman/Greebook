@@ -56,7 +56,9 @@ export function NotificationsSection() {
         onChange={(checked) => save({ notify_partner: checked })}
       >
         <span className="block">Avisos de {partner?.display_name ?? 'tu pareja'}</span>
-        <span className="block text-xs text-muted">Toques, mensajes del club, recomendaciones, reacciones y cuando se pone a leer</span>
+        <span className="block text-xs text-muted">
+          Toques, mensajes del club, recomendaciones, reacciones y cuando se pone a leer
+        </span>
       </Switch>
       <PushEnableButton />
     </section>

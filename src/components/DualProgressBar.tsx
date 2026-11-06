@@ -46,7 +46,11 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
     )
   }
   return (
-    <div className="relative mx-3 h-[62px]" role="img" aria-label={`${a.label}: ${Math.round(clamp(a.value))} %. ${b.label}: ${Math.round(clamp(b.value))} %`}>
+    <div
+      className="relative mx-3 h-[62px]"
+      role="img"
+      aria-label={`${a.label}: ${Math.round(clamp(a.value))} %. ${b.label}: ${Math.round(clamp(b.value))} %`}
+    >
       <div className="absolute inset-x-0 top-[28px] h-1.5 rounded-full bg-border" />
       <div
         className="absolute top-[28px] left-0 h-1.5 rounded-full opacity-50"

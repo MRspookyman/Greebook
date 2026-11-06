@@ -100,7 +100,8 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
     }
     case 'reactions': {
       if (payload.type !== 'INSERT' || !EMOJIS.includes(String(record.emoji))) return null
-      const table = record.target_type === 'session' ? 'sessions' : record.target_type === 'reading' ? 'readings' : 'notes'
+      const table =
+        record.target_type === 'session' ? 'sessions' : record.target_type === 'reading' ? 'readings' : 'notes'
       const target = await single(admin.from(table).select('user_id').eq('id', String(record.target_id)).maybeSingle())
       if ((target as { user_id: string } | null)?.user_id !== partnerId) return null
       const what = record.target_type === 'note' ? 'a tu mensaje' : 'a tu lectura'
@@ -140,7 +141,9 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
       const position = mine as { current_position: number; unit: string; status: string } | null
       const page = record.page == null ? null : Number(record.page)
       const safe =
-        page === null || position?.status === 'finished' || (position?.unit === 'pages' && position.current_position >= page)
+        page === null ||
+        position?.status === 'finished' ||
+        (position?.unit === 'pages' && position.current_position >= page)
       const text = String(record.body)
       const verb = record.reply_to ? 'te ha respondido' : 'ha escrito'
       return {

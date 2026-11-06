@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { ListFilter, Plus, Search, Star, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
 import { Segmented } from '@/components/Segmented'
@@ -85,7 +86,7 @@ export function LibraryPage() {
   const [status, setStatus] = useState<ReadingStatus>('reading')
   const [filter, setFilter] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [showAbandoned, setShowAbandoned] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [sort, setSort] = useState<(typeof sorts)[number]['value']>('recent')
   const searchRef = useRef<HTMLInputElement>(null)
   const effectiveOwner: Owner = partner ? owner : 'mine'
@@ -102,6 +103,14 @@ export function LibraryPage() {
       return b.updated_at.localeCompare(a.updated_at)
     })
   const loading = readings.isPending || (!!partner && effectiveOwner !== 'mine' && partnerReadings.isPending)
+  const emptyLibrary =
+    readings.isSuccess && (!partner || partnerReadings.isSuccess) && mineList.length === 0 && theirList.length === 0
+  const filtersActive = (partner && owner !== 'all') || status === 'abandoned'
+
+  function selectStatus(value: ReadingStatus) {
+    setStatus(value)
+    if (value !== 'finished' && sort === 'rating') setSort('recent')
+  }
 
   function setOwner(value: Owner) {
     setOwnerState(value)
@@ -127,6 +136,24 @@ export function LibraryPage() {
         : effectiveOwner === 'both'
           ? 'Aún no compartís ningún libro aquí'
           : 'No hay libros aquí'
+
+  if (emptyLibrary) {
+    return (
+      <section className="space-y-4">
+        <header className="flex min-h-11 items-center justify-between gap-2">
+          <h1>Biblioteca</h1>
+          <Link to="/biblioteca/buscar" className="icon-btn shrink-0" aria-label="Buscar y añadir un libro">
+            <Plus size={23} />
+          </Link>
+        </header>
+        <EmptyState title="Tu próxima lectura está por descubrir">
+          <Link className="btn btn-primary" to="/biblioteca/buscar">
+            Buscar un libro
+          </Link>
+        </EmptyState>
+      </section>
+    )
+  }
 
   return (
     <section className="space-y-4">
@@ -159,53 +186,39 @@ export function LibraryPage() {
           <Plus size={23} />
         </Link>
       </header>
-      {partner && (
-        <Segmented
-          options={[
-            { value: 'all', label: 'Todos' },
-            { value: 'mine', label: 'Míos' },
-            { value: 'theirs', label: <span className="truncate">De {partner.display_name}</span> },
-            { value: 'both', label: 'De los dos' },
-          ]}
-          value={owner}
-          onChange={setOwner}
-          aria-label="De quién son los libros"
-          className="[&_button]:min-h-9 [&_button]:text-xs"
-        />
-      )}
       <Segmented
         options={segments
-          .filter((segment) => showAbandoned || segment.value !== 'abandoned')
+          .filter((segment) => status === 'abandoned' || segment.value !== 'abandoned')
           .map(({ value, label }) => ({
             value,
             label,
             count: libraryEntries(mineList, theirList, value, effectiveOwner).length,
           }))}
         value={status}
-        onChange={setStatus}
+        onChange={selectStatus}
         aria-label="Estado de lectura"
       />
       <div className="flex items-center gap-2">
-        {sorts.map((option) => (
-          <button
-            key={option.value}
-            className="chip min-h-11"
-            aria-pressed={sort === option.value}
-            onClick={() => setSort(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
+        {sorts
+          .filter((option) => status === 'finished' || option.value !== 'rating')
+          .map((option) => (
+            <button
+              key={option.value}
+              className="chip min-h-11"
+              aria-pressed={sort === option.value}
+              onClick={() => setSort(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         <button
-          className="icon-btn ml-auto shrink-0"
-          aria-label="Mostrar libros dejados"
-          aria-pressed={showAbandoned}
-          onClick={() => {
-            if (showAbandoned && status === 'abandoned') setStatus('reading')
-            setShowAbandoned(!showAbandoned)
-          }}
+          className="icon-btn relative ml-auto shrink-0"
+          aria-label="Filtros"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen(true)}
         >
-          <ListFilter size={21} className={showAbandoned ? 'text-accent' : ''} />
+          <ListFilter size={21} className={filtersActive ? 'text-accent' : ''} />
+          {filtersActive && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent" aria-hidden />}
         </button>
       </div>
       {loading ? (
@@ -273,6 +286,34 @@ export function LibraryPage() {
           ))}
         </div>
       )}
+      <BottomSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtros">
+        <div className="space-y-4">
+          {partner && (
+            <Segmented
+              options={[
+                { value: 'all', label: 'Todos' },
+                { value: 'mine', label: 'Míos' },
+                { value: 'theirs', label: <span className="truncate">De {partner.display_name}</span> },
+                { value: 'both', label: 'De los dos' },
+              ]}
+              value={owner}
+              onChange={setOwner}
+              aria-label="De quién son los libros"
+              className="[&_button]:text-xs"
+            />
+          )}
+          <button
+            className="btn btn-secondary w-full"
+            aria-pressed={status === 'abandoned'}
+            onClick={() => {
+              selectStatus('abandoned')
+              setFiltersOpen(false)
+            }}
+          >
+            Ver dejados
+          </button>
+        </div>
+      </BottomSheet>
     </section>
   )
 }

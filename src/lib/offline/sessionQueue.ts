@@ -117,6 +117,7 @@ export async function logSession(input: {
       readingPatch: {
         current_position: input.endPos,
         ...(reading.status === 'want' ? { status: 'reading' as const, started_on: input.readOn } : {}),
+        ...(reading.started_on && input.readOn < reading.started_on ? { started_on: input.readOn } : {}),
       },
     },
   }

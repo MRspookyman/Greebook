@@ -23,14 +23,14 @@ function Tab({ to, label, icon: Icon, badge = 0 }: { to: string; label: string; 
       {({ isActive }) => (
         <>
           <span className="relative">
-          <Icon
-            size={23}
-            strokeWidth={1.8}
-            style={{
-              transform: isActive ? 'translateY(-2px) scale(1.08)' : 'none',
-              transition: 'transform 0.35s var(--spring)',
-            }}
-          />
+            <Icon
+              size={23}
+              strokeWidth={1.8}
+              style={{
+                transform: isActive ? 'translateY(-2px) scale(1.08)' : 'none',
+                transition: 'transform 0.35s var(--spring)',
+              }}
+            />
             {badge > 0 && !isActive && (
               <span
                 className="num absolute -top-1.5 -right-2.5 grid h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white"

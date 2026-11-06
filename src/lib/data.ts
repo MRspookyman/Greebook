@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
-import type { Challenge, Note, Nudge, Profile, Reaction, ReadingWithBook, RecommendationWithBook, Session } from './types'
+import type {
+  Challenge,
+  Note,
+  Nudge,
+  Profile,
+  Reaction,
+  ReadingWithBook,
+  RecommendationWithBook,
+  Session,
+} from './types'
 
 /**
  * Shared query keys. All feature code MUST use these so that optimistic updates,
@@ -159,7 +168,11 @@ export function useNudges(enabled = true) {
     queryKey: qk.nudges(),
     enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.from('nudges').select('*').order('created_at', { ascending: false }).limit(50)
+      const { data, error } = await supabase
+        .from('nudges')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
       if (error) throw error
       return data as Nudge[]
     },

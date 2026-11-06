@@ -35,6 +35,22 @@ export interface Summary {
 
 const inRange = (d: string, r: DateRange) => d >= r.from && d <= r.to
 
+/** Recorded time takes precedence over audio advance; each session counts once. */
+export function timeSpent(
+  sessions: readonly Pick<Session, 'reading_id' | 'read_on' | 'minutes' | 'start_pos' | 'end_pos'>[],
+  readings: readonly Pick<Reading, 'id' | 'unit'>[],
+  range: DateRange,
+): number {
+  const byId = new Map(readings.map((reading) => [reading.id, reading]))
+  let minutes = 0
+  for (const session of sessions) {
+    if (!inRange(session.read_on, range)) continue
+    const reading = byId.get(session.reading_id)
+    minutes += session.minutes ?? (reading ? audioMinutes(session, reading) : 0)
+  }
+  return minutes
+}
+
 export function summarize(sessions: Session[], readings: ReadingWithBook[], range: DateRange): Summary {
   const byId = new Map(readings.map((r) => [r.id, r]))
   const days = new Set<string>()

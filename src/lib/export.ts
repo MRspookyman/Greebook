@@ -9,6 +9,13 @@ interface ExportData {
   notes: Note[]
 }
 
+export class ExportFetchError extends Error {
+  constructor() {
+    super('No se pudieron cargar los datos para exportar')
+    this.name = 'ExportFetchError'
+  }
+}
+
 async function allRows<T>(
   query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
 ): Promise<T[]> {
@@ -70,26 +77,36 @@ export async function exportGreenbook(userId: string): Promise<void> {
       supabase.from('sessions').select('*').eq('user_id', userId).order('id').range(from, to),
     ),
     allRows<Note>((from, to) => supabase.from('notes').select('*').eq('user_id', userId).order('id').range(from, to)),
-  ])
-  if (profileResult.error) throw profileResult.error
+  ]).catch(() => {
+    throw new ExportFetchError()
+  })
+  if (profileResult.error) throw new ExportFetchError()
   const data: ExportData = { profile: profileResult.data as Profile, readings, sessions, notes }
   const date = todayISO()
   const files = [
     new File([JSON.stringify(data, null, 2)], `greenbook-${date}.json`, { type: 'application/json;charset=utf-8' }),
     new File([readingsCsv(readings)], `greenbook-lecturas-${date}.csv`, { type: 'text/csv;charset=utf-8' }),
   ]
-  if (navigator.share && navigator.canShare?.({ files })) {
-    await navigator.share({ files })
-    return
+  try {
+    if (navigator.share && navigator.canShare?.({ files })) {
+      await navigator.share({ files })
+      return
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return
+    // Sharing may be blocked after fetching data; keep the files available as downloads.
   }
   for (const file of files) {
     const url = URL.createObjectURL(file)
     const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
-    document.body.append(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    try {
+      link.href = url
+      link.download = file.name
+      document.body.append(link)
+      link.click()
+    } finally {
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    }
   }
 }

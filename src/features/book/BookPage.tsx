@@ -9,7 +9,7 @@ import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { formatMinutes, parseHMM, progressFraction, toHMM } from '@/lib/units'
+import { formatDays, formatMinutes, parseHMM, progressFraction, toHMM } from '@/lib/units'
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -73,6 +73,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [initialMinutes, setInitialMinutes] = useState<number>()
   const [editing, setEditing] = useState<Session | null>(null)
   const [editingReading, setEditingReading] = useState(false)
+  const [editingMoods, setEditingMoods] = useState(false)
   const [tab, setTab] = useState<BookTab>('sessions')
   const disabled = !online || busy || pending > 0
   const tabs: { value: BookTab; label: string }[] = [
@@ -184,6 +185,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               void patch({
                 status,
                 ...(status === 'reading' && !reading.started_on ? { started_on: today } : {}),
+                ...(status === 'finished' ? { current_position: reading.total_units } : {}),
                 finished_on: status === 'finished' ? (reading.finished_on ?? today) : null,
               })
             }
@@ -204,32 +206,63 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               value={reading.rating ?? 0}
               onChange={own && !disabled ? (rating) => void patch({ rating }) : undefined}
             />
-            <MoodChips
-              value={reading.moods}
-              onChange={own && !disabled ? (moods) => void patch({ moods }) : undefined}
-            />
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <MoodChips
+                  value={reading.moods}
+                  onChange={editingMoods && own && !disabled ? (moods) => void patch({ moods }) : undefined}
+                />
+              </div>
+              {own && (
+                <button
+                  type="button"
+                  className="min-h-11 shrink-0 text-xs text-accent"
+                  disabled={disabled}
+                  aria-expanded={editingMoods}
+                  onClick={() => setEditingMoods(!editingMoods)}
+                >
+                  {editingMoods ? 'Listo' : 'Editar ánimos'}
+                </button>
+              )}
+            </div>
             <ReactionBar targetType="reading" targetId={reading.id} ownerId={reading.user_id} />
           </div>
         </div>
       </div>
-      <section className="card flex items-center gap-4" aria-label="Progreso de lectura">
-        <Ring value={progressFraction(reading)} size={84}>
-          <span className="font-serif text-lg font-semibold">{Math.round(progressFraction(reading) * 100)} %</span>
-        </Ring>
-        <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-2 gap-y-3 text-xs">
-          {[
-            ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : 'min'}/día`],
-            ['Tiempo', formatMinutes(minutes)],
-            ['Te quedan', reading.unit === 'pages' ? `${remaining} págs.` : formatMinutes(remaining)],
-            ['Fin estimado', reading.status === 'finished' ? 'Terminado' : finish ? fmt(finish, 'd MMM') : '—'],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-muted">{label}</dt>
-              <dd className="mt-0.5 font-semibold">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      {reading.status === 'finished' ? (
+        // The finish date is already in the header; summarize how long it took.
+        (reading.started_on && reading.finished_on) || minutes > 0 ? (
+          <section className="card text-sm text-muted" aria-label="Resumen de lectura">
+            {[
+              reading.started_on && reading.finished_on
+                ? `Leído en ${formatDays(differenceInCalendarDays(fromISODate(reading.finished_on), fromISODate(reading.started_on)) + 1)}`
+                : null,
+              minutes > 0 ? `${formatMinutes(minutes)} de lectura` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </section>
+        ) : null
+      ) : (
+        <section className="card flex items-center gap-4" aria-label="Progreso de lectura">
+          <Ring value={progressFraction(reading)} size={84}>
+            <span className="font-serif text-lg font-semibold">{Math.round(progressFraction(reading) * 100)} %</span>
+          </Ring>
+          <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-2 gap-y-3 text-xs">
+            {[
+              ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : 'min'}/día`],
+              ['Tiempo', formatMinutes(minutes)],
+              ['Te quedan', reading.unit === 'pages' ? `${remaining} págs.` : formatMinutes(remaining)],
+              ['Fin estimado', finish ? fmt(finish, 'd MMM') : '—'],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-muted">{label}</dt>
+                <dd className="mt-0.5 font-semibold">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
       {own && !online && <p className="text-xs text-muted">Sin conexión: puedes registrar sesiones, pero no editar.</p>}
       {own && pending > 0 && (
         <p className="text-xs text-muted">Espera a que se sincronicen las sesiones para editar.</p>

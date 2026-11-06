@@ -30,6 +30,7 @@ export function SearchPage() {
     retry: false,
   })
   const waiting = query.trim().length >= 3 && (!ready || results.isPending)
+  const emptySearch = ready && (results.isError || (results.isSuccess && results.data.length === 0))
   return (
     <section className="space-y-4">
       <header className="flex items-center gap-3">
@@ -122,9 +123,11 @@ export function SearchPage() {
           </ul>
         )}
       </div>
-      <button className="btn btn-ghost w-full" onClick={() => setManual(true)}>
-        Añadir un libro a mano
-      </button>
+      {!emptySearch && (
+        <button className="btn btn-ghost w-full" onClick={() => setManual(true)}>
+          Añadir un libro a mano
+        </button>
+      )}
       {scanner && (
         <Suspense fallback={null}>
           <IsbnScanner

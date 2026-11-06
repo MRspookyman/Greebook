@@ -34,8 +34,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   const qc = useQueryClient()
   const [format, setFormat] = useState<Format>('paper')
   const [pages, setPages] = useState(candidate.page_count ?? 0)
-  // Typical audiobook length as a starting point; adjust in 15-minute steps or type it with «Otra…».
-  const [duration, setDuration] = useState(8 * 60)
+  const [duration, setDuration] = useState<number | null>(null)
   const [customDuration, setCustomDuration] = useState(false)
   const [durationInput, setDurationInput] = useState('')
   const [status, setStatus] = useState<'want' | 'reading'>('want')
@@ -43,11 +42,14 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   const [error, setError] = useState('')
   const unit: Unit = format === 'paper' ? 'pages' : 'minutes'
   const source = candidate.google_id ? 'Google Books' : candidate.openlibrary_key ? 'Open Library' : null
+  const audioDuration = customDuration ? parseHMM(durationInput) : duration
+  const validAudioDuration =
+    audioDuration !== null && Number.isSafeInteger(audioDuration) && audioDuration > 0 && audioDuration <= 2147483647
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
-    const total = format === 'paper' ? pages : customDuration ? parseHMM(durationInput) : duration
+    const total = format === 'paper' ? pages : audioDuration
     if (!total || !Number.isSafeInteger(total) || total < 1 || total > 2147483647) {
       setError(format === 'audio' ? 'Introduce una duración válida (h:mm)' : 'Indica cuántas páginas tiene el libro')
       return
@@ -157,10 +159,10 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
                   min={0}
                   max={2147483647}
                   display={pages}
-                  caption={candidate.page_count ? 'detectadas automáticamente' : 'indica cuántas tiene'}
+                  caption={candidate.page_count && source ? 'detectadas automáticamente' : 'páginas del libro'}
                   label="Número de páginas"
                 />
-              ) : (
+              ) : duration !== null ? (
                 <Stepper
                   value={duration}
                   onChange={updateDuration}
@@ -171,27 +173,41 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
                   caption="horas y minutos"
                   label="Duración del audiolibro"
                 />
-              )}
+              ) : null}
             </div>
           )
         })}
       </div>
       {format === 'audio' && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {[6, 8, 10, 12, 15].map((hours) => (
+            <button
+              key={hours}
+              type="button"
+              className="chip min-h-11"
+              aria-pressed={!customDuration && duration === hours * 60}
+              onClick={() => {
+                updateDuration(hours * 60)
+                setCustomDuration(false)
+              }}
+            >
+              {hours} h
+            </button>
+          ))}
           <button
             type="button"
-            className="chip min-h-9"
+            className="chip min-h-11"
             aria-pressed={customDuration}
             aria-expanded={customDuration}
             onClick={() => {
-              if (!customDuration) setDurationInput(toHMM(duration))
+              if (!customDuration) setDurationInput(duration === null ? '' : toHMM(duration))
               setCustomDuration(!customDuration)
             }}
           >
             Otra…
           </button>
           {customDuration && (
-            <label className="min-w-0 flex-1">
+            <label className="w-full">
               <span className="sr-only">Duración total (h:mm)</span>
               <input
                 className="input"
@@ -201,7 +217,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
                 onChange={(event) => {
                   setDurationInput(event.target.value)
                   const parsed = parseHMM(event.target.value)
-                  if (parsed !== null) setDuration(parsed)
+                  setDuration(parsed)
                 }}
               />
             </label>
@@ -225,7 +241,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
           {error}
         </p>
       )}
-      <button className="btn btn-primary w-full" disabled={busy}>
+      <button className="btn btn-primary w-full" disabled={busy || (format === 'audio' && !validAudioDuration)}>
         {busy ? 'Añadiendo…' : 'Añadir a la biblioteca'}
       </button>
     </form>

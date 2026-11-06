@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { addDays } from 'date-fns'
-import { Link } from 'react-router'
+import { Link, useMatch } from 'react-router'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
@@ -43,6 +43,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
   const { userId } = useMe()
   const readings = useReadings(userId)
   const sessions = useSessions(userId)
+  const bookRoute = useMatch('/libro/:readingId')
   const choices = (readings.data ?? [])
     .filter((r) => r.status === 'reading' || r.status === 'want')
     .sort(
@@ -50,9 +51,12 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
         Number(b.status === 'reading') - Number(a.status === 'reading') || b.updated_at.localeCompare(a.updated_at),
     )
   const [selected, setSelected] = useState(initial?.id ?? null)
+  const routeReading = !initial
+    ? choices.find((choice) => choice.id === bookRoute?.params.readingId && choice.user_id === userId)
+    : undefined
   const reading = selected
     ? (readings.data?.find((r) => r.id === selected) ?? (initial?.id === selected ? initial : undefined))
-    : choices[0]
+    : (routeReading ?? choices[0])
   const [position, setPosition] = useState<{ readingId: string; value: number } | null>(null)
   const end = reading && position?.readingId === reading.id ? position.value : (reading?.current_position ?? 0)
   const [minutes, setMinutes] = useState<number | null>(initialMinutes ?? null)

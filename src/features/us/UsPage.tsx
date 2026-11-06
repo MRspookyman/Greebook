@@ -21,10 +21,11 @@ import { supabase } from '@/lib/supabase'
 import type { Profile, ReactionTarget, ReadingWithBook, Session } from '@/lib/types'
 import { formatUnitDelta, progressFraction } from '@/lib/units'
 import { ChallengeCard } from './ChallengeCard'
-import { useJointBooks } from './joint'
+import { useSortedClubs } from './joint'
 import { jointDistance } from './jointDistance'
 import { NudgeSheet, useNudgedToday } from './NudgeSheet'
 import { ReactionBar } from './ReactionBar'
+import { sessionGroups } from './sessionGroups'
 
 const periods = [
   { value: 'week', label: 'Semana' },
@@ -139,13 +140,13 @@ export function UsPage() {
   const reactions = useReactions()
   const nudges = useNudges(!!partner)
   const recs = useRecommendations(!!partner)
-  const joint = useJointBooks()
+  const clubs = useSortedClubs()
   const nudgedToday = useNudgedToday()
   const seenBefore = useSeenMark()
   const [period, setPeriod] = useState<Period>('week')
   const [filter, setFilter] = useState<FeedFilter>('all')
   const [nudging, setNudging] = useState(false)
-  const [limit, setLimit] = useState(8)
+  const [limit, setLimit] = useState(5)
 
   const header = (
     <header className="flex min-h-11 items-center justify-between gap-3">
@@ -223,9 +224,7 @@ export function UsPage() {
 
   // ── Feed ──
   const events: FeedEvent[] = []
-  for (const session of ps) {
-    const reading = readingById.get(session.reading_id)
-    if (!reading) continue
+  for (const { session, reading, delta } of sessionGroups(ps, theirs)) {
     events.push({
       key: `s-${session.id}`,
       sort: session.created_at,
@@ -235,7 +234,7 @@ export function UsPage() {
       link: `/libro/${reading.id}`,
       text: (
         <>
-          +{formatUnitDelta(reading.unit, session.end_pos - session.start_pos)} en <strong>{reading.book.title}</strong>
+          +{formatUnitDelta(reading.unit, delta)} en <strong>{reading.book.title}</strong>
         </>
       ),
       react: { type: 'session', id: session.id, owner: partner.id },
@@ -281,7 +280,7 @@ export function UsPage() {
       forMe: toMe,
       quote: note.kind === 'quote',
       link: `/club/${reading.book_id}`,
-      reply: hidden ? undefined : `/club/${reading.book_id}?responder=${note.id}`,
+      reply: fromPartner && !hidden ? `/club/${reading.book_id}?responder=${note.id}` : undefined,
       text: (
         <>
           {toMe
@@ -311,15 +310,18 @@ export function UsPage() {
           ? sessionById.get(reaction.target_id)
           : readingById.get(reaction.target_id)
     if (!target || target.user_id !== userId) continue
-    const reading =
-      'reading_id' in target ? readingById.get(target.reading_id) : (target as ReadingWithBook)
+    const reading = 'reading_id' in target ? readingById.get(target.reading_id) : (target as ReadingWithBook)
     events.push({
       key: `r-${reaction.id}`,
       sort: reaction.created_at,
       author: partner,
       forMe: true,
       quote: false,
-      link: reading ? (reaction.target_type === 'note' ? `/club/${reading.book_id}` : `/libro/${reading.id}`) : undefined,
+      link: reading
+        ? reaction.target_type === 'note'
+          ? `/club/${reading.book_id}`
+          : `/libro/${reading.id}`
+        : undefined,
       text: (
         <>
           Reaccionó {reaction.emoji} a tu{' '}
@@ -366,8 +368,7 @@ export function UsPage() {
   events.sort((x, y) => y.sort.localeCompare(x.sort))
   const isNew = (event: FeedEvent) => event.author.id === partner.id && (!seenBefore || event.sort > seenBefore)
   const forMeCount = events.filter((event) => event.forMe && isNew(event)).length
-  const shown = events
-    .filter((event) => (filter === 'me' ? event.forMe : filter === 'quotes' ? event.quote : true))
+  const shown = events.filter((event) => (filter === 'me' ? event.forMe : filter === 'quotes' ? event.quote : true))
 
   const myDay = ms.some((session) => session.read_on === today)
   const partnerDay = ps.some((session) => session.read_on === today)
@@ -383,45 +384,66 @@ export function UsPage() {
       {header}
       <ChallengeCard />
 
-      {joint
-        .filter((j) => j.mine.status === 'reading' || j.theirs.status === 'reading')
-        .map((j) => (
-          <Link
-            key={j.book.id}
-            to={`/club/${j.book.id}`}
-            className="card pressable block space-y-1"
-            aria-label={`Club de dos: ${j.book.title}`}
-          >
-            <div className="flex items-center justify-between gap-3 text-xs">
-              <h2 className="flex shrink-0 items-center gap-1.5 font-sans text-xs font-semibold">
-                <MessageCircle size={14} /> Club de dos
-              </h2>
-              <span className="truncate text-muted">{j.book.title}</span>
-            </div>
-            <DualProgressBar
-              a={{
-                value: progressFraction(j.mine),
-                accent: profile.accent,
-                label: profile.display_name,
-                caption: j.mine.unit === 'pages' ? String(j.mine.current_position) : undefined,
-              }}
-              b={{
-                value: progressFraction(j.theirs),
-                accent: partner.accent,
-                label: partner.display_name,
-                caption: j.theirs.unit === 'pages' ? String(j.theirs.current_position) : undefined,
-              }}
-              stops={clubStops(j.mine).map((page) => ({
-                value: page / j.mine.total_units,
-                done:
-                  j.mine.current_position >= page &&
-                  progressFraction(j.theirs) * j.mine.total_units >= page,
-                label: `Parada p. ${page}`,
-              }))}
-            />
-            <p className="text-xs text-muted">{jointDistance(j.mine, j.theirs, partner.display_name)}</p>
-          </Link>
-        ))}
+      <section className="card space-y-3" aria-label="Vuestras lecturas cara a cara">
+        <Segmented options={periods} value={period} onChange={setPeriod} aria-label="Periodo de comparación" />
+        <div className="flex justify-center gap-4 text-[13px] font-semibold">
+          <span className="max-w-[45%] truncate" style={{ color: `var(--${profile.accent})` }}>
+            {profile.display_name}
+          </span>
+          <span className="max-w-[45%] truncate" style={{ color: `var(--${partner.accent})` }}>
+            {partner.display_name}
+          </span>
+        </div>
+        <div key={period} className="space-y-3">
+          <Comparison label="Páginas" a={a.pages} b={b.pages} mine={profile} partner={partner} />
+          <Comparison label="Libros" a={a.booksFinished} b={b.booksFinished} mine={profile} partner={partner} />
+          <Comparison label="Días" a={a.activeDays} b={b.activeDays} mine={profile} partner={partner} />
+          <Comparison
+            label="Horas"
+            a={hoursInRange(ms, mine, range.from, range.to)}
+            b={hoursInRange(ps, theirs, range.from, range.to)}
+            mine={profile}
+            partner={partner}
+            hours
+          />
+        </div>
+        <p className="text-center text-[11px] text-muted">{headline}</p>
+      </section>
+      {clubs.map(({ joint: j }) => (
+        <Link
+          key={j.book.id}
+          to={`/club/${j.book.id}`}
+          className="card pressable block space-y-1"
+          aria-label={`Club de dos: ${j.book.title}`}
+        >
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <h2 className="flex shrink-0 items-center gap-1.5 font-sans text-xs font-semibold">
+              <MessageCircle size={14} /> Club de dos
+            </h2>
+            <span className="truncate text-muted">{j.book.title}</span>
+          </div>
+          <DualProgressBar
+            a={{
+              value: progressFraction(j.mine),
+              accent: profile.accent,
+              label: profile.display_name,
+              caption: j.mine.unit === 'pages' ? String(j.mine.current_position) : undefined,
+            }}
+            b={{
+              value: progressFraction(j.theirs),
+              accent: partner.accent,
+              label: partner.display_name,
+              caption: j.theirs.unit === 'pages' ? String(j.theirs.current_position) : undefined,
+            }}
+            stops={clubStops(j.mine).map((page) => ({
+              value: page / j.mine.total_units,
+              done: j.mine.current_position >= page && progressFraction(j.theirs) * j.mine.total_units >= page,
+              label: `Parada p. ${page}`,
+            }))}
+          />
+          <p className="text-xs text-muted">{jointDistance(j.mine, j.theirs, partner.display_name)}</p>
+        </Link>
+      ))}
 
       <Segmented
         options={[
@@ -432,7 +454,7 @@ export function UsPage() {
         value={filter}
         onChange={(value) => {
           setFilter(value)
-          setLimit(8)
+          setLimit(5)
         }}
         aria-label="Filtrar actividad"
       />
@@ -468,7 +490,11 @@ export function UsPage() {
                     )}
                     <div className="flex flex-wrap items-center gap-1.5">
                       {event.react && (
-                        <ReactionBar targetType={event.react.type} targetId={event.react.id} ownerId={event.react.owner} />
+                        <ReactionBar
+                          targetType={event.react.type}
+                          targetId={event.react.id}
+                          ownerId={event.react.owner}
+                        />
                       )}
                       {event.reply && (
                         <Link to={event.reply} className="chip min-h-9 px-3 text-xs">
@@ -504,33 +530,7 @@ export function UsPage() {
         />
       )}
 
-      <section className="card space-y-3" aria-label="Vuestras lecturas cara a cara">
-        <Segmented options={periods} value={period} onChange={setPeriod} aria-label="Periodo de comparación" />
-        <div className="flex justify-center gap-4 text-[13px] font-semibold">
-          <span className="max-w-[45%] truncate" style={{ color: `var(--${profile.accent})` }}>
-            {profile.display_name}
-          </span>
-          <span className="max-w-[45%] truncate" style={{ color: `var(--${partner.accent})` }}>
-            {partner.display_name}
-          </span>
-        </div>
-        <div key={period} className="space-y-3">
-          <Comparison label="Páginas" a={a.pages} b={b.pages} mine={profile} partner={partner} />
-          <Comparison label="Libros" a={a.booksFinished} b={b.booksFinished} mine={profile} partner={partner} />
-          <Comparison label="Días" a={a.activeDays} b={b.activeDays} mine={profile} partner={partner} />
-          <Comparison
-            label="Horas"
-            a={hoursInRange(ms, mine, range.from, range.to)}
-            b={hoursInRange(ps, theirs, range.from, range.to)}
-            mine={profile}
-            partner={partner}
-            hours
-          />
-        </div>
-        <p className="text-center text-[11px] text-muted">{headline}</p>
-      </section>
       <NudgeSheet open={nudging} onClose={() => setNudging(false)} />
     </div>
   )
 }
-

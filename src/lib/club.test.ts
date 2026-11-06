@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { clubStops, coupleStreak, couplePair, isLive, nextStop, nextSunday, positionInPages, suggestedGoal } from './club'
+import {
+  clubStops,
+  coupleStreak,
+  couplePair,
+  isLive,
+  nextStop,
+  nextSunday,
+  positionInPages,
+  suggestedGoal,
+} from './club'
 
 describe('club de dos', () => {
   it('places stops every 100 pages in long books and every 50 in short ones', () => {

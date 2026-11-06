@@ -36,7 +36,9 @@ const fill = (file) =>
 const out = 'avisos-sql.local'
 writeFileSync(
   out,
-  `${fill('supabase/migrations/0002_cron.sql')}\n\n${fill('supabase/migrations/0004_partner_notifications.sql')}\n`,
+  ['0002_cron.sql', '0004_partner_notifications.sql', '0006_notify_never_blocks.sql']
+    .map((f) => fill(`supabase/migrations/${f}`))
+    .join('\n\n') + '\n',
 )
 
 console.log(`

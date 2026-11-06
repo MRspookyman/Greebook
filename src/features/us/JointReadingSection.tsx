@@ -22,7 +22,10 @@ export function JointReadingSection({ reading }: { reading: ReadingWithBook }) {
   const latest = (list: ReadingWithBook[]) =>
     list
       .filter((r) => r.book_id === reading.book_id)
-      .sort((a, b) => Number(b.status === 'reading') - Number(a.status === 'reading') || b.updated_at.localeCompare(a.updated_at))[0]
+      .sort(
+        (a, b) =>
+          Number(b.status === 'reading') - Number(a.status === 'reading') || b.updated_at.localeCompare(a.updated_at),
+      )[0]
   const myReading = reading.user_id === userId ? reading : latest(mine.data ?? [])
   const partnerReading = reading.user_id === partner.id ? reading : latest(theirs.data ?? [])
   const own = reading.user_id === userId
@@ -48,7 +51,8 @@ export function JointReadingSection({ reading }: { reading: ReadingWithBook }) {
             }}
             stops={clubStops(myReading).map((page) => ({
               value: page / myReading.total_units,
-              done: myReading.current_position >= page && progressFraction(partnerReading) * myReading.total_units >= page,
+              done:
+                myReading.current_position >= page && progressFraction(partnerReading) * myReading.total_units >= page,
               label: `Parada p. ${page}`,
             }))}
           />

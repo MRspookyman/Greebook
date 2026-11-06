@@ -27,6 +27,7 @@ export function ReactionBar({
   const { data = [] } = useReactions()
   const [picker, setPicker] = useState(false)
   const wrapper = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
   const press = useRef<{ timer: number; fired: boolean } | null>(null)
   const own = ownerId === userId
   const allowed = ownerId === partner?.id
@@ -43,6 +44,10 @@ export function ReactionBar({
     }
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
+  }, [picker])
+
+  useEffect(() => {
+    if (picker) wrapper.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
   }, [picker])
 
   const toggle = useMutation({
@@ -110,13 +115,27 @@ export function ReactionBar({
     <div ref={wrapper} className="relative flex items-center gap-1">
       <button
         type="button"
-        className={`flex min-h-9 select-none items-center gap-1 rounded-full border px-2.5 text-xs transition-transform duration-300 [-webkit-touch-callout:none] [transition-timing-function:var(--spring)] active:scale-90 ${
+        ref={trigger}
+        className={`flex min-h-11 min-w-11 select-none items-center justify-center gap-1 rounded-full border px-2.5 text-xs transition-transform duration-300 [-webkit-touch-callout:none] [transition-timing-function:var(--spring)] active:scale-90 ${
           heart
             ? 'border-transparent bg-[color-mix(in_oklab,var(--danger)_14%,var(--surface))] text-danger'
             : 'border-border text-muted'
         }`}
         aria-pressed={!!heart}
-        aria-label={heart ? 'Quitar me gusta. Mantén pulsado para otras reacciones' : 'Me gusta. Mantén pulsado para otras reacciones'}
+        aria-label={
+          heart
+            ? 'Quitar me gusta. Mantén pulsado o pulsa flecha arriba para otras reacciones'
+            : 'Me gusta. Mantén pulsado o pulsa flecha arriba para otras reacciones'
+        }
+        aria-haspopup="menu"
+        aria-expanded={picker}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowUp' || (event.key === 'Enter' && event.shiftKey)) {
+            event.preventDefault()
+            setPicker(true)
+          }
+          if (event.key === 'Enter' || event.key === ' ') press.current = null
+        }}
         onPointerDown={() => {
           press.current = {
             fired: false,
@@ -128,6 +147,7 @@ export function ReactionBar({
         }}
         onPointerUp={() => press.current && window.clearTimeout(press.current.timer)}
         onPointerLeave={() => press.current && window.clearTimeout(press.current.timer)}
+        onPointerCancel={() => press.current && window.clearTimeout(press.current.timer)}
         onContextMenu={(event) => {
           event.preventDefault()
           setPicker(true)
@@ -149,7 +169,7 @@ export function ReactionBar({
           <button
             key={emoji}
             type="button"
-            className={`flex min-h-9 items-center rounded-full border px-2 text-sm transition-transform duration-300 [transition-timing-function:var(--spring)] active:scale-90 ${mine ? 'border-transparent bg-soft' : 'border-border'}`}
+            className={`flex min-h-11 min-w-11 items-center justify-center rounded-full border px-2 text-sm transition-transform duration-300 [transition-timing-function:var(--spring)] active:scale-90 ${mine ? 'border-transparent bg-soft' : 'border-border'}`}
             style={{ animation: 'gb-pop 0.45s var(--spring)' }}
             aria-pressed={mine}
             aria-label={mine ? `Quitar ${emoji}` : `Reaccionar ${emoji}`}
@@ -159,35 +179,43 @@ export function ReactionBar({
           </button>
         )
       })}
-      <div
-        role="menu"
-        aria-label="Elegir reacción"
-        className="absolute right-0 bottom-[calc(100%+6px)] z-20 flex gap-0.5 rounded-full border border-border bg-surface p-1 shadow-[0_12px_30px_-8px_rgb(0_0_0/0.3)]"
-        style={{
-          opacity: picker ? 1 : 0,
-          transform: picker ? 'none' : 'scale(.6) translateY(8px)',
-          transformOrigin: 'right bottom',
-          pointerEvents: picker ? 'auto' : 'none',
-          transition: 'opacity .2s, transform .35s var(--spring)',
-        }}
-      >
-        {REACTION_EMOJIS.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            role="menuitem"
-            tabIndex={picker ? 0 : -1}
-            className={`grid h-10 w-10 place-items-center rounded-full text-[22px] transition-transform duration-200 [transition-timing-function:var(--spring)] hover:-translate-y-1 hover:scale-125 ${reactions.some((r) => r.user_id === userId && r.emoji === emoji) ? 'bg-soft' : ''}`}
-            aria-label={emoji}
-            onClick={() => {
-              react(emoji)
+      {picker && (
+        <div
+          role="menu"
+          aria-label="Elegir reacción"
+          className="absolute right-0 bottom-[calc(100%+6px)] z-20 flex gap-0.5 rounded-full border border-border bg-surface p-1 shadow-[0_12px_30px_-8px_rgb(0_0_0/0.3)]"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
               setPicker(false)
-            }}
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
+              trigger.current?.focus()
+            }
+            if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+              event.preventDefault()
+              const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+              const index = items.indexOf(document.activeElement as HTMLButtonElement)
+              items[(index + (event.key === 'ArrowRight' ? 1 : items.length - 1)) % items.length]?.focus()
+            }
+          }}
+        >
+          {REACTION_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              role="menuitem"
+              tabIndex={0}
+              className={`grid h-11 w-11 place-items-center rounded-full text-[22px] transition-transform duration-200 [transition-timing-function:var(--spring)] hover:-translate-y-1 hover:scale-125 ${reactions.some((r) => r.user_id === userId && r.emoji === emoji) ? 'bg-soft' : ''}`}
+              aria-label={emoji}
+              onClick={() => {
+                react(emoji)
+                setPicker(false)
+                trigger.current?.focus()
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

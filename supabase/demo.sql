@@ -6,6 +6,10 @@
 begin;
 
 delete from reactions;
+delete from nudges;
+delete from recommendations;
+delete from challenges;
+update profiles set reading_now_id = null, reading_now_since = null;
 delete from notes;
 delete from sessions;
 delete from readings;

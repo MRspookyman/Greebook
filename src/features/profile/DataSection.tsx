@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMe } from '@/features/auth/me'
-import { exportGreenbook } from '@/lib/export'
+import { ExportFetchError, exportGreenbook } from '@/lib/export'
 import { toast } from '@/components/toast'
 
 export function DataSection() {
@@ -11,9 +11,12 @@ export function DataSection() {
     try {
       await exportGreenbook(userId)
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        toast('No se pudieron exportar tus datos', 'Comprueba la conexión e inténtalo de nuevo.')
-      }
+      toast(
+        'No se pudieron exportar tus datos',
+        error instanceof ExportFetchError
+          ? 'No se pudieron cargar los datos. Comprueba la conexión e inténtalo de nuevo.'
+          : 'No se pudieron descargar los archivos. Inténtalo de nuevo desde el navegador.',
+      )
     } finally {
       setBusy(false)
     }

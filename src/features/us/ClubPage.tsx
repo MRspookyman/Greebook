@@ -26,7 +26,9 @@ const OPEN = new Set(['want', 'reading'])
 const pick = (list: ReadingWithBook[], bookId: string) =>
   list
     .filter((r) => r.book_id === bookId)
-    .sort((a, b) => Number(OPEN.has(b.status)) - Number(OPEN.has(a.status)) || b.updated_at.localeCompare(a.updated_at))[0]
+    .sort(
+      (a, b) => Number(OPEN.has(b.status)) - Number(OPEN.has(a.status)) || b.updated_at.localeCompare(a.updated_at),
+    )[0]
 
 export function ClubPage() {
   const { bookId = '' } = useParams()
@@ -41,6 +43,8 @@ export function ClubPage() {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
+  const [pageDraft, setPageDraft] = useState<{ context: string; value: number } | null>(null)
+  const [editingPage, setEditingPage] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const replyId = params.get('responder')
 
@@ -59,7 +63,8 @@ export function ClubPage() {
     note.user_id !== userId && !!mine && !!book && isSpoiler(note, mine, book) && !revealed.has(note.id)
   const visible = notes.filter((note) => !(note.user_id !== userId && mine && book && isSpoiler(note, mine, book)))
   const ahead = notes.filter((note) => !visible.includes(note))
-  const replyTo = replyId ? byId.get(replyId) : undefined
+  const replyCandidate = replyId ? byId.get(replyId) : undefined
+  const replyTo = replyCandidate?.user_id !== userId ? replyCandidate : undefined
 
   useEffect(() => {
     if (bookId) markClubSeen(bookId)
@@ -74,6 +79,12 @@ export function ClubPage() {
   if (!book) return <EmptyState title="No encontramos este libro en vuestras bibliotecas" />
 
   const myPage = mine ? positionInPages(mine, book.page_count) : null
+  const pageContext = `${bookId}:${replyTo?.id ?? ''}:${myPage}`
+  const defaultPage = replyTo?.page != null && myPage != null && replyTo.page <= myPage ? replyTo.page : myPage
+  const messagePage =
+    myPage == null
+      ? null
+      : Math.max(0, Math.min(myPage, pageDraft?.context === pageContext ? pageDraft.value : (defaultPage ?? myPage)))
   const reference = mine ?? theirs!
   const stops = clubStops(reference)
   const theirPos = theirs
@@ -98,12 +109,14 @@ export function ClubPage() {
         user_id: userId,
         kind: 'message',
         body: text,
-        page: myPage,
+        page: messagePage,
         shared: true,
         reply_to: replyTo?.id ?? null,
       })
       if (error) throw error
       setBody('')
+      setPageDraft(null)
+      setEditingPage(false)
       setParams({}, { replace: true })
       await Promise.all([
         qc.invalidateQueries({ queryKey: qk.sharedNotes() }),
@@ -131,10 +144,14 @@ export function ClubPage() {
           type="button"
           className={`relative overflow-hidden rounded-2xl px-3 py-2 text-left text-[14px] leading-snug ${me ? 'rounded-br-[6px]' : 'rounded-bl-[6px]'}`}
           style={{ background: `color-mix(in oklab, var(--${author.accent}) 15%, var(--surface))` }}
-          aria-label={hidden ? `Mensaje de ${author.display_name} en la p. ${note.page}, oculto por spoiler. Toca para verlo` : undefined}
+          aria-label={
+            hidden
+              ? `Mensaje de ${author.display_name} en la p. ${note.page}, oculto por spoiler. Toca para verlo`
+              : undefined
+          }
           onClick={() => {
             if (hidden) setRevealed(new Set([...revealed, note.id]))
-            else setParams({ responder: note.id }, { replace: true })
+            else if (!me) setParams({ responder: note.id }, { replace: true })
           }}
         >
           {parent && (
@@ -211,14 +228,19 @@ export function ClubPage() {
                 value: progressFraction(mine),
                 accent: profile.accent,
                 label: profile.display_name,
-                caption: mine.unit === 'pages' ? String(mine.current_position) : `${Math.round(progressFraction(mine) * 100)} %`,
+                caption:
+                  mine.unit === 'pages'
+                    ? String(mine.current_position)
+                    : `${Math.round(progressFraction(mine) * 100)} %`,
               }}
               b={{
                 value: progressFraction(theirs),
                 accent: partner.accent,
                 label: partner.display_name,
                 caption:
-                  theirs.unit === 'pages' ? String(theirs.current_position) : `${Math.round(progressFraction(theirs) * 100)} %`,
+                  theirs.unit === 'pages'
+                    ? String(theirs.current_position)
+                    : `${Math.round(progressFraction(theirs) * 100)} %`,
               }}
               stops={stops.map((page) => ({
                 value: page / reference.total_units,
@@ -243,8 +265,8 @@ export function ClubPage() {
       ) : notes.length === 0 ? (
         <EmptyState title="Aún no habéis hablado de este libro">
           <p className="text-sm text-muted">
-            Escribe abajo lo que te está pareciendo. Lo que escribas lleva tu página y {partner.display_name} no lo
-            verá hasta llegar a ella.
+            Escribe abajo lo que te está pareciendo. Lo que escribas lleva tu página y {partner.display_name} no lo verá
+            hasta llegar a ella.
           </p>
         </EmptyState>
       ) : (
@@ -252,7 +274,10 @@ export function ClubPage() {
           {visible.map(bubble)}
           {ahead.length > 0 && (
             <>
-              <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: `var(--${partner.accent})` }}>
+              <div
+                className="flex items-center gap-2 text-[11px] font-semibold"
+                style={{ color: `var(--${partner.accent})` }}
+              >
                 <span className="h-px flex-1 bg-current opacity-40" />
                 Por delante de ti
                 <span className="h-px flex-1 bg-current opacity-40" />
@@ -274,7 +299,11 @@ export function ClubPage() {
                   Respondiendo a {replyTo.user_id === userId ? 'ti' : partner.display_name}:{' '}
                   {spoiler(replyTo) ? 'mensaje oculto' : replyTo.body}
                 </span>
-                <button className="grid h-8 w-8 place-items-center" aria-label="Cancelar respuesta" onClick={() => setParams({}, { replace: true })}>
+                <button
+                  className="grid h-8 w-8 place-items-center"
+                  aria-label="Cancelar respuesta"
+                  onClick={() => setParams({}, { replace: true })}
+                >
                   <X size={15} />
                 </button>
               </div>
@@ -286,9 +315,36 @@ export function ClubPage() {
                 void send()
               }}
             >
-              {myPage != null && (
-                <span className="num shrink-0 rounded-lg bg-soft px-2 py-1 text-[11px] font-semibold text-accent">p. {myPage}</span>
-              )}
+              {myPage != null &&
+                (editingPage ? (
+                  <input
+                    autoFocus
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={myPage}
+                    step={1}
+                    className="num min-h-11 w-16 shrink-0 rounded-lg bg-soft px-2 text-xs text-accent"
+                    aria-label="Página del mensaje"
+                    value={messagePage ?? 0}
+                    onChange={(event) => {
+                      const value = Number(event.target.value)
+                      if (Number.isFinite(value)) {
+                        setPageDraft({ context: pageContext, value: Math.max(0, Math.min(myPage, Math.trunc(value))) })
+                      }
+                    }}
+                    onBlur={() => setEditingPage(false)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="num min-h-11 min-w-11 shrink-0 rounded-lg bg-soft px-2 text-[11px] font-semibold text-accent"
+                    aria-label={`Página ${messagePage}. Cambiar página del mensaje`}
+                    onClick={() => setEditingPage(true)}
+                  >
+                    p. {messagePage}
+                  </button>
+                ))}
               <input
                 className="min-w-0 flex-1 bg-transparent py-2 outline-none"
                 placeholder="Escribe sobre lo que llevas leído…"
