@@ -1,0 +1,139 @@
+import { useState, type SubmitEvent } from 'react'
+import { Navigate, useNavigate } from 'react-router'
+import { WELCOME } from '@/config/surprises'
+import { useMe } from '@/features/auth/me'
+import { PushEnableButton } from '@/features/profile/PushEnableButton'
+import { useUpdateProfile } from '@/lib/data'
+
+export function WelcomePage() {
+  const { userId, profile } = useMe()
+  const navigate = useNavigate()
+  const update = useUpdateProfile(userId)
+  const [step, setStep] = useState(profile.is_gift_recipient ? 1 : 2)
+  const [name, setName] = useState(profile.display_name)
+  const [goal, setGoal] = useState(String(profile.yearly_goal))
+  const [time, setTime] = useState(profile.reminder_time.slice(0, 5))
+  const [error, setError] = useState('')
+
+  if (profile.onboarded_at) return <Navigate to="/" replace />
+
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    if (step === 2) {
+      if (!name.trim() || !Number.isInteger(Number(goal)) || Number(goal) < 1 || Number(goal) > 365) {
+        setError('Escribe tu nombre y un objetivo entre 1 y 365 libros.')
+        return
+      }
+      setStep(3)
+      return
+    }
+    if (!/^\d{2}:\d{2}$/.test(time)) {
+      setError('Elige una hora para el recordatorio.')
+      return
+    }
+    try {
+      await update.mutateAsync({
+        display_name: name.trim(),
+        yearly_goal: Number(goal),
+        reminder_time: `${time}:00`,
+        onboarded_at: new Date().toISOString(),
+      })
+      navigate('/', { replace: true })
+    } catch {
+      setError('No se pudo guardar tu bienvenida. Comprueba la conexión e inténtalo de nuevo.')
+    }
+  }
+
+  return (
+    <main className="min-h-dvh bg-bg px-6 text-ink pt-safe pb-safe">
+      <div
+        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 py-10"
+        style={{ animation: 'gb-fade-up 300ms ease-out' }}
+      >
+        <p className="font-serif text-xl text-green">Greenbook</p>
+        {step === 1 ? (
+          <>
+            <h1>{WELCOME.title}</h1>
+            <p className="whitespace-pre-line font-serif text-xl leading-relaxed">{WELCOME.message}</p>
+            <p className="text-muted">{WELCOME.signature}</p>
+            <button type="button" className="btn btn-primary" onClick={() => setStep(2)}>
+              Continuar
+            </button>
+          </>
+        ) : (
+          <form onSubmit={submit} className="flex flex-col gap-6">
+            <p className="text-sm text-muted">
+              Paso {profile.is_gift_recipient ? step : step - 1} de {profile.is_gift_recipient ? 3 : 2}
+            </p>
+            {step === 2 ? (
+              <>
+                <h1>Tu rincón de lectura</h1>
+                <label className="label">
+                  Tu nombre
+                  <input
+                    className="input mt-2"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    required
+                    autoComplete="given-name"
+                  />
+                </label>
+                <label className="label">
+                  Objetivo anual de libros
+                  <input
+                    className="input mt-2"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="365"
+                    step="1"
+                    value={goal}
+                    onChange={(event) => setGoal(event.target.value)}
+                    required
+                  />
+                </label>
+                <p className="text-muted">Sin prisas: puedes cambiar tu objetivo cuando quieras.</p>
+              </>
+            ) : (
+              <>
+                <h1>Un ratito para leer</h1>
+                <label className="label">
+                  Hora del recordatorio
+                  <input
+                    className="input mt-2"
+                    type="time"
+                    value={time}
+                    onChange={(event) => setTime(event.target.value)}
+                    required
+                  />
+                </label>
+                <PushEnableButton />
+              </>
+            )}
+            {error && (
+              <p role="alert" className="text-danger">
+                {error}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3">
+              {(step === 3 || profile.is_gift_recipient) && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={update.isPending}
+                  onClick={() => setStep(step - 1)}
+                >
+                  Atrás
+                </button>
+              )}
+              <button className="btn btn-primary" disabled={update.isPending}>
+                {update.isPending ? 'Guardando…' : step === 2 ? 'Continuar' : 'Empezar a leer'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </main>
+  )
+}

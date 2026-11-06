@@ -1,0 +1,123 @@
+import { useState, type SubmitEvent } from 'react'
+import { useMe } from '@/features/auth/me'
+import { useUpdateProfile } from '@/lib/data'
+import { supabase } from '@/lib/supabase'
+import type { ThemePref } from '@/lib/types'
+import { toast } from '@/components/toast'
+
+const THEMES: { value: ThemePref; label: string }[] = [
+  { value: 'system', label: 'Sistema' },
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Oscuro' },
+]
+
+export function SettingsSection() {
+  const { userId, profile } = useMe()
+  const update = useUpdateProfile(userId)
+  const [password, setPassword] = useState('')
+  const [confirmation, setConfirmation] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [error, setError] = useState('')
+
+  async function changePassword(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    if (password !== confirmation) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+    setBusy(true)
+    try {
+      const result = await supabase.auth.updateUser({ password })
+      if (result.error) throw result.error
+      setPassword('')
+      setConfirmation('')
+      toast('Contraseña actualizada')
+    } catch {
+      setError('No se pudo cambiar la contraseña. Comprueba la conexión e inténtalo de nuevo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function signOut() {
+    setSigningOut(true)
+    try {
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) throw signOutError
+    } catch {
+      toast('No se pudo cerrar sesión', 'Comprueba la conexión e inténtalo de nuevo.')
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
+  return (
+    <section className="card space-y-6 p-5" aria-labelledby="settings-title">
+      <h2 id="settings-title">Ajustes</h2>
+      <fieldset>
+        <legend className="label mb-2">Tema</legend>
+        <div className="flex flex-wrap gap-2">
+          {THEMES.map((theme) => (
+            <button
+              key={theme.value}
+              type="button"
+              aria-pressed={profile.theme === theme.value}
+              disabled={update.isPending}
+              className={`btn ${profile.theme === theme.value ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() =>
+                update.mutate({ theme: theme.value }, { onError: () => toast('No se pudo guardar el tema') })
+              }
+            >
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <form onSubmit={changePassword} className="space-y-4">
+        <h3 className="font-medium">Cambiar contraseña</h3>
+        <label className="label">
+          Nueva contraseña
+          <input
+            type="password"
+            className="input mt-2"
+            minLength={8}
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
+        <p className="text-sm text-muted">Al menos 8 caracteres.</p>
+        <label className="label">
+          Confirmar contraseña
+          <input
+            type="password"
+            className="input mt-2"
+            minLength={8}
+            autoComplete="new-password"
+            required
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+          />
+        </label>
+        {error && (
+          <p role="alert" className="text-danger">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="btn btn-secondary" disabled={busy}>
+          {busy ? 'Guardando…' : 'Cambiar contraseña'}
+        </button>
+      </form>
+      <button type="button" className="btn btn-ghost text-danger" disabled={signingOut} onClick={signOut}>
+        {signingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+      </button>
+    </section>
+  )
+}
