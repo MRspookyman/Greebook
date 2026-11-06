@@ -6,7 +6,7 @@ Diario de lectura para dos (PWA). Vite + React + TypeScript, Supabase y Cloudfla
 
 ```bash
 npm install
-cp .env.example .env.local   # rellena las 4 variables (proyecto greenbook-dev)
+cp .env.example .env.local   # rellena las 4 variables (Project Settings → API)
 npm run dev                  # http://localhost:5173
 npm test                     # lógica pura (rachas, intensidad, agregados, spoilers, sorpresas)
 npm run build                # typecheck + build de producción con service worker
@@ -15,7 +15,7 @@ npm run build                # typecheck + build de producción con service work
 Opcional, con Docker: `npx supabase start` levanta un Supabase local con las migraciones aplicadas
 (`supabase/config.toml`). Crea los usuarios con la API admin o Studio y ejecuta `supabase/seed.sql`.
 
-## Puesta en marcha (una vez por proyecto: `greenbook-dev` y `greenbook`)
+## Puesta en marcha (proyecto único `greenbook`; antes del regalo se vacían los datos de prueba)
 
 1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
@@ -24,7 +24,7 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 4. **Google Books**: crea una API key en Google Cloud (Books API) restringida por HTTP referrer a
    `https://<tu-dominio>/*` y `http://localhost:5173/*`. Sin key funciona, pero la cuota compartida
    suele dar 429 y la búsqueda cae a Open Library.
-5. **Avisos push** (solo en `greenbook`): las claves VAPID y los secretos están en `secretos.local`
+5. **Avisos push**: las claves VAPID y los secretos están en `secretos.local`
    (no versionado; si lo pierdes, crea uno igual con `npx web-push generate-vapid-keys` y dos cadenas aleatorias).
    - `npx supabase login`
    - `node scripts/configurar-avisos.mjs <project-ref>`: sube los secretos, despliega `send-reminders` y
@@ -32,7 +32,7 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
      (**Database → Webhooks**: `readings` UPDATE y `reactions` INSERT).
 6. **Cloudflare Pages**: conecta el repositorio; build `npm run build`, salida `dist`; variables
    `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_BOOKS_KEY`, `VITE_VAPID_PUBLIC_KEY`
-   del proyecto `greenbook`. `public/_redirects` ya sirve la SPA.
+   de Supabase. `public/_redirects` ya sirve la SPA.
 
 ## Personalizar el regalo
 
