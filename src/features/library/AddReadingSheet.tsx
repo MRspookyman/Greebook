@@ -1,8 +1,11 @@
 import { useState, type SubmitEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
+import { BookOpen, Headphones } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
+import { Segmented } from '@/components/Segmented'
+import { Stepper } from '@/components/Stepper'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
 import { upsertBook } from '@/lib/books/search'
@@ -10,11 +13,11 @@ import { qk } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
 import { supabase } from '@/lib/supabase'
 import type { BookCandidate, Format, Unit } from '@/lib/types'
-import { parseHMM } from '@/lib/units'
+import { parseHMM, toHMM } from '@/lib/units'
 
 export function AddReadingSheet({ candidate, onClose }: { candidate: BookCandidate | null; onClose: () => void }) {
   return (
-    <BottomSheet open={!!candidate} onClose={onClose} title="Añadir a mi biblioteca">
+    <BottomSheet open={!!candidate} onClose={onClose}>
       {candidate && (
         <ReadingForm
           key={`${candidate.google_id}:${candidate.openlibrary_key}:${candidate.title}`}
@@ -30,20 +33,23 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [format, setFormat] = useState<Format>('paper')
-  const [ebookUnit, setEbookUnit] = useState<Unit>(candidate.page_count ? 'pages' : 'percent')
-  const [pages, setPages] = useState(candidate.page_count?.toString() ?? '')
-  const [duration, setDuration] = useState('')
+  const [pages, setPages] = useState(candidate.page_count ?? 0)
+  // Typical audiobook length as a starting point; adjust in 15-minute steps or type it with «Otra…».
+  const [duration, setDuration] = useState(8 * 60)
+  const [customDuration, setCustomDuration] = useState(false)
+  const [durationInput, setDurationInput] = useState('')
   const [status, setStatus] = useState<'want' | 'reading'>('want')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const unit: Unit = format === 'paper' ? 'pages' : format === 'audio' ? 'minutes' : ebookUnit
+  const unit: Unit = format === 'paper' ? 'pages' : 'minutes'
+  const source = candidate.google_id ? 'Google Books' : candidate.openlibrary_key ? 'Open Library' : null
 
-  async function submit(event: SubmitEvent) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
-    const total = unit === 'percent' ? 100 : unit === 'minutes' ? parseHMM(duration) : Number(pages)
-    if (!total || !Number.isSafeInteger(total) || total < 1) {
-      setError(unit === 'minutes' ? 'Introduce una duración válida (h:mm)' : 'Introduce el número de páginas')
+    const total = format === 'paper' ? pages : customDuration ? parseHMM(durationInput) : duration
+    if (!total || !Number.isSafeInteger(total) || total < 1 || total > 2147483647) {
+      setError(format === 'audio' ? 'Introduce una duración válida (h:mm)' : 'Indica cuántas páginas tiene el libro')
       return
     }
     setBusy(true)
@@ -78,6 +84,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
         .single()
       if (insertError) throw insertError
       await qc.invalidateQueries({ queryKey: qk.readings(userId) })
+      toast('Añadido a tu biblioteca')
       navigate(`/libro/${data.id}`)
     } catch {
       setError('No se pudo añadir el libro. Comprueba tu conexión e inténtalo de nuevo.')
@@ -86,74 +93,140 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
     }
   }
 
+  function updateDuration(value: number) {
+    setDuration(value)
+    setDurationInput(toHMM(value))
+  }
+
   return (
-    <form onSubmit={submit} className="space-y-5">
-      <div className="flex gap-4 items-center">
-        <Cover book={candidate} width={64} />
-        <div>
-          <h2>{candidate.title}</h2>
-          <p className="text-muted text-sm">{candidate.authors.join(', ')}</p>
+    <form onSubmit={submit} className="space-y-4">
+      <div className="flex items-start gap-3">
+        <Cover book={candidate} width={66} />
+        <div className="min-w-0 pt-0.5">
+          <h2 className="line-clamp-3 text-xl leading-tight">{candidate.title}</h2>
+          <p className="mt-1 text-sm text-muted">
+            {[candidate.authors.join(', ') || 'Autor desconocido', candidate.published_year]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          {source && <p className="mt-1 text-xs text-muted">Datos de {source}</p>}
         </div>
       </div>
-      <label className="label">
-        Formato
-        <select className="input" value={format} onChange={(e) => setFormat(e.target.value as Format)}>
-          <option value="paper">Papel</option>
-          <option value="ebook">Ebook</option>
-          <option value="audio">Audiolibro</option>
-        </select>
-      </label>
-      {format === 'ebook' && (
-        <label className="label">
-          Unidad
-          <select className="input" value={ebookUnit} onChange={(e) => setEbookUnit(e.target.value as Unit)}>
-            <option value="pages">Páginas</option>
-            <option value="percent">%</option>
-          </select>
-        </label>
+      <fieldset>
+        <legend className="lbl mb-2">¿Cómo lo vas a leer?</legend>
+        <div className="grid grid-cols-2 gap-2.5">
+          {(
+            [
+              { value: 'paper', label: 'Papel', caption: 'Por páginas', Icon: BookOpen },
+              { value: 'audio', label: 'Audiolibro', caption: 'Por tiempo', Icon: Headphones },
+            ] as const
+          ).map(({ value, label, caption, Icon }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={format === value}
+              onClick={() => setFormat(value)}
+              className={`flex min-h-[108px] flex-col items-start gap-2 rounded-[18px] border p-3.5 text-left transition-[transform,background-color,border-color] duration-300 [transition-timing-function:var(--spring)] active:scale-95 ${
+                format === value ? 'scale-[1.015] border-accent bg-soft' : 'border-border bg-surface'
+              }`}
+            >
+              <Icon size={24} className={format === value ? 'text-accent' : 'text-muted'} />
+              <span className="font-semibold">{label}</span>
+              <span className="text-xs text-muted">{caption}</span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <div className="grid">
+        {(['paper', 'audio'] as const).map((fieldFormat) => {
+          const active = format === fieldFormat
+          return (
+            <div
+              key={fieldFormat}
+              aria-hidden={!active}
+              inert={!active}
+              className="col-start-1 row-start-1 transition-[opacity,transform] duration-300 [transition-timing-function:var(--ease)]"
+              style={{ opacity: active ? 1 : 0, transform: active ? 'translateY(0)' : 'translateY(8px)' }}
+            >
+              <p className="lbl mb-2">{fieldFormat === 'paper' ? 'Páginas' : 'Duración'}</p>
+              {fieldFormat === 'paper' ? (
+                <Stepper
+                  value={pages}
+                  onChange={setPages}
+                  step={10}
+                  min={0}
+                  max={2147483647}
+                  display={pages}
+                  caption={candidate.page_count ? 'detectadas automáticamente' : 'indica cuántas tiene'}
+                  label="Número de páginas"
+                />
+              ) : (
+                <Stepper
+                  value={duration}
+                  onChange={updateDuration}
+                  step={15}
+                  min={0}
+                  max={2147483647}
+                  display={toHMM(duration)}
+                  caption="horas y minutos"
+                  label="Duración del audiolibro"
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {format === 'audio' && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="chip min-h-9"
+            aria-pressed={customDuration}
+            aria-expanded={customDuration}
+            onClick={() => {
+              if (!customDuration) setDurationInput(toHMM(duration))
+              setCustomDuration(!customDuration)
+            }}
+          >
+            Otra…
+          </button>
+          {customDuration && (
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Duración total (h:mm)</span>
+              <input
+                className="input"
+                inputMode="numeric"
+                placeholder="h:mm"
+                value={durationInput}
+                onChange={(event) => {
+                  setDurationInput(event.target.value)
+                  const parsed = parseHMM(event.target.value)
+                  if (parsed !== null) setDuration(parsed)
+                }}
+              />
+            </label>
+          )}
+        </div>
       )}
-      {unit === 'pages' && (
-        <label className="label">
-          Páginas totales
-          <input
-            className="input"
-            type="number"
-            min="1"
-            step="1"
-            required
-            value={pages}
-            onChange={(e) => setPages(e.target.value)}
-          />
-        </label>
-      )}
-      {unit === 'percent' && <p className="text-muted">Total: 100 %</p>}
-      {unit === 'minutes' && (
-        <label className="label">
-          Duración total (h:mm)
-          <input
-            className="input"
-            inputMode="numeric"
-            placeholder="9:30"
-            required
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-          />
-        </label>
-      )}
-      <label className="label">
-        Estado inicial
-        <select className="input" value={status} onChange={(e) => setStatus(e.target.value as 'want' | 'reading')}>
-          <option value="want">Quiero leer</option>
-          <option value="reading">Leyendo</option>
-        </select>
-      </label>
+      <div>
+        <p className="lbl mb-2">Estado</p>
+        <Segmented
+          options={[
+            { value: 'want', label: 'Pendiente' },
+            { value: 'reading', label: 'Empiezo hoy' },
+          ]}
+          value={status}
+          onChange={setStatus}
+          aria-label="Estado inicial"
+        />
+      </div>
       {error && (
-        <p role="alert" className="text-danger">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
       <button className="btn btn-primary w-full" disabled={busy}>
-        {busy ? 'Añadiendo…' : 'Añadir libro'}
+        {busy ? 'Añadiendo…' : 'Añadir a la biblioteca'}
       </button>
     </form>
   )

@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Camera, Search } from 'lucide-react'
+import { ArrowLeft, Camera, ChevronRight, Search } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
 import { lookupIsbn, searchBooks } from '@/lib/books/search'
@@ -31,16 +31,16 @@ export function SearchPage() {
   })
   const waiting = query.trim().length >= 3 && (!ready || results.isPending)
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       <header className="flex items-center gap-3">
-        <Link to="/biblioteca" className="btn btn-ghost" aria-label="Volver a Biblioteca">
+        <Link to="/biblioteca" className="icon-btn" aria-label="Volver a Biblioteca">
           <ArrowLeft size={22} />
         </Link>
-        <h1>Buscar un libro</h1>
+        <h1>Añadir libro</h1>
       </header>
       <div className="flex items-center gap-2">
-        <label className="relative flex-1">
-          <Search size={20} className="absolute left-3 top-3 text-muted" />
+        <label className="relative min-w-0 flex-1">
+          <Search size={20} className="pointer-events-none absolute top-3 left-3 text-muted" />
           <span className="sr-only">Título, autor o ISBN</span>
           <input
             className="input pl-10"
@@ -51,12 +51,14 @@ export function SearchPage() {
             autoFocus
           />
         </label>
-        <button className="btn btn-secondary" onClick={() => setScanner(true)} aria-label="Escanear ISBN con la cámara">
+        <button className="icon-btn" onClick={() => setScanner(true)} aria-label="Escanear ISBN con la cámara">
           <Camera size={22} />
         </button>
       </div>
       <div aria-live="polite">
-        {query.trim().length < 3 && <p className="text-muted">Escribe al menos 3 caracteres para buscar.</p>}
+        {query.trim().length < 3 && (
+          <p className="py-2 text-sm text-muted">Busca por título, autor o ISBN. Escribe al menos 3 caracteres.</p>
+        )}
         {waiting && (
           <div className="space-y-3" role="status">
             <span className="sr-only">Buscando libros…</span>
@@ -92,18 +94,28 @@ export function SearchPage() {
         {ready && results.isSuccess && results.data.length > 0 && (
           <ul className="space-y-3">
             {results.data.map((book, index) => (
-              <li key={`${book.google_id ?? book.openlibrary_key ?? book.title}:${index}`}>
-                <button className="card w-full flex gap-4 text-left items-center" onClick={() => setSelected(book)}>
-                  <Cover book={book} width={64} />
-                  <div className="min-w-0">
-                    <h2 className="text-lg">{book.title}</h2>
-                    <p className="text-muted text-sm">{book.authors.join(', ') || 'Autor desconocido'}</p>
+              <li
+                key={`${book.google_id ?? book.openlibrary_key ?? book.title}:${index}`}
+                className="rise"
+                style={{ '--k': index } as CSSProperties}
+              >
+                <button
+                  className="card pressable flex w-full items-center gap-3 text-left"
+                  onClick={() => setSelected(book)}
+                >
+                  <Cover book={book} width={52} />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="line-clamp-2 text-[17px] leading-tight">{book.title}</h2>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted">
+                      {book.authors.join(', ') || 'Autor desconocido'}
+                    </p>
                     <p className="text-muted text-sm">
                       {[book.published_year, book.page_count ? `${book.page_count} páginas` : null]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
                   </div>
+                  <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
                 </button>
               </li>
             ))}

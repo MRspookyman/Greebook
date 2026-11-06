@@ -5,14 +5,16 @@ import { qk, useReadings } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
 import type { Note, ReadingWithBook } from '@/lib/types'
 import { isSpoiler } from '@/lib/spoilers'
-import { formatPosition, progressFraction } from '@/lib/units'
+import { progressFraction } from '@/lib/units'
 import { DualProgressBar } from '@/components/DualProgressBar'
+import { EmptyState } from '@/components/EmptyState'
+import { jointDistance } from './jointDistance'
 
 function SharedNote({ note, spoiler }: { note: Note; spoiler: boolean }) {
   const [revealed, setRevealed] = useState(false)
   const hidden = spoiler && !revealed
   return (
-    <article className="card relative overflow-hidden">
+    <article className="card relative overflow-hidden space-y-2">
       <div className={hidden ? 'blur-sm select-none pointer-events-none' : ''} aria-hidden={hidden || undefined}>
         <p className="text-sm text-muted">
           {note.kind === 'quote' ? 'Cita' : 'Nota'}
@@ -25,7 +27,7 @@ function SharedNote({ note, spoiler }: { note: Note; spoiler: boolean }) {
       {hidden && (
         <button
           type="button"
-          className="absolute inset-0 min-h-11 w-full bg-surface/80 font-medium text-ink"
+          className="absolute inset-0 min-h-11 w-full bg-surface/80 text-sm font-medium text-ink"
           onClick={() => setRevealed(true)}
         >
           Toca para ver (p. {note.page})
@@ -57,7 +59,8 @@ export function JointReadingSection({ reading }: { reading: ReadingWithBook }) {
         const { data, error } = await supabase
           .from('notes')
           .select('*')
-          .in('reading_id', [r.id])
+          .eq('reading_id', r.id)
+          .eq('user_id', partner!.id)
           .eq('shared', true)
           .order('created_at', { ascending: false })
         if (error) throw error
@@ -69,24 +72,26 @@ export function JointReadingSection({ reading }: { reading: ReadingWithBook }) {
     .flatMap((q) => q.data ?? [])
     .filter((n) => n.shared && n.user_id === partner?.id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-  if (!partner || (!joint && !partnerBooks.length)) return null
+  const pending = noteQueries.some((query) => query.isPending)
+  const failed = noteQueries.some((query) => query.isError)
+  if (!partner || (!joint && !notes.length && !pending && !failed)) {
+    return <EmptyState title="Aún no hay una lectura conjunta ni notas compartidas" />
+  }
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       {joint && (
         <div className="card space-y-2">
-          <h2>Lectura conjunta</h2>
+          <h2 className="text-sm font-semibold">Lectura conjunta</h2>
           <DualProgressBar
             a={{ value: progressFraction(myReading), accent: profile.accent, label: profile.display_name }}
             b={{ value: progressFraction(partnerReading), accent: partner.accent, label: partner.display_name }}
           />
-          <p>
-            {partner.display_name} va por {formatPosition(partnerReading)}
-          </p>
+          <p className="text-xs text-muted">{jointDistance(myReading, partnerReading, partner.display_name)}</p>
         </div>
       )}
-      {(notes.length > 0 || noteQueries.some((q) => q.isPending || q.isError)) && (
-        <div className="space-y-3">
-          <h2>Notas de {partner.display_name}</h2>
+      {(notes.length > 0 || pending || failed) && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold">Notas de {partner.display_name}</h2>
           {noteQueries.some((q) => q.isPending) && (
             <p className="text-muted" role="status">
               Cargando notas…

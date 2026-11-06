@@ -1,10 +1,10 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { Layout } from './Layout'
 import { TodayPage } from '@/features/today/TodayPage'
 import { LibraryPage } from '@/features/library/LibraryPage'
 import { SearchPage } from '@/features/library/SearchPage'
 import { BookPage } from '@/features/book/BookPage'
-import { CalendarPage } from '@/features/calendar/CalendarPage'
+import { StatsPage } from '@/features/stats/StatsPage'
 import { UsPage } from '@/features/us/UsPage'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { WelcomePage } from '@/features/onboarding/WelcomePage'
@@ -18,10 +18,11 @@ export const router = createBrowserRouter([
       { path: 'biblioteca', element: <LibraryPage /> },
       { path: 'biblioteca/buscar', element: <SearchPage /> },
       { path: 'libro/:readingId', element: <BookPage /> },
-      { path: 'calendario', element: <CalendarPage /> },
+      { path: 'stats', element: <StatsPage /> },
+      { path: 'calendario', element: <Navigate to="/stats" replace /> },
       { path: 'nosotros', element: <UsPage /> },
       { path: 'perfil', element: <ProfilePage /> },
-      { path: '*', element: <TodayPage /> },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ])

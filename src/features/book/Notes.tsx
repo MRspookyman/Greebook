@@ -1,53 +1,73 @@
 import { useState } from 'react'
+import { MoreHorizontal, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useNotes } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/queryClient'
 import type { Note, NoteKind } from '@/lib/types'
+import { BottomSheet } from '@/components/BottomSheet'
+import { Segmented } from '@/components/Segmented'
 import { toast } from '@/components/toast'
+import { Switch } from '@/components/Switch'
 import { useOnline } from '@/features/session/useOnline'
 
 export function Notes({ readingId }: { readingId: string }) {
   const { userId, partner } = useMe()
   const query = useNotes(readingId)
   const online = useOnline()
+  const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<NoteKind>('note')
-  const [editing, setEditing] = useState<string | null>(null)
+  const [editing, setEditing] = useState<Note | null>(null)
   const [body, setBody] = useState('')
   const [page, setPage] = useState('')
   const [shared, setShared] = useState(false)
   const [busy, setBusy] = useState(false)
-  function reset() {
+  const notes = query.data?.filter((note) => note.user_id === userId) ?? []
+  function create() {
     setEditing(null)
+    setKind('note')
     setBody('')
     setPage('')
     setShared(false)
+    setOpen(true)
+  }
+  function edit(note: Note) {
+    setEditing(note)
+    setKind(note.kind)
+    setBody(note.body)
+    setPage(note.page === null ? '' : String(note.page))
+    setShared(note.shared)
+    setOpen(true)
   }
   async function save() {
     if (!online || busy || !body.trim()) return
+    if (page !== '' && (!/^\d+$/.test(page) || !Number.isSafeInteger(Number(page)))) {
+      toast('La página debe ser un número entero positivo')
+      return
+    }
     setBusy(true)
-    const patch = { body: body.trim(), page: page ? Number(page) : null, shared, kind }
+    const values = { body: body.trim(), page: page ? Number(page) : null, shared, kind }
     try {
       const result = editing
-        ? await supabase.from('notes').update(patch).eq('id', editing).eq('user_id', userId)
-        : await supabase.from('notes').insert({ ...patch, reading_id: readingId, user_id: userId })
+        ? await supabase.from('notes').update(values).eq('id', editing.id).eq('user_id', userId)
+        : await supabase.from('notes').insert({ ...values, reading_id: readingId, user_id: userId })
       if (result.error) throw result.error
-      reset()
       await queryClient.invalidateQueries({ queryKey: qk.notes(readingId) })
+      setOpen(false)
     } catch {
       toast('No se pudo guardar la nota')
     } finally {
       setBusy(false)
     }
   }
-  async function remove(note: Note) {
-    if (!online || busy || !window.confirm('¿Borrar esta nota?')) return
+  async function remove() {
+    if (!editing || !online || busy || !window.confirm('¿Borrar esta nota?')) return
     setBusy(true)
     try {
-      const { error } = await supabase.from('notes').delete().eq('id', note.id).eq('user_id', userId)
+      const { error } = await supabase.from('notes').delete().eq('id', editing.id).eq('user_id', userId)
       if (error) throw error
-      if (editing === note.id) reset()
       await queryClient.invalidateQueries({ queryKey: qk.notes(readingId) })
+      setOpen(false)
     } catch {
       toast('No se pudo borrar la nota')
     } finally {
@@ -55,108 +75,93 @@ export function Notes({ readingId }: { readingId: string }) {
     }
   }
   return (
-    <section className="space-y-4">
-      <h2>Notas y citas</h2>
-      <div className="flex gap-2" role="tablist">
-        {(['note', 'quote'] as const).map((value) => (
+    <section className="space-y-2">
+      {query.isPending && <p className="py-3 text-sm text-muted">Cargando notas…</p>}
+      {query.isError && <p className="py-3 text-sm text-danger">No se pudieron cargar las notas.</p>}
+      {!query.isPending && !query.isError && notes.length === 0 && (
+        <p className="py-3 text-sm text-muted">Guarda una idea o una cita para recordar.</p>
+      )}
+      {notes.map((note) => (
+        <article key={note.id} className="card flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p
+              className={`whitespace-pre-wrap break-words ${note.kind === 'quote' ? 'font-serif text-base' : 'text-sm'}`}
+            >
+              {note.kind === 'quote' ? `«${note.body}»` : note.body}
+            </p>
+            <p className="mt-1.5 text-[11px] text-muted">
+              {note.kind === 'quote' ? 'Cita' : 'Nota'}
+              {note.page !== null ? ` · p. ${note.page}` : ''}
+              {note.shared ? ' · Compartida' : ' · Privada'}
+            </p>
+          </div>
           <button
-            key={value}
-            role="tab"
-            aria-selected={kind === value}
-            className={`btn ${kind === value ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => {
-              setKind(value)
-              reset()
-            }}
+            className="icon-btn"
+            aria-label="Editar nota o cita"
+            disabled={!online || busy}
+            onClick={() => edit(note)}
           >
-            {value === 'note' ? 'Notas' : 'Citas'}
+            <MoreHorizontal size={18} />
           </button>
-        ))}
-      </div>
-      {query.isPending && <p className="text-muted">Cargando notas…</p>}
-      {query.isError && <p className="text-danger">No se pudieron cargar las notas.</p>}
-      {query.data
-        ?.filter((n) => n.kind === kind && n.user_id === userId)
-        .map((note) => (
-          <article key={note.id} className="card space-y-2">
-            <p className={`whitespace-pre-wrap break-words ${kind === 'quote' ? 'font-serif text-lg' : ''}`}>
-              {note.body}
-            </p>
-            <p className="text-muted text-sm">
-              {note.page !== null ? `p. ${note.page} · ` : ''}
-              {note.shared ? 'Compartida' : 'Privada'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                className="btn btn-ghost"
-                disabled={!online || busy}
-                onClick={() => {
-                  setEditing(note.id)
-                  setBody(note.body)
-                  setPage(note.page === null ? '' : String(note.page))
-                  setShared(note.shared)
-                }}
-              >
-                Editar
+        </article>
+      ))}
+      <button className="btn btn-soft w-full" disabled={!online || busy} onClick={create}>
+        <Plus size={17} /> {online ? 'Añadir nota/cita' : 'Sin conexión'}
+      </button>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={editing ? 'Editar nota/cita' : 'Añadir nota/cita'}>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void save()
+          }}
+        >
+          <fieldset disabled={!online || busy} className="space-y-4">
+            <Segmented
+              aria-label="Tipo de anotación"
+              options={[
+                { value: 'note', label: 'Nota' },
+                { value: 'quote', label: 'Cita' },
+              ]}
+              value={kind}
+              onChange={setKind}
+            />
+            <label className="label">
+              {kind === 'note' ? 'Tu nota' : 'Tu cita'}
+              <textarea
+                className="input mt-2 min-h-28"
+                required
+                maxLength={5000}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+              />
+            </label>
+            <label className="label">
+              Página (opcional)
+              <input
+                className="input mt-2"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                step="1"
+                value={page}
+                onChange={(event) => setPage(event.target.value)}
+              />
+            </label>
+            <Switch checked={shared} onChange={setShared}>
+              <span className="text-sm">Compartir con {partner?.display_name ?? 'tu pareja'}</span>
+            </Switch>
+            <button className="btn btn-primary w-full" disabled={!body.trim()}>
+              {!online ? 'Sin conexión' : busy ? 'Guardando…' : 'Guardar'}
+            </button>
+            {editing && (
+              <button type="button" className="btn btn-danger w-full" onClick={() => void remove()}>
+                Borrar nota/cita
               </button>
-              <button
-                className="btn btn-ghost text-danger"
-                disabled={!online || busy}
-                onClick={() => void remove(note)}
-              >
-                Borrar
-              </button>
-            </div>
-          </article>
-        ))}
-      <form
-        className="card space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void save()
-        }}
-      >
-        <label className="label">
-          {editing ? 'Editar' : 'Añadir'} {kind === 'note' ? 'nota' : 'cita'}
-          <textarea
-            className="input mt-2 min-h-28"
-            required
-            maxLength={5000}
-            value={body}
-            disabled={!online || busy}
-            onChange={(e) => setBody(e.target.value)}
-          />
-        </label>
-        <label className="label">
-          Página (opcional)
-          <input
-            className="input mt-2"
-            type="number"
-            min="0"
-            step="1"
-            value={page}
-            disabled={!online || busy}
-            onChange={(e) => setPage(e.target.value)}
-          />
-        </label>
-        <label className="flex min-h-11 items-center gap-3">
-          <input
-            type="checkbox"
-            checked={shared}
-            disabled={!online || busy}
-            onChange={(e) => setShared(e.target.checked)}
-          />
-          Compartir con {partner?.display_name ?? 'tu pareja'}
-        </label>
-        <button className="btn btn-primary" disabled={!online || busy || !body.trim()}>
-          {!online ? 'Sin conexión' : busy ? 'Guardando…' : 'Guardar'}
-        </button>
-        {editing && (
-          <button type="button" className="btn btn-ghost" onClick={reset}>
-            Cancelar
-          </button>
-        )}
-      </form>
+            )}
+          </fieldset>
+        </form>
+      </BottomSheet>
     </section>
   )
 }

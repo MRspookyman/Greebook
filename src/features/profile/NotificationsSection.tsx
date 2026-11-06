@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMe } from '@/features/auth/me'
 import { useUpdateProfile } from '@/lib/data'
 import { toast } from '@/components/toast'
+import { Switch } from '@/components/Switch'
 import { PushEnableButton } from './PushEnableButton'
 
 export function NotificationsSection() {
@@ -25,17 +26,13 @@ export function NotificationsSection() {
   return (
     <section className="card space-y-4 p-5" aria-labelledby="notifications-title">
       <h2 id="notifications-title">Avisos</h2>
-      <label className="flex min-h-11 items-center justify-between gap-4">
-        <span>Recordatorio diario</span>
-        <input
-          type="checkbox"
-          role="switch"
-          className="h-11 w-11 accent-[var(--accent)]"
-          checked={profile.notify_reminder}
-          disabled={update.isPending}
-          onChange={(event) => save({ notify_reminder: event.target.checked })}
-        />
-      </label>
+      <Switch
+        checked={profile.notify_reminder}
+        disabled={update.isPending}
+        onChange={(checked) => save({ notify_reminder: checked })}
+      >
+        Recordatorio diario
+      </Switch>
       <label className="label" htmlFor="reminder-time">
         Hora del recordatorio
       </label>
@@ -53,17 +50,13 @@ export function NotificationsSection() {
           else if (!event.target.validity.valid) setTime(profile.reminder_time.slice(0, 5))
         }}
       />
-      <label className="flex min-h-11 items-center justify-between gap-4">
-        <span>Avisos de {partner?.display_name ?? 'tu pareja'}</span>
-        <input
-          type="checkbox"
-          role="switch"
-          className="h-11 w-11 accent-[var(--accent)]"
-          checked={profile.notify_partner}
-          disabled={update.isPending}
-          onChange={(event) => save({ notify_partner: event.target.checked })}
-        />
-      </label>
+      <Switch
+        checked={profile.notify_partner}
+        disabled={update.isPending}
+        onChange={(checked) => save({ notify_partner: checked })}
+      >
+        Avisos de {partner?.display_name ?? 'tu pareja'}
+      </Switch>
       <PushEnableButton />
     </section>
   )

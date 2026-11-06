@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { audioMinutes, pagesEquivalent, sessionScore } from './aggregate'
+import { audioMinutes, pagesRead, sessionScore } from './aggregate'
 import { level } from './intensity'
 import { bestStreak, currentStreak } from './streak'
 
@@ -43,16 +43,10 @@ describe('level', () => {
 })
 
 describe('aggregate', () => {
-  it('converts percent progress to pages using page_count', () => {
-    expect(pagesEquivalent({ start_pos: 10, end_pos: 20 }, { unit: 'percent' }, { page_count: 300 })).toBe(30)
-  })
-  it('percent without page_count counts 0 pages', () => {
-    expect(pagesEquivalent({ start_pos: 10, end_pos: 20 }, { unit: 'percent' }, { page_count: null })).toBe(0)
-  })
   it('audio counts minutes and half-weight score', () => {
     const s = { start_pos: 0, end_pos: 60 }
     expect(audioMinutes(s, { unit: 'minutes' })).toBe(60)
-    expect(pagesEquivalent(s, { unit: 'minutes' }, { page_count: 300 })).toBe(0)
-    expect(sessionScore(s, { unit: 'minutes' }, { page_count: 300 })).toBe(30)
+    expect(pagesRead(s, { unit: 'minutes' })).toBe(0)
+    expect(sessionScore(s, { unit: 'minutes' })).toBe(30)
   })
 })

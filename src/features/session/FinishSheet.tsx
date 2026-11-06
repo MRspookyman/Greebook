@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { BookCheck } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
+import { Cover } from '@/components/Cover'
 import { Stars } from '@/components/Stars'
 import { MoodChips } from '@/components/MoodChips'
 import { toast } from '@/components/toast'
@@ -23,6 +25,11 @@ export function FinishSheet({
   const [rating, setRating] = useState(reading.rating ?? 0)
   const [moods, setMoods] = useState(reading.moods)
   const [busy, setBusy] = useState(false)
+  const [closing, setClosing] = useState(false)
+  function close() {
+    setClosing(true)
+    onClose()
+  }
   const online = useOnline()
   async function finish(withRating: boolean) {
     if (!online || busy) return
@@ -44,7 +51,8 @@ export function FinishSheet({
         .eq('user_id', reading.user_id)
       if (error) throw error
       await queryClient.invalidateQueries({ queryKey: qk.readings(reading.user_id) })
-      onClose()
+      toast('Un libro más en tu historia', reading.book.title)
+      close()
     } catch (error) {
       toast('No se pudo terminar el libro', error instanceof Error ? error.message : 'Inténtalo de nuevo')
     } finally {
@@ -52,19 +60,30 @@ export function FinishSheet({
     }
   }
   return (
-    <BottomSheet open onClose={onClose} title="¿Lo has terminado?">
-      <div className="space-y-5">
-        <p>{reading.book.title}</p>
-        <p className="text-muted">¿Qué te ha parecido?</p>
-        <Stars value={rating} onChange={setRating} />
-        <MoodChips value={moods} onChange={setMoods} />
+    <BottomSheet open={!closing} onClose={close} title="¿Lo has terminado?">
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center gap-3">
+          <Cover book={reading.book} width={48} />
+          <div className="min-w-0">
+            <BookCheck size={22} className="mb-1 text-accent" aria-hidden />
+            <h2 className="font-serif text-xl font-semibold leading-tight">{reading.book.title}</h2>
+          </div>
+        </div>
+        <section className="space-y-2" aria-label="Valoración del libro">
+          <h3 className="lbl">¿Qué te ha parecido?</h3>
+          <Stars value={rating} onChange={setRating} />
+        </section>
+        <section className="space-y-2" aria-label="Ánimos de la lectura">
+          <h3 className="lbl">Cómo te hizo sentir · hasta 3</h3>
+          <MoodChips value={moods} onChange={setMoods} />
+        </section>
         {!online && (
           <p className="text-muted">Sin conexión. Puedes terminarlo desde la ficha cuando vuelvas a conectarte.</p>
         )}
         <button className="btn btn-primary w-full" disabled={!online || busy} onClick={() => void finish(true)}>
           Sí, lo he terminado
         </button>
-        <button className="btn btn-secondary w-full" disabled={!online || busy} onClick={() => void finish(false)}>
+        <button className="btn btn-ghost w-full" disabled={!online || busy} onClick={() => void finish(false)}>
           Ahora no
         </button>
         <p className="text-muted text-sm">

@@ -1,3 +1,4 @@
+import { Play, Square } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { ReadingWithBook } from '@/lib/types'
 import { LogSessionSheet } from './LogSessionSheet'
@@ -43,12 +44,29 @@ function subscribe(fn: () => void) {
     window.removeEventListener('storage', storage)
   }
 }
-export function Timer({ reading }: { reading: ReadingWithBook }) {
-  const active = useSyncExternalStore(
+export function useActiveTimer(): TimerState | null {
+  return useSyncExternalStore(
     subscribe,
     () => timer,
     () => null,
   )
+}
+
+export function startTimer(reading: ReadingWithBook): boolean {
+  if (timer?.readingId === reading.id) return true
+  if (timer && !window.confirm('Ya hay un cronómetro activo. ¿Quieres descartarlo y empezar este?')) return false
+  setTimer({ readingId: reading.id, startedAt: Date.now() })
+  return true
+}
+
+export function stopTimer(): number {
+  const minutes = timer ? Math.max(1, Math.ceil((Date.now() - timer.startedAt) / 60000)) : 1
+  setTimer(null)
+  return minutes
+}
+
+export function Timer({ reading }: { reading: ReadingWithBook }) {
+  const active = useActiveTimer()
   const [now, setNow] = useState(Date.now())
   const [minutes, setMinutes] = useState<number | null>(null)
   const running = active?.readingId === reading.id
@@ -59,31 +77,22 @@ export function Timer({ reading }: { reading: ReadingWithBook }) {
   }, [running])
   const elapsed = running && active ? Math.max(0, Math.floor((now - active.startedAt) / 1000)) : 0
   function start() {
-    if (active && !window.confirm('Ya hay un cronómetro activo. ¿Quieres descartarlo y empezar este?')) return
-    const startedAt = Date.now()
-    setNow(startedAt)
-    setTimer({ readingId: reading.id, startedAt })
+    if (startTimer(reading)) setNow(Date.now())
   }
   return (
     <>
       {running ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="stat-number tabular-nums" role="timer">
+        <button className="btn btn-soft flex-1 whitespace-nowrap px-2 text-xs" onClick={() => setMinutes(stopTimer())}>
+          <Square size={12} aria-hidden />
+          <span role="timer" className="tabular-nums">
             {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}
           </span>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setMinutes(Math.max(1, Math.ceil((Date.now() - active.startedAt) / 60000)))
-              setTimer(null)
-            }}
-          >
-            Parar
-          </button>
-        </div>
+          Parar
+        </button>
       ) : (
-        <button className="btn btn-secondary" onClick={start}>
-          Empezar a leer
+        <button className="btn btn-soft flex-1" onClick={start}>
+          <Play size={14} fill="currentColor" aria-hidden />
+          {reading.format === 'audio' ? 'Escuchar' : 'Leer'}
         </button>
       )}
       <LogSessionSheet

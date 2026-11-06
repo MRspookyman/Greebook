@@ -59,24 +59,43 @@ function ManualFields({ onSelect }: { onSelect: (book: BookCandidate) => void })
   }
   return (
     <form onSubmit={submit} className="space-y-4">
+      <p className="text-sm text-muted">Los libros que no encuentras también tienen sitio aquí.</p>
       <label className="label">
-        Título
-        <input className="input" name="title" required autoFocus />
+        <span className="lbl mb-2 block">Título</span>
+        <input className="input" name="title" placeholder="El título del libro" required autoFocus />
       </label>
       <label className="label">
-        Autores (separados por comas)
-        <input className="input" name="authors" />
+        <span className="lbl mb-2 block">Autoría</span>
+        <input className="input" name="authors" placeholder="Autores separados por comas" />
       </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="label">
+          <span className="lbl mb-2 block">Páginas</span>
+          <input
+            className="input"
+            name="pages"
+            type="number"
+            inputMode="numeric"
+            min="1"
+            step="1"
+            placeholder="Opcional"
+          />
+        </label>
+        <label className="label">
+          <span className="lbl mb-2 block">Año</span>
+          <input
+            className="input"
+            name="year"
+            type="number"
+            inputMode="numeric"
+            min="1"
+            step="1"
+            placeholder="Opcional"
+          />
+        </label>
+      </div>
       <label className="label">
-        Páginas
-        <input className="input" name="pages" type="number" min="1" step="1" />
-      </label>
-      <label className="label">
-        Año de publicación
-        <input className="input" name="year" type="number" min="1" step="1" />
-      </label>
-      <label className="label">
-        URL de portada (opcional)
+        <span className="lbl mb-2 block">Portada · opcional</span>
         <input className="input" name="cover" type="url" placeholder="https://…" />
       </label>
       {error && (

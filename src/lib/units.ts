@@ -35,8 +35,6 @@ export function formatUnitValue(unit: Unit, value: number): string {
   switch (unit) {
     case 'pages':
       return `p. ${value}`
-    case 'percent':
-      return `${value} %`
     case 'minutes':
       return formatMinutes(value)
   }
@@ -47,8 +45,6 @@ export function formatUnitDelta(unit: Unit, delta: number): string {
   switch (unit) {
     case 'pages':
       return `${delta} ${delta === 1 ? 'página' : 'páginas'}`
-    case 'percent':
-      return `${delta} %`
     case 'minutes':
       return formatMinutes(delta)
   }
@@ -59,8 +55,6 @@ export function formatPosition(r: Pick<Reading, 'unit' | 'current_position' | 't
   switch (r.unit) {
     case 'pages':
       return `p. ${r.current_position} / ${r.total_units}`
-    case 'percent':
-      return `${r.current_position} %`
     case 'minutes':
       return `${formatMinutes(r.current_position)} / ${formatMinutes(r.total_units)}`
   }

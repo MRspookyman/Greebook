@@ -17,7 +17,7 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 
 ## Puesta en marcha (proyecto único `greenbook`; antes del regalo se vacían los datos de prueba)
 
-1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`.
+1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql` y después `0003_drop_ebook.sql`.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.

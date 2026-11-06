@@ -26,7 +26,7 @@ export function MonthGrid({ month, onMonthChange, renderDay, onDayClick }: Props
 
   return (
     <section aria-labelledby={headingId}>
-      <header className="mb-4 flex items-center justify-between gap-2">
+      <header className="mb-1 flex items-center justify-between gap-2">
         <button className="btn btn-ghost min-h-11 min-w-11" onClick={() => move(-1)} aria-label="Mes anterior">
           <ChevronLeft size={22} />
         </button>
@@ -83,7 +83,7 @@ export function MonthGrid({ month, onMonthChange, renderDay, onDayClick }: Props
             return (
               <button
                 key={iso}
-                className="min-h-20 min-w-11 overflow-hidden rounded-xl text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="h-11 min-w-11 overflow-hidden rounded-xl text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 aria-label={fmt(day, "EEEE d 'de' MMMM 'de' yyyy")}
                 aria-current={iso === today ? 'date' : undefined}
                 onClick={() => onDayClick(iso)}

@@ -1,22 +1,10 @@
-import type { Book, Reading, ReadingWithBook, Session } from '../types'
+import type { Reading, ReadingWithBook, Session } from '../types'
 
 type SessionPos = Pick<Session, 'start_pos' | 'end_pos'>
 
-/** Pages read in a session; percent converts via the book's page count; audio counts 0. */
-export function pagesEquivalent(
-  session: SessionPos,
-  reading: Pick<Reading, 'unit'>,
-  book: Pick<Book, 'page_count'>,
-): number {
-  const delta = session.end_pos - session.start_pos
-  switch (reading.unit) {
-    case 'pages':
-      return delta
-    case 'percent':
-      return book.page_count ? Math.round((delta / 100) * book.page_count) : 0
-    case 'minutes':
-      return 0
-  }
+/** Pages read in a session (audio counts 0). */
+export function pagesRead(session: SessionPos, reading: Pick<Reading, 'unit'>): number {
+  return reading.unit === 'pages' ? session.end_pos - session.start_pos : 0
 }
 
 /** Minutes listened in a session (audio readings only). */
@@ -25,12 +13,8 @@ export function audioMinutes(session: SessionPos, reading: Pick<Reading, 'unit'>
 }
 
 /** Intensity score of a session: 1 page ≈ 2 minutes of listening. */
-export function sessionScore(
-  session: SessionPos,
-  reading: Pick<Reading, 'unit'>,
-  book: Pick<Book, 'page_count'>,
-): number {
-  return pagesEquivalent(session, reading, book) + audioMinutes(session, reading) / 2
+export function sessionScore(session: SessionPos, reading: Pick<Reading, 'unit'>): number {
+  return pagesRead(session, reading) + audioMinutes(session, reading) / 2
 }
 
 export interface DateRange {
@@ -63,7 +47,7 @@ export function summarize(sessions: Session[], readings: ReadingWithBook[], rang
     readingMinutes += s.minutes ?? 0
     const r = byId.get(s.reading_id)
     if (!r) continue
-    pages += pagesEquivalent(s, r, r.book)
+    pages += pagesRead(s, r)
     audio += audioMinutes(s, r)
   }
   const booksFinished = readings.filter(
@@ -87,7 +71,7 @@ export function activityByDay(sessions: Session[], readings: ReadingWithBook[]):
   const perDay = new Map<string, Map<string, number>>()
   for (const s of sessions) {
     const r = byId.get(s.reading_id)
-    const score = r ? sessionScore(s, r, r.book) : 0
+    const score = r ? sessionScore(s, r) : 0
     const day = perDay.get(s.read_on) ?? new Map<string, number>()
     day.set(s.reading_id, (day.get(s.reading_id) ?? 0) + score)
     perDay.set(s.read_on, day)

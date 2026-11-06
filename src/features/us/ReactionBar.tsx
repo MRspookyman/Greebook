@@ -2,10 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMe } from '@/features/auth/me'
 import { qk, useReactions } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
-import type { Reaction, ReactionEmoji } from '@/lib/types'
+import type { Reaction } from '@/lib/types'
 import { toast } from '@/components/toast'
-
-const EMOJIS: ReactionEmoji[] = ['❤️', '🔥', '📚']
+import { HeartButton } from '@/components/HeartButton'
 
 export function ReactionBar({
   targetType,
@@ -21,7 +20,8 @@ export function ReactionBar({
   const { data = [] } = useReactions()
   const own = ownerId === userId
   const allowed = ownerId === partner?.id
-  const reactions = data.filter((r) => r.target_type === targetType && r.target_id === targetId)
+  const reactions = data.filter((r) => r.target_type === targetType && r.target_id === targetId && r.emoji === '❤️')
+  const mine = reactions.find((reaction) => reaction.user_id === userId)
   const toggle = useMutation({
     mutationFn: async ({ existing, next }: { existing?: Reaction; next: Reaction }) => {
       const { error } = existing
@@ -45,43 +45,30 @@ export function ReactionBar({
   })
   if ((!own && !allowed) || (own && !reactions.length)) return null
   return (
-    <div className="flex flex-wrap gap-2" aria-label={own ? 'Reacciones recibidas' : 'Reaccionar a esta lectura'}>
-      {EMOJIS.map((emoji) => {
-        const matching = reactions.filter((r) => r.emoji === emoji)
-        const mine = matching.find((r) => r.user_id === userId)
-        if (own)
-          return matching.length ? (
-            <span key={emoji} className="inline-flex min-h-11 items-center gap-1 px-2">
-              {emoji} {matching.length}
-            </span>
-          ) : null
-        return (
-          <button
-            key={emoji}
-            type="button"
-            className={`btn border ${mine ? 'border-accent bg-bg' : 'border-border bg-surface'}`}
-            aria-pressed={!!mine}
-            aria-label={`Reaccionar ${emoji}`}
-            disabled={toggle.isPending}
-            onClick={() =>
-              toggle.mutate({
-                existing: mine,
-                next: {
-                  id: crypto.randomUUID(),
-                  user_id: userId,
-                  target_type: targetType,
-                  target_id: targetId,
-                  emoji,
-                  created_at: new Date().toISOString(),
-                },
-              })
-            }
-          >
-            {emoji}
-            {matching.length > 0 && <span>{matching.length}</span>}
-          </button>
-        )
-      })}
+    <div className="inline-flex items-center [&_button]:min-h-11">
+      <HeartButton
+        on={own ? reactions.length > 0 : !!mine}
+        count={reactions.length}
+        label={mine ? 'Quitar me gusta' : 'Me gusta'}
+        onToggle={
+          own
+            ? undefined
+            : () => {
+                if (toggle.isPending) return
+                toggle.mutate({
+                  existing: mine,
+                  next: {
+                    id: crypto.randomUUID(),
+                    user_id: userId,
+                    target_type: targetType,
+                    target_id: targetId,
+                    emoji: '❤️',
+                    created_at: new Date().toISOString(),
+                  },
+                })
+              }
+        }
+      />
     </div>
   )
 }

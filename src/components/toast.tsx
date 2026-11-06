@@ -32,17 +32,18 @@ export function Toaster() {
   )
   return (
     <div
-      className="fixed top-0 inset-x-0 z-[60] flex flex-col items-center gap-2 p-3 pt-safe pointer-events-none"
+      className="pointer-events-none fixed inset-x-0 z-[60] flex flex-col items-center gap-2 px-[18px]"
+      style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
       aria-live="polite"
     >
       {list.map((t) => (
         <div
           key={t.id}
-          className="card px-4 py-3 shadow-lg max-w-sm w-full"
-          style={{ animation: 'gb-fade-up 150ms ease-out' }}
+          className="w-full max-w-sm rounded-2xl bg-ink px-3.5 py-3 text-[13.5px] text-surface shadow-lg"
+          style={{ animation: 'gb-fade-up 0.5s var(--spring)' }}
         >
-          <p className="font-medium">{t.message}</p>
-          {t.detail && <p className="text-sm text-muted mt-0.5 break-words">{t.detail}</p>}
+          <p className="font-semibold">{t.message}</p>
+          {t.detail && <p className="mt-0.5 break-words opacity-80">{t.detail}</p>}
         </div>
       ))}
     </div>

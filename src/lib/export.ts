@@ -26,9 +26,9 @@ function csvCell(value: string | number | null): string {
 }
 
 function readingsCsv(readings: ReadingWithBook[]): string {
-  const formats = { paper: 'Papel', ebook: 'Ebook', audio: 'Audiolibro' }
+  const formats = { paper: 'Papel', audio: 'Audiolibro' }
   const statuses = { want: 'Quiero leer', reading: 'Leyendo', finished: 'Leído', abandoned: 'Abandonado' }
-  const units = { pages: 'Páginas', percent: '%', minutes: 'Minutos' }
+  const units = { pages: 'Páginas', minutes: 'Minutos' }
   const rows: (string | number | null)[][] = [
     [
       'Título',
