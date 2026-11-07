@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Link, useParams } from 'react-router'
+import { useEffect, useRef, useState } from 'react'
+import { Link, Navigate, useParams } from 'react-router'
 import { ArrowLeft, Send, Smile } from 'lucide-react'
-import { Cover } from '@/components/Cover'
 import { DualProgressBar } from '@/components/DualProgressBar'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
@@ -12,12 +11,32 @@ import { MessageCard } from './MessageCard'
 import { EMOTIONS, markRead, sendMessage } from './messages'
 import { useRooms } from './rooms'
 
+/** Old /sala/:bookId links (and notifications) now open the book, on its «Juntos» tab. */
 export function SalaPage() {
   const { bookId } = useParams()
-  const { userId, profile, partner } = useMe()
+  const { userId, partner } = useMe()
   const room = useRooms().find((item) => item.book.id === bookId)
   const readings = useReadings(userId)
   const partnerReadings = useReadings(partner?.id)
+  if (room) return <Navigate to={`/libro/${room.mine.id}?pestana=juntos`} replace />
+  const loading = readings.isPending || (!!partner && partnerReadings.isPending)
+  return (
+    <section className="space-y-4">
+      <Link to="/nosotros" className="btn btn-link">
+        <ArrowLeft size={18} /> Volver al rincón
+      </Link>
+      <h1>La sala de los dos</h1>
+      <p className="text-sm text-muted" role="status">
+        {loading ? 'Cargando la sala…' : 'La sala se abre cuando los dos tenéis este libro en Leyendo.'}
+      </p>
+    </section>
+  )
+}
+
+/** The shared room of a book, shown inside the book page: both progresses, the huellas and a composer. */
+export function SalaConversation({ bookId }: { bookId: string }) {
+  const { userId, profile, partner } = useMe()
+  const room = useRooms().find((item) => item.book.id === bookId)
   const messages = useMessages()
   const [body, setBody] = useState('')
   const [emotion, setEmotion] = useState<Emotion | null>(null)
@@ -26,29 +45,10 @@ export function SalaPage() {
   const [emotionsOpen, setEmotionsOpen] = useState(false)
   const [editingPage, setEditingPage] = useState(false)
   const composerInput = useRef<HTMLTextAreaElement>(null)
-  const bottom = useRef<HTMLDivElement>(null)
   const marking = useRef(new Set<string>())
   const conversation = (messages.data ?? [])
     .filter((message) => message.book_id === bookId && (message.kind === 'room' || message.kind === 'trace'))
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const newestMessageId = conversation.at(-1)?.id
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: 'end' }))
-    return () => window.cancelAnimationFrame(frame)
-  }, [bookId, newestMessageId, room?.book.id])
-
-  useEffect(() => {
-    const viewport = window.visualViewport
-    if (!viewport) return
-    const keepComposerVisible = () => {
-      if (document.activeElement === composerInput.current) {
-        composerInput.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
-      }
-    }
-    viewport.addEventListener('resize', keepComposerVisible)
-    return () => viewport.removeEventListener('resize', keepComposerVisible)
-  }, [])
 
   useEffect(() => {
     const ids = conversation
@@ -65,20 +65,7 @@ export function SalaPage() {
     })
   }, [conversation, userId])
 
-  if (!room) {
-    const loading = readings.isPending || (!!partner && partnerReadings.isPending)
-    return (
-      <section className="space-y-4">
-        <Link to="/nosotros" className="btn btn-link">
-          <ArrowLeft size={18} /> Volver al rincón
-        </Link>
-        <h1>La sala de los dos</h1>
-        <p className="text-sm text-muted" role="status">
-          {loading ? 'Cargando la sala…' : 'La sala se abre cuando los dos tenéis este libro en Leyendo.'}
-        </p>
-      </section>
-    )
-  }
+  if (!room) return null
   const maxPage =
     room.mine.unit === 'pages'
       ? room.mine.current_position
@@ -118,18 +105,8 @@ export function SalaPage() {
     }
   }
   return (
-    <section className="space-y-5">
-      <Link to="/nosotros" className="btn btn-link">
-        <ArrowLeft size={18} /> Rincón de los dos
-      </Link>
-      <header className="enter flex items-center gap-4">
-        <Cover book={room.book} width={64} />
-        <div className="min-w-0">
-          <h1 className="display [overflow-wrap:anywhere]">{room.book.title}</h1>
-          <p className="mt-2 text-xs text-muted">Vuestra sala</p>
-        </div>
-      </header>
-      <div className="rule enter space-y-3 pt-4" style={{ '--i': 1 } as CSSProperties}>
+    <section className="space-y-4">
+      <div className="space-y-3">
         <DualProgressBar
           a={{
             value: progressFraction(room.mine),
@@ -159,7 +136,7 @@ export function SalaPage() {
         )}
       </div>
       <div
-        className="rule space-y-4 pt-5 pb-4"
+        className="space-y-4 pb-2"
         role="log"
         aria-live="polite"
         aria-relevant="additions"
@@ -176,14 +153,14 @@ export function SalaPage() {
           </button>
         )}
         {messages.isSuccess && !conversation.length && (
-          <p className="py-4 text-center text-sm text-muted">Un rincón para lo que os despierte este libro.</p>
+          <p className="py-2 text-center text-sm text-muted">Vuestra sala: un rincón para lo que os despierte este libro.</p>
         )}
         {conversation.map((message) => (
           <MessageCard key={message.id} message={message} variant="bubble" showBook={false} />
         ))}
       </div>
       <form
-        className="rule sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-20 flex scroll-mb-[calc(96px+env(safe-area-inset-bottom))] items-end gap-1 bg-bg py-3"
+        className="relative flex items-end gap-1 rounded-[16px] bg-surface p-2 shadow-[var(--paper-shadow)]"
         onSubmit={(event) => {
           event.preventDefault()
           void send()
@@ -269,7 +246,6 @@ export function SalaPage() {
           <Send size={18} />
         </button>
       </form>
-      <div ref={bottom} className="h-20" aria-hidden />
     </section>
   )
 }

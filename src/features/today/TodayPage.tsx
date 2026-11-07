@@ -22,6 +22,8 @@ import { formatClock } from '@/lib/timer'
 import { usePendingForMe } from '@/features/us/messages'
 import { InviteCard } from '@/features/us/InviteCard'
 import { isInviteExpired } from '@/features/us/ratito'
+import { BottomSheet } from '@/components/BottomSheet'
+import { ForYouItem, forYouKey } from '@/features/us/ForYouItem'
 import { recentReadings } from './recentReadings'
 
 const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -90,15 +92,7 @@ export function TodayPage() {
     live && liveReading && !priority && !timer
       ? (active.find((reading) => reading.book_id === liveReading.book_id) ?? active[0])
       : undefined
-  const pendingId = priority
-    ? priority.type === 'message'
-      ? priority.message.id
-      : priority.type === 'invite'
-        ? priority.invite.id
-        : priority.type === 'together'
-          ? priority.item.id
-          : null
-    : null
+  const [forMeOpen, setForMeOpen] = useState(false)
   const minutesByDay = new Map(
     week.map((date) => [date, timeSpent(sessions.data ?? [], readings.data ?? [], { from: date, to: date })]),
   )
@@ -146,7 +140,8 @@ export function TodayPage() {
                     : ''
             }
             live={live && !priority}
-            to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
+            to={priority ? undefined : '/nosotros'}
+            onOpen={priority ? () => setForMeOpen(true) : undefined}
             readAlong={readAlong ? () => read(readAlong) : undefined}
           />
         )
@@ -237,10 +232,10 @@ export function TodayPage() {
       </section>
 
       <Link
-        to="/stats"
+        to="/diario?ver=numeros"
         className="enter flex min-h-11 items-center gap-3"
         style={{ '--i': 3 } as CSSProperties}
-        aria-label={`${finished} de ${goal} libros en ${today.slice(0, 4)}. Ver estadísticas`}
+        aria-label={`${finished} de ${goal} libros en ${today.slice(0, 4)}. Ver tus números`}
       >
         <span className="flex-none text-[14px]">
           <span className="figure text-[17px]">{finished}</span> <span className="text-muted">de {goal} libros en {today.slice(0, 4)}</span>
@@ -249,6 +244,18 @@ export function TodayPage() {
         <ChevronRight size={18} className="flex-none text-muted" aria-hidden />
       </Link>
 
+      {partner && (
+        <BottomSheet open={forMeOpen && forMe.items.length > 0} onClose={() => setForMeOpen(false)} title={`De ${partner.display_name}`}>
+          <div className="space-y-3 pb-2">
+            {forMe.items.map((item) => (
+              <ForYouItem key={forYouKey(item)} item={item} />
+            ))}
+            <Link to="/nosotros" className="btn btn-link min-h-11" onClick={() => setForMeOpen(false)}>
+              Ir a vuestro rincón
+            </Link>
+          </div>
+        </BottomSheet>
+      )}
       {pending > 0 && (
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted" role="status">
           <CloudUpload size={13} aria-hidden />
@@ -265,31 +272,45 @@ function PartnerLine({
   live,
   to,
   readAlong,
+  onOpen,
 }: {
   partner: Profile
   text: string
   live: boolean
-  to: string
+  to?: string
+  onOpen?: () => void
   readAlong?: () => void
 }) {
+  const inner = (
+    <>
+      <span className="relative flex-none">
+        <Avatar person={partner} size={30} />
+        {live && (
+          <span
+            className="live-dot absolute -right-0.5 -bottom-0.5 ring-2 ring-[var(--surface)]"
+            style={{ color: `var(--${partner.accent})` }}
+            aria-hidden
+          />
+        )}
+      </span>
+      <span className="line-clamp-2 text-left">
+        <span className="font-medium">{partner.display_name}</span> {text}
+      </span>
+      {!readAlong && <ChevronRight size={18} className="ml-auto flex-none text-muted" aria-hidden />}
+    </>
+  )
+  const rowClass = 'flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-[14px]'
   return (
     <div className="enter flex min-h-[52px] items-center gap-2 rounded-[14px] bg-surface pr-2 pl-3 shadow-[var(--paper-shadow)]">
-      <Link to={to} className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-[14px]">
-        <span className="relative flex-none">
-          <Avatar person={partner} size={30} />
-          {live && (
-            <span
-              className="live-dot absolute -right-0.5 -bottom-0.5 ring-2 ring-[var(--surface)]"
-              style={{ color: `var(--${partner.accent})` }}
-              aria-hidden
-            />
-          )}
-        </span>
-        <span className="line-clamp-2">
-          <span className="font-medium">{partner.display_name}</span> {text}
-        </span>
-        {!readAlong && <ChevronRight size={18} className="ml-auto flex-none text-muted" aria-hidden />}
-      </Link>
+      {onOpen ? (
+        <button type="button" className={rowClass} onClick={onOpen} aria-haspopup="dialog">
+          {inner}
+        </button>
+      ) : (
+        <Link to={to ?? '/nosotros'} className={rowClass}>
+          {inner}
+        </Link>
+      )}
       {readAlong && (
         <button type="button" className="btn btn-outline min-h-10 flex-none px-3 text-[13px]" onClick={readAlong}>
           Leer a la vez

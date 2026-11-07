@@ -89,7 +89,7 @@ export function SessionPage() {
           <p className="text-sm text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
         ) : (
           <EmptyState title="¿Qué vas a leer?">
-            <p>Añade un libro a tu biblioteca para empezar una sesión.</p>
+            <p>Añade un libro a tu estantería para empezar una sesión.</p>
             <Link className="btn btn-primary mt-3" to="/biblioteca/buscar">
               Buscar un libro
             </Link>

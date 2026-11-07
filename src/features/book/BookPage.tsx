@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
 import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
-import { qk, useMessages, useNotes, useReadings, useSessions, useTogether } from '@/lib/data'
+import { qk, useNotes, useReadings, useSessions, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
@@ -25,8 +25,7 @@ import { toast } from '@/components/toast'
 import { startTimer, useActiveTimer } from '@/features/session/Timer'
 import { useOnline } from '@/features/session/useOnline'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
-import { DualProgressBar } from '@/components/DualProgressBar'
-import { MessageCard } from '@/features/us/MessageCard'
+import { SalaConversation } from '@/features/us/SalaPage'
 import { TraceSheet } from '@/features/us/TraceSheet'
 import { useRooms } from '@/features/us/rooms'
 import { addTogether } from '@/features/us/together'
@@ -92,7 +91,8 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [editing, setEditing] = useState<Session | null>(null)
   const [editingReading, setEditingReading] = useState(false)
   const [editingMoods, setEditingMoods] = useState(false)
-  const [tabChoice, setTab] = useState<BookTab | null>(null)
+  const [searchParams] = useSearchParams()
+  const [tabChoice, setTab] = useState<BookTab | null>(searchParams.get('pestana') === 'juntos' ? 'joint' : null)
   const tab: BookTab = tabChoice ?? (sessions.length >= 2 ? 'progress' : 'sessions')
   const [allSessions, setAllSessions] = useState(false)
   const disabled = !online || busy || pending > 0
@@ -355,7 +355,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 setTab(tabs[next].value)
                 document.getElementById(`book-tab-${tabs[next].value}`)?.focus()
               }}
-              className={`min-h-11 border-b text-sm ${tab === item.value ? 'border-ink text-ink' : 'border-transparent text-muted'}`}
+              className={`min-h-11 min-w-11 border-b text-sm ${tab === item.value ? 'border-ink text-ink' : 'border-transparent text-muted'}`}
               onClick={() => setTab(item.value)}
             >
               {item.label}
@@ -548,9 +548,8 @@ function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) {
 }
 
 function BookTogether({ reading }: { reading: ReadingWithBook }) {
-  const { userId, profile, partner } = useMe()
+  const { userId, partner } = useMe()
   const room = useRooms().find((item) => item.book.id === reading.book_id)
-  const messages = useMessages()
   const together = useTogether()
   const myReadings = useReadings(userId)
   const ownReading =
@@ -560,11 +559,6 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
   const [reasonOpen, setReasonOpen] = useState(false)
   const [reason, setReason] = useState('')
   const listed = together.data?.some((item) => item.book_id === reading.book_id)
-  const recent = (messages.data ?? [])
-    .filter((message) => message.book_id === reading.book_id && message.kind !== 'reply')
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .slice(-2)
-
   async function add() {
     setAdding(true)
     try {
@@ -599,26 +593,7 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
     <section className="space-y-3 py-2">
       {room ? (
         <>
-          <DualProgressBar
-            a={{
-              value: progressFraction(room.mine),
-              accent: profile.accent,
-              label: 'Tú',
-              caption: formatUnitValue(room.mine.unit, room.mine.current_position),
-            }}
-            b={{
-              value: progressFraction(room.theirs),
-              accent: partner?.accent ?? 'blue',
-              label: partner?.display_name ?? 'Tu pareja',
-              caption: formatUnitValue(room.theirs.unit, room.theirs.current_position),
-            }}
-          />
-          <Link className="btn btn-outline w-full" to={`/sala/${reading.book_id}`}>
-            Abrir la sala
-          </Link>
-          {recent.map((message) => (
-            <MessageCard key={message.id} message={message} variant="bubble" showBook={false} />
-          ))}
+          <SalaConversation bookId={reading.book_id} />
         </>
       ) : (
         <>

@@ -105,7 +105,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
         </Link>
       )}
       {!mine && invite.status === 'pending' && !invite.starts_at && !reading && (
-        <p className="text-xs text-muted">Podrás elegir tu lectura en Biblioteca.</p>
+        <p className="text-xs text-muted">Podrás elegir tu lectura en Estantería.</p>
       )}
     </article>
   )

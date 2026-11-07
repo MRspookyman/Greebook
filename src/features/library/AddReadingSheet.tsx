@@ -15,7 +15,7 @@ import { addReading, AlreadyInLibrary } from './addReading'
 
 export function AddReadingSheet({ candidate, onClose }: { candidate: BookCandidate | null; onClose: () => void }) {
   return (
-    <BottomSheet open={!!candidate} onClose={onClose} title="Añadir a la biblioteca">
+    <BottomSheet open={!!candidate} onClose={onClose} title="Añadir a la estantería">
       {candidate && (
         <ReadingForm
           key={`${candidate.google_id}:${candidate.openlibrary_key}:${candidate.title}`}
@@ -65,7 +65,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
     try {
       const id = await addReading({ userId, candidate, format, total, status })
       await qc.invalidateQueries({ queryKey: qk.readings(userId) })
-      toast('Añadido a tu biblioteca')
+      toast('Añadido a tu estantería')
       navigate(`/libro/${id}`)
     } catch (cause) {
       if (cause instanceof AlreadyInLibrary) {
@@ -254,7 +254,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
         </p>
       )}
       <button className="btn btn-primary w-full" disabled={busy}>
-        {busy ? 'Añadiendo…' : 'Añadir a la biblioteca'}
+        {busy ? 'Añadiendo…' : 'Añadir a la estantería'}
       </button>
     </form>
   )

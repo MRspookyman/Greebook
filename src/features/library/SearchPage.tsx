@@ -52,7 +52,7 @@ export function SearchPage() {
       await qc.invalidateQueries({ queryKey: qk.readings(userId) })
       if (status === 'reading') {
         toast('Empiezas hoy', book.title)
-        navigate(`/libro/${id}`)
+        navigate(`/leer/${id}`)
         return
       }
       setAdded((current) => ({ ...current, [key]: id }))
@@ -89,7 +89,7 @@ export function SearchPage() {
   return (
     <section className="space-y-6">
       <header className="enter flex items-center gap-3">
-        <Link to="/biblioteca" className="icon-btn" aria-label="Volver a Biblioteca">
+        <Link to="/biblioteca" className="icon-btn" aria-label="Volver a Estantería">
           <ArrowLeft size={22} />
         </Link>
         <h1 className="display">Añadir libro</h1>

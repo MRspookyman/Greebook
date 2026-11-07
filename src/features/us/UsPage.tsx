@@ -16,8 +16,9 @@ import { InviteCard } from './InviteCard'
 import { MessageCard } from './MessageCard'
 import { RatitoSheet } from './RatitoSheet'
 import { TraceSheet } from './TraceSheet'
-import { CoupleGoalCard, GoalProposal, MemoriesCard } from './MemoriesCard'
+import { CoupleGoalCard, MemoriesCard } from './MemoriesCard'
 import { TogetherCard } from './TogetherCard'
+import { ForYouItem, forYouKey } from './ForYouItem'
 import { localMonth, monthMemories } from './memories'
 import { usePendingForMe } from './messages'
 import { useRooms } from './rooms'
@@ -210,26 +211,9 @@ export function UsPage() {
       )}
       {tab === 'foryou' && (items.length > 0 || linkedMessage) && (
         <section className="enter space-y-3" style={{ '--i': 1 } as CSSProperties} aria-label="Para ti">
-          {visibleItems.map((item) => {
-            switch (item.type) {
-              case 'message':
-                return <MessageCard key={`m-${item.message.id}`} message={item.message} preview={!showAllPending} />
-              case 'invite':
-                return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} compact />
-              case 'together':
-                return (
-                  <div className="rule py-4" key={`t-${item.item.id}`}>
-                    <TogetherCard item={item.item} />
-                  </div>
-                )
-              case 'goal':
-                return (
-                  <div className="rule py-4" key={`g-${item.goal.month}`}>
-                    <GoalProposal goal={item.goal} />
-                  </div>
-                )
-            }
-          })}
+          {visibleItems.map((item) => (
+            <ForYouItem key={forYouKey(item)} item={item} preview={!showAllPending} />
+          ))}
           {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} preview={!showAllPending} />}
           {items.length > previewCount && (
             <button
@@ -271,7 +255,7 @@ export function UsPage() {
                   message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
               ).length
               return (
-                <Link key={room.book.id} to={`/sala/${room.book.id}`} className="rule flex items-center gap-4 py-3">
+                <Link key={room.book.id} to={`/libro/${room.mine.id}?pestana=juntos`} className="rule flex items-center gap-4 py-3">
                   <Cover book={room.book} width={44} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-serif text-xl leading-tight">{room.book.title}</span>

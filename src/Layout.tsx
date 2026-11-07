@@ -7,7 +7,7 @@ import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { SurpriseHost } from '@/features/surprises/SurpriseHost'
 import { useRatitoTimer } from '@/features/session/Timer'
 
-const TAB_ORDER = ['/', '/biblioteca', '/stats', '/nosotros']
+const TAB_ORDER = ['/', '/biblioteca', '/diario', '/nosotros']
 
 /** Index used to pick the slide direction between screens (deeper routes slide in from the right). */
 function depthOf(path: string): number {

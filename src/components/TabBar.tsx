@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router'
-import { BarChart3, BookOpen, Heart, Library, Sun, type LucideIcon } from 'lucide-react'
+import { BookOpen, Heart, Library, NotebookPen, Sun, type LucideIcon } from 'lucide-react'
 import { usePendingForMe } from '@/features/us/messages'
 import { useActiveTimer, useElapsedSeconds } from '@/features/session/Timer'
 import { formatClock, spokenClock } from '@/lib/timer'
@@ -17,18 +17,18 @@ const TABS: TabItem[] = [
   { to: '/', label: 'Hoy', icon: Sun, column: 0, match: (path) => path === '/' },
   {
     to: '/biblioteca',
-    label: 'Biblioteca',
+    label: 'Estantería',
     icon: Library,
     column: 1,
     match: (path) => path.startsWith('/biblioteca') || path.startsWith('/libro'),
   },
-  { to: '/stats', label: 'Estadísticas', icon: BarChart3, column: 3, match: (path) => path.startsWith('/stats') },
+  { to: '/diario', label: 'Diario', icon: NotebookPen, column: 3, match: (path) => path.startsWith('/diario') },
   {
     to: '/nosotros',
     label: 'Nosotros',
     icon: Heart,
     column: 4,
-    match: (path) => path.startsWith('/nosotros') || path.startsWith('/sala'),
+    match: (path) => path.startsWith('/nosotros'),
   },
 ]
 
@@ -112,7 +112,7 @@ function ReadButton() {
   )
 }
 
-/** Hoy · Biblioteca · Leer · Estadísticas · Nosotros: a floating bar with a mark that slides to the active tab. */
+/** Hoy · Estantería · Leer · Diario · Nosotros: a floating bar with a mark that slides to the active tab. */
 export function TabBar() {
   const { count: unread } = usePendingForMe()
   const { pathname } = useLocation()

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
 import { CountUp } from '@/components/CountUp'
 import { Segmented } from '@/components/Segmented'
@@ -45,7 +45,8 @@ export function StatsPage() {
   const sessionsQuery = useSessions(userId)
   const [period, setPeriod] = useState<Period>('week')
   const [view, setView] = useState<'bars' | 'map'>('bars')
-  const [tab, setTab] = useState<'summary' | 'journal'>('summary')
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<'summary' | 'journal'>(params.get('ver') === 'numeros' ? 'summary' : 'journal')
   const today = todayISO()
   const [month, setMonth] = useState(() => fromISODate(today))
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -98,17 +99,17 @@ export function StatsPage() {
   return (
     <div className="flex flex-col gap-6 py-5">
       <header className="enter flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="display">Estadísticas</h1>
+        <h1 className="display">Diario</h1>
         {tab === 'summary' && <span className="text-[13px] text-muted">{PERIOD_LABELS[period]}</span>}
       </header>
       <Segmented
         options={[
-          { value: 'summary', label: 'Resumen' },
-          { value: 'journal', label: 'Diario' },
+          { value: 'journal', label: 'Tu historia' },
+          { value: 'summary', label: 'Números' },
         ]}
         value={tab}
         onChange={setTab}
-        aria-label="Sección de estadísticas"
+        aria-label="Sección del diario"
       />
       {tab === 'summary' && (
         <Segmented

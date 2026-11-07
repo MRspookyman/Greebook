@@ -84,7 +84,7 @@ export function LibraryPage() {
   return (
     <section className="flex flex-col gap-4">
       <header className="enter flex min-h-11 items-center justify-between gap-3">
-        <h1 className="display">Biblioteca</h1>
+        <h1 className="display">Estantería</h1>
         <Link to="/biblioteca/buscar" className="icon-btn" aria-label="Añadir un libro">
           <Plus size={23} />
         </Link>
@@ -97,7 +97,7 @@ export function LibraryPage() {
           name="library-search"
           autoComplete="off"
           spellCheck={false}
-          aria-label="Buscar en tu biblioteca por título o autor"
+          aria-label="Buscar en tu estantería por título o autor"
           placeholder="Buscar en tus libros…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -172,7 +172,7 @@ export function LibraryPage() {
                 <Link
                   key={room.book.id}
                   className="pressable flex items-center gap-4 border-b border-rule py-3"
-                  to={`/sala/${room.book.id}`}
+                  to={`/libro/${room.mine.id}?pestana=juntos`}
                 >
                   <Cover book={room.book} width={48} />
                   <div className="min-w-0">
@@ -204,13 +204,13 @@ export function LibraryPage() {
           </section>
         </div>
       ) : readings.isPending ? (
-        <div className="grid animate-pulse grid-cols-3 gap-x-3.5 gap-y-5" role="status" aria-label="Cargando biblioteca">
+        <div className="grid animate-pulse grid-cols-3 gap-x-3.5 gap-y-5" role="status" aria-label="Cargando estantería">
           {[0, 1, 2, 3, 4, 5].map((index) => (
             <div key={index} className="aspect-[2/3] rounded-[3px] bg-border" />
           ))}
         </div>
       ) : readings.isError ? (
-        <EmptyState title="No se pudo cargar tu biblioteca">
+        <EmptyState title="No se pudo cargar tu estantería">
           <button className="btn btn-secondary" onClick={() => void readings.refetch()}>
             Reintentar
           </button>
