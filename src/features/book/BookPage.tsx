@@ -11,6 +11,7 @@ import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
 import { formatDays, formatMinutes, formatUnitValue, parseHMM, progressFraction, toHMM } from '@/lib/units'
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
+import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
 import { Segmented } from '@/components/Segmented'
@@ -26,6 +27,7 @@ import { MessageCard } from '@/features/us/MessageCard'
 import { TraceSheet } from '@/features/us/TraceSheet'
 import { useRooms } from '@/features/us/rooms'
 import { addTogether } from '@/features/us/together'
+import { isReadingNow } from '@/features/us/CoupleProgress'
 import { Notes } from './Notes'
 
 const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
@@ -170,7 +172,8 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </button>
         )}
       </div>
-      <header className="flex items-start gap-5">
+      {!own && partner && <PartnerReadingBanner reading={reading} />}
+      <header className="enter flex items-start gap-5">
         <Cover
           book={reading.book}
           width={90}
@@ -275,7 +278,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
             {[
               ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : 'min'}/día`],
-              ['Tiempo', formatMinutes(minutes)],
+              ['Tiempo', minutes > 0 ? formatMinutes(minutes) : '—'],
               ['Te quedan', reading.unit === 'pages' ? `${remaining} págs.` : formatMinutes(remaining)],
               ['Fin estimado', finish ? fmt(finish, 'd MMM') : '—'],
             ].map(([label, value]) => (
@@ -442,6 +445,69 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <ReadingEditor reading={reading} disabled={disabled} onSave={patch} onClose={() => setEditingReading(false)} />
       )}
     </div>
+  )
+}
+
+/** Says whose reading this is and links it to mine: the bridge between both diaries. */
+function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) {
+  const { userId, partner } = useMe()
+  const myReadings = useReadings(userId)
+  const together = useTogether()
+  const [tracing, setTracing] = useState(false)
+  const [adding, setAdding] = useState(false)
+  if (!partner) return null
+  const mine = myReadings.data
+    ?.filter((item) => item.book_id === reading.book_id)
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
+  const listed = together.data?.some((item) => item.book_id === reading.book_id)
+  const live = isReadingNow(partner) && partner.reading_now_id === reading.id
+  const color = `var(--${partner.accent})`
+  return (
+    <section className="enter rule space-y-2 pt-3" aria-label={`Lectura de ${partner.display_name}`}>
+      <p className="flex items-center gap-2 text-sm">
+        <Avatar person={partner} size={26} />
+        <span>
+          La lectura de <span style={{ color }}>{partner.display_name}</span>
+        </span>
+        {live && (
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+            <span className="live-dot" style={{ color }} aria-hidden />
+            leyendo ahora
+          </span>
+        )}
+      </p>
+      {mine ? (
+        <div className="flex flex-wrap items-center gap-x-4">
+          <Link to={`/libro/${mine.id}`} className="btn btn-link px-0 text-sm">
+            Tu lectura: {formatUnitValue(mine.unit, mine.current_position)} · {Math.round(progressFraction(mine) * 100)}{' '}
+            %
+          </Link>
+          {['want', 'reading'].includes(mine.status) && (
+            <button type="button" className="btn btn-link px-0 text-sm" onClick={() => setTracing(true)}>
+              Dejarle algo aquí
+            </button>
+          )}
+        </div>
+      ) : listed ? (
+        <p className="text-xs text-muted">Está en lo que queréis leer juntos.</p>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-link px-0 text-sm"
+          disabled={adding}
+          onClick={() => {
+            setAdding(true)
+            void addTogether(reading.book_id)
+              .then(() => toast('Añadido a lo que queréis leer juntos'))
+              .catch(() => toast('No se pudo añadir el libro'))
+              .finally(() => setAdding(false))
+          }}
+        >
+          Queremos leerlo juntos
+        </button>
+      )}
+      {mine && <TraceSheet open={tracing} onClose={() => setTracing(false)} reading={mine} />}
+    </section>
   )
 }
 

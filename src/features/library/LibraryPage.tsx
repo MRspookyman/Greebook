@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { Plus, Search, Star } from 'lucide-react'
 import { Cover } from '@/components/Cover'
@@ -23,8 +23,11 @@ const segments = [
 type View = ReadingStatus | 'together'
 
 export function LibraryPage() {
-  const { userId } = useMe()
+  const { userId, partner } = useMe()
   const readings = useReadings(userId)
+  const partnerReadings = useReadings(partner?.id)
+  // Books your partner also has (any shelf): a small mark on the cover links both libraries.
+  const partnerBooks = new Set((partnerReadings.data ?? []).map((reading) => reading.book_id))
   const together = useTogether()
   const rooms = useRooms()
   const [view, setView] = useState<View>('reading')
@@ -46,7 +49,7 @@ export function LibraryPage() {
   const sharedRooms = rooms.filter((room) => matches(room.book))
   return (
     <section className="space-y-6">
-      <header className="flex min-h-11 items-center justify-between">
+      <header className="enter flex min-h-11 items-center justify-between">
         <h1 className="display">Biblioteca</h1>
         <Link to="/biblioteca/buscar" className="icon-btn" aria-label="Buscar y añadir un libro">
           <Plus size={23} />
@@ -167,16 +170,40 @@ export function LibraryPage() {
         </EmptyState>
       ) : (
         <div className="grid grid-cols-3 gap-x-5 gap-y-7">
-          {visible.map((reading) => (
+          {visible.map((reading, index) => (
             <Link
               key={reading.id}
               to={`/libro/${reading.id}`}
-              className="pressable flex min-w-0 flex-col items-start gap-3"
+              className="pressable enter flex min-w-0 flex-col items-start gap-3"
+              style={{ '--i': Math.min(index, 11) } as CSSProperties}
+              aria-label={
+                partner && partnerBooks.has(reading.book_id)
+                  ? `${reading.book.title}, ${partner.display_name} también lo tiene`
+                  : undefined
+              }
             >
-              <Cover book={reading.book} />
+              <Cover book={reading.book}>
+                {partner && partnerBooks.has(reading.book_id) && (
+                  <span
+                    className="absolute right-1.5 bottom-1.5 z-[4] grid h-5 w-5 place-items-center rounded-full font-serif text-xs text-[var(--accent-contrast)] ring-2 ring-[var(--bg)]"
+                    style={{ background: `var(--${partner.accent})` }}
+                    aria-hidden
+                  >
+                    {partner.display_name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </Cover>
               <span className="line-clamp-2 font-serif text-base leading-snug">{reading.book.title}</span>
               {reading.status === 'reading' && (
-                <span className="folio text-sm text-muted">{Math.round(progressFraction(reading) * 100)} %</span>
+                <span className="flex w-full items-center gap-2">
+                  <span className="relative h-[2px] flex-1 overflow-hidden bg-rule" aria-hidden>
+                    <span
+                      className="absolute inset-y-0 left-0 bg-accent"
+                      style={{ width: `${Math.round(progressFraction(reading) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="folio text-sm text-muted">{Math.round(progressFraction(reading) * 100)} %</span>
+                </span>
               )}
               {reading.status === 'finished' && reading.rating !== null && (
                 <span className="flex items-center gap-1 text-xs text-muted">

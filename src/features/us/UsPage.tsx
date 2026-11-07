@@ -1,19 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Coffee, Feather } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
+import { useEntered } from '@/components/motion'
 import { useMe } from '@/features/auth/me'
 import { useInvites, useMessages, useReactions, useReadings, useSessions, useTogether } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
-import { formatDays } from '@/lib/units'
+import { formatDays, progressFraction } from '@/lib/units'
 import type { Profile, ReadingWithBook } from '@/lib/types'
+import { CoupleProgress } from './CoupleProgress'
 import { InviteCard } from './InviteCard'
 import { MessageCard } from './MessageCard'
 import { RatitoSheet } from './RatitoSheet'
 import { TraceSheet } from './TraceSheet'
-import { GoalProposal, MemoriesCard } from './MemoriesCard'
+import { CoupleGoalCard, GoalProposal, MemoriesCard } from './MemoriesCard'
 import { TogetherCard } from './TogetherCard'
 import { localMonth, monthMemories } from './memories'
 import { usePendingForMe } from './messages'
@@ -27,44 +29,44 @@ function monthLabel(month: string) {
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${date.getFullYear()}`
 }
 
-function ReadingNow({ person, readings }: { person: Profile; readings: ReadingWithBook[] }) {
-  const current = readings.filter((reading) => reading.status === 'reading')
-  const since = person.reading_now_since ? new Date(person.reading_now_since).getTime() : 0
-  const live = Date.now() - since >= 0 && Date.now() - since < 2 * 60 * 60 * 1000
-  return (
-    <div className="min-w-0 space-y-2">
-      <p className={`eyebrow ${person.accent === 'green' ? 'text-green' : 'text-blue'}`}>{person.display_name}</p>
-      {current.length ? (
-        current.slice(0, 1).map((reading) => (
-          <Link key={reading.id} to={`/libro/${reading.id}`} className="flex min-h-11 items-center gap-2">
-            <Cover book={reading.book} width={36} />
-            <div className="min-w-0">
-              <p className="font-serif text-base leading-tight [overflow-wrap:anywhere]">{reading.book.title}</p>
-              {live && person.reading_now_id === reading.id && <p className="text-xs text-accent">leyendo ahora</p>}
-            </div>
-          </Link>
-        ))
-      ) : (
-        <p className="text-sm text-muted">El próximo libro os espera</p>
-      )}
-      {current.length > 1 && (
-        <details>
-          <summary className="min-h-11 cursor-pointer py-3 text-xs text-accent underline underline-offset-4">
-            Ver {current.length - 1} más
-          </summary>
-          {current.slice(1).map((reading) => (
-            <Link
-              key={reading.id}
-              to={`/libro/${reading.id}`}
-              className="flex min-h-11 items-center text-sm [overflow-wrap:anywhere]"
-            >
-              {reading.book.title}
-            </Link>
-          ))}
-        </details>
-      )}
-    </div>
+/** Two hairlines, one per reader, so a shared book shows at a glance who is where. */
+function PairBars({
+  mine,
+  theirs,
+  myAccent,
+  partnerAccent,
+}: {
+  mine: number
+  theirs: number
+  myAccent: string
+  partnerAccent: string
+}) {
+  const entered = useEntered()
+  const bar = (value: number, accent: string, delay: string) => (
+    <span className="relative block h-[2px] overflow-hidden bg-rule">
+      <span
+        className="absolute inset-0 origin-left"
+        style={{
+          background: `var(--${accent})`,
+          transform: `scaleX(${entered ? Math.min(1, Math.max(0, value)) : 0})`,
+          transition: `transform var(--dur-fill) var(--ease) ${delay}`,
+        }}
+      />
+    </span>
   )
+  return (
+    <span className="mt-2 block space-y-[3px]" aria-hidden>
+      {bar(mine, myAccent, '0ms')}
+      {bar(theirs, partnerAccent, '80ms')}
+    </span>
+  )
+}
+
+/** Where each of you is, in the book's own unit. */
+function gapText(mine: ReadingWithBook, theirs: ReadingWithBook, partner: Profile): string {
+  if (mine.unit === 'pages' && theirs.unit === 'pages')
+    return `Tú p. ${mine.current_position} · ${partner.display_name} p. ${theirs.current_position}`
+  return `Tú ${Math.round(progressFraction(mine) * 100)} % · ${partner.display_name} ${Math.round(progressFraction(theirs) * 100)} %`
 }
 
 export function UsPage() {
@@ -153,8 +155,8 @@ export function UsPage() {
     )
 
   return (
-    <div className="space-y-6 pb-4 rise">
-      <header className="space-y-4">
+    <div className="space-y-8 pb-4">
+      <header className="enter space-y-4">
         <h1 className="display">
           Rincón <span className="display-italic block">de los dos</span>
         </h1>
@@ -189,8 +191,10 @@ export function UsPage() {
         </p>
       )}
       {(items.length > 0 || linkedMessage) && (
-        <section className="space-y-3" aria-label="Para ti">
-          <h2 className="title">Para ti</h2>
+        <section className="enter space-y-3" style={{ '--i': 1 } as CSSProperties} aria-label="Para ti">
+          <h2 className="title">
+            Para ti <span className="num ml-1 text-base text-muted">{items.length || ''}</span>
+          </h2>
           {visibleItems.map((item) => {
             switch (item.type) {
               case 'message':
@@ -223,38 +227,8 @@ export function UsPage() {
           )}
         </section>
       )}
-      <section className="space-y-4" aria-label="Ahora mismo">
-        <h2 className="title">Ahora mismo</h2>
-        {rooms.length > 0 && (
-          <div>
-            {rooms.map((room) => {
-              const unread = messages.filter(
-                (message) =>
-                  message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
-              ).length
-              return (
-                <Link
-                  key={room.book.id}
-                  to={`/sala/${room.book.id}`}
-                  className="rule flex min-h-11 items-center gap-4 py-3 text-sm"
-                >
-                  <Cover book={room.book} width={44} />
-                  <span className="min-w-0 flex-1">
-                    <span className="mb-1 block text-xs text-muted">Vuestra sala</span>
-                    <span className="block font-serif text-xl leading-tight">{room.book.title}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-accent underline underline-offset-4">
-                    {unread ? `${unread} por abrir` : 'Entrar'}
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-        <div className="rule grid grid-cols-2 gap-4 pt-4">
-          <ReadingNow person={profile} readings={mine} />
-          <ReadingNow person={partner} readings={theirs} />
-        </div>
+      <div className="enter space-y-2" style={{ '--i': 2 } as CSSProperties}>
+        <CoupleProgress />
         {invites
           .filter(
             (invite) =>
@@ -264,12 +238,52 @@ export function UsPage() {
           .map((invite) => (
             <InviteCard key={invite.id} invite={invite} />
           ))}
+      </div>
+      <section className="enter space-y-1" style={{ '--i': 3 } as CSSProperties} aria-labelledby="rooms-title">
+        <h2 id="rooms-title" className="title mb-2">
+          Leyendo juntos
+        </h2>
+        {rooms.length === 0 && (
+          <p className="text-sm text-muted">
+            Cuando los dos tengáis el mismo libro en «Leyendo», aquí se abre su sala.
+          </p>
+        )}
+        {rooms.map((room) => {
+          const unread = messages.filter(
+            (message) =>
+              message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
+          ).length
+          return (
+            <Link key={room.book.id} to={`/sala/${room.book.id}`} className="rule flex items-center gap-4 py-3">
+              <Cover book={room.book} width={44} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-serif text-xl leading-tight">{room.book.title}</span>
+                <PairBars
+                  mine={progressFraction(room.mine)}
+                  theirs={progressFraction(room.theirs)}
+                  myAccent={profile.accent}
+                  partnerAccent={partner.accent}
+                />
+                <span className="mt-1.5 block text-xs text-muted">{gapText(room.mine, room.theirs, partner)}</span>
+              </span>
+              <span className="shrink-0 text-xs text-accent underline underline-offset-4">
+                {unread ? `${unread} por abrir` : 'Entrar'}
+              </span>
+            </Link>
+          )
+        })}
+      </section>
+      <section className="rule enter space-y-3 pt-5" style={{ '--i': 4 } as CSSProperties} aria-labelledby="goal-title">
+        <h2 id="goal-title" className="title">
+          Propósito de {monthLabel(month).split(' ')[0].toLocaleLowerCase('es')}
+        </h2>
+        <CoupleGoalCard summary={summary} goalPendingAbove={goalPendingAbove} />
       </section>
       <section className="rule space-y-4 pt-5" aria-label="Vuestros recuerdos">
         <h2 className="title">Vuestros recuerdos</h2>
         <div className="space-y-3">
           <h3 className="text-xs text-muted">{monthLabel(month)}</h3>
-          <MemoriesCard summary={summary} goalPendingAbove={goalPendingAbove} />
+          <MemoriesCard summary={summary} withGoal={false} />
         </div>
         {previousMonths.length > 0 && (
           <details className="rule">

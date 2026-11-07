@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router'
 import { Avatar } from '@/components/Avatar'
@@ -30,14 +30,14 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-8 py-5">
-      <header className="flex flex-wrap items-center gap-3">
+      <header className="enter flex flex-wrap items-center gap-3">
         <Link to="/" className="icon-btn" aria-label="Volver a Hoy">
           <ArrowLeft size={20} />
         </Link>
         <Avatar person={profile} size={44} />
         <h1 className="display min-w-0 flex-1 [overflow-wrap:anywhere]">{profile.display_name}</h1>
       </header>
-      <section className="rule pt-5" aria-labelledby="yearly-goal-heading">
+      <section className="rule enter pt-5" style={{ '--i': 1 } as CSSProperties} aria-labelledby="yearly-goal-heading">
         <header className="mb-4 flex items-center justify-between gap-2">
           <h2 id="yearly-goal-heading" className="eyebrow text-muted">
             Objetivo anual

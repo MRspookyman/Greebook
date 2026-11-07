@@ -741,6 +741,11 @@ function SavedPanel({
     .filter(Boolean)
     .join(' · ')
   const progress = reading.total_units > 0 ? Math.round((reading.current_position / reading.total_units) * 100) : 0
+  // Pace only means something with real time behind it (Bookly-style pages per hour).
+  const pace =
+    reading.unit === 'pages' && saved.minutes && saved.minutes >= 5 && saved.delta > 0
+      ? Math.round((saved.delta / saved.minutes) * 60)
+      : null
   const first = saved.unlocking[0]
   return (
     <div className="pt-4">
@@ -754,6 +759,7 @@ function SavedPanel({
         </p>
         <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
           {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del libro
+          {pace !== null && ` · ${pace} págs/hora`}
         </p>
       </section>
       {first && (

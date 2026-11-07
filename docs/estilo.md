@@ -40,6 +40,7 @@ Movement explains something; nothing moves just to decorate. Tokens: `--dur-tap`
 - `Cover` without image: a book-cloth colour chosen from the title (paper text ≥ 5:1), title with a short rule and the author from 80px; under 56px only the initial. The bookmark keeps its own strip.
 - `Avatar`: outlined by default; optional `filled` for selection. Sheets use paper and a ruled header.
 - `TabBar`: Hoy · Biblioteca · **Leer** · Estadísticas · Nosotros. The raised central circle opens the reading screen; while a timer runs it fills with the accent, shows the time and a ring for the current minute. A 2px accent hairline slides to the active tab. Bars that rest on it use `--tabbar-h`.
+- Couple: each person is drawn in their own accent (name as `eyebrow`, bars, dots); amber marks what you share (days read together, huellas on the shared track, a goal reached). `CoupleProgress` («Cómo vamos») pairs both readers and the week; shared books use two 2px hairlines (`PairBars`); the room's `DualProgressBar` carries the huellas as stops (filled = open, hollow = still locked). Compare in positive terms (days together, where each one is), never as a race.
 - Reading screen (`/leer/:readingId`, `?modo=paginas&dia=yyyy-MM-dd`): focus mode without tab bar. «Cronómetro» or «Solo páginas», big serif timer (`.timer-digits`, lining figures), `Stepper size="lg"` with hold-to-repeat, fixed bottom actions (one primary). Every «Leer» starts the timer and opens it in one tap; «Apuntar páginas» opens it in pages mode.
 
 ## Palette

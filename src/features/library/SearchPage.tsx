@@ -33,7 +33,7 @@ export function SearchPage() {
   const emptySearch = ready && (results.isError || (results.isSuccess && results.data.length === 0))
   return (
     <section className="space-y-6">
-      <header className="flex items-center gap-3">
+      <header className="enter flex items-center gap-3">
         <Link to="/biblioteca" className="icon-btn" aria-label="Volver a Biblioteca">
           <ArrowLeft size={22} />
         </Link>

@@ -70,6 +70,12 @@ export function TodayPage() {
   const liveReading = partnerReadings.data?.find((reading) => reading.id === partner?.reading_now_id)
   const live =
     !!partner?.reading_now_since && Date.now() - new Date(partner.reading_now_since).getTime() < 2 * 60 * 60 * 1000
+  // A gentle way to answer presence: start your own timer, on the same book when you share it.
+  const timer = useActiveTimer()
+  const readAlong =
+    live && liveReading && !priority && !timer
+      ? (active.find((reading) => reading.book_id === liveReading.book_id) ?? active[0])
+      : undefined
   const pendingId = priority
     ? priority.type === 'message'
       ? priority.message.id
@@ -107,29 +113,45 @@ export function TodayPage() {
       ) : (
         partner &&
         (priority || (live && liveReading) || (latest && latestReading)) && (
-          <Link
-            to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
-            className="rule flex min-h-11 items-center gap-2 pt-3 text-xs"
-          >
-            <Avatar person={partner} size={28} />
-            <span className="line-clamp-2">
-              {partner.display_name}{' '}
-              {priority
-                ? priority.type === 'invite'
-                  ? 'te invita a un ratito'
-                  : priority.type === 'together'
-                    ? 'quiere leer contigo'
-                    : priority.type === 'goal'
-                      ? 'te propone un reto para los dos'
-                      : `te dejó algo · ${forMe.count}`
-                : live && liveReading
-                  ? `está leyendo «${liveReading.book.title}»`
-                  : latest && latestReading
-                    ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
-                    : ''}
-            </span>
-            <ChevronRight size={16} className="ml-auto shrink-0" aria-hidden />
-          </Link>
+          <div className="rule enter flex min-h-11 items-center gap-2 pt-3">
+            <Link
+              to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-xs"
+            >
+              <span className="relative">
+                <Avatar person={partner} size={28} />
+                {live && !priority && (
+                  <span
+                    className="live-dot absolute -right-0.5 -bottom-0.5 ring-2 ring-[var(--bg)]"
+                    style={{ color: `var(--${partner.accent})` }}
+                    aria-hidden
+                  />
+                )}
+              </span>
+              <span className="line-clamp-2">
+                {partner.display_name}{' '}
+                {priority
+                  ? priority.type === 'invite'
+                    ? 'te invita a un ratito'
+                    : priority.type === 'together'
+                      ? 'quiere leer contigo'
+                      : priority.type === 'goal'
+                        ? 'te propone un reto para los dos'
+                        : `te dejó algo · ${forMe.count}`
+                  : live && liveReading
+                    ? `está leyendo «${liveReading.book.title}»`
+                    : latest && latestReading
+                      ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
+                      : ''}
+              </span>
+              {!readAlong && <ChevronRight size={16} className="ml-auto shrink-0" aria-hidden />}
+            </Link>
+            {readAlong && (
+              <button type="button" className="btn btn-outline shrink-0 px-3 text-xs" onClick={() => read(readAlong)}>
+                Leer a la vez
+              </button>
+            )}
+          </div>
         )
       )}
 

@@ -10,6 +10,7 @@ import { activityByDay, summarize, timeSpent } from '@/lib/stats/aggregate'
 import { dailySeries, monthlySeries, pctChange, periodRange, previousRange, type Period } from '@/lib/stats/insights'
 import { level, levelColor } from '@/lib/stats/intensity'
 import { formatDays } from '@/lib/units'
+import { CoupleCompare } from './CoupleCompare'
 import { DaySheet } from './DaySheet'
 import { Insights } from './Insights'
 import { MonthGrid } from './MonthGrid'
@@ -87,7 +88,7 @@ export function StatsPage() {
 
   return (
     <div className="flex flex-col gap-6 py-5">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
+      <header className="enter flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="display">Estadísticas</h1>
         <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
       </header>
@@ -204,6 +205,7 @@ export function StatsPage() {
               </>
             )}
           </section>
+          <CoupleCompare key={period} period={period} today={today} label={PERIOD_LABELS[period]} />
           <Insights readings={readings} sessions={sessions} period={period} today={today} goal={profile.yearly_goal} />
         </>
       )}

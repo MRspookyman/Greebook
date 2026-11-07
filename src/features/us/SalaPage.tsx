@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
 import { ArrowLeft, Send, Smile } from 'lucide-react'
 import { Cover } from '@/components/Cover'
@@ -86,6 +86,21 @@ export function SalaPage() {
         ? 0
         : Math.floor(progressFraction(room.mine) * room.mine.book.page_count)
   const currentPage = page === null ? maxPage : Math.min(page, maxPage)
+  // Map of the book: every huella sits on the shared track at its page; hollow while still locked.
+  const bookPages = room.mine.book.page_count ?? (room.mine.unit === 'pages' ? room.mine.total_units : 0)
+  const marks =
+    bookPages > 0
+      ? [
+          ...new Map(
+            conversation.filter((message) => message.page !== null).map((message) => [message.page, message] as const),
+          ).values(),
+        ].map((message) => ({
+          value: (message.page ?? 0) / bookPages,
+          done: !message.locked,
+          label: `p. ${message.page}`,
+        }))
+      : []
+  const lockedAhead = conversation.filter((message) => message.locked).length
   async function send() {
     if (busy || (!body.trim() && !emotion)) return
     setBusy(true)
@@ -107,14 +122,14 @@ export function SalaPage() {
       <Link to="/nosotros" className="btn btn-link">
         <ArrowLeft size={18} /> Rincón de los dos
       </Link>
-      <header className="flex items-center gap-4">
+      <header className="enter flex items-center gap-4">
         <Cover book={room.book} width={64} />
         <div className="min-w-0">
           <h1 className="display [overflow-wrap:anywhere]">{room.book.title}</h1>
           <p className="mt-2 text-xs text-muted">Vuestra sala</p>
         </div>
       </header>
-      <div className="rule space-y-3 pt-4">
+      <div className="rule enter space-y-3 pt-4" style={{ '--i': 1 } as CSSProperties}>
         <DualProgressBar
           a={{
             value: progressFraction(room.mine),
@@ -128,7 +143,20 @@ export function SalaPage() {
             label: partner?.display_name ?? 'Tu pareja',
             caption: formatUnitValue(room.theirs.unit, room.theirs.current_position),
           }}
+          stops={marks}
         />
+        {marks.length > 0 && (
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-[7px] w-[7px] rounded-full border border-amber bg-amber" aria-hidden />
+              huellas abiertas
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-[7px] w-[7px] rounded-full border border-amber bg-surface" aria-hidden />
+              {lockedAhead ? `${lockedAhead} te ${lockedAhead === 1 ? 'espera' : 'esperan'} más adelante` : 'por abrir'}
+            </span>
+          </p>
+        )}
       </div>
       <div
         className="rule space-y-4 pt-5 pb-4"
