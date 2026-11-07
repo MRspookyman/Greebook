@@ -4,24 +4,24 @@
 @import '@fontsource/inter/600.css';
 
 :root {
-  --bg: #f7f3ea;
-  --surface: #fffdf8;
-  --ink: #2b2a26;
-  --muted: #6d685e;
+  --bg: #faf6ef;
+  --surface: #ffffff;
+  --ink: #17183b;
+  --muted: #5d5c7c;
   --placeholder: var(--muted);
-  --rule: #dcd5c8;
+  --rule: #e2ddea;
   --border: var(--rule);
   /* Identity colours, validated for charts (ΔE ≥ 15 between them, ≥ 4.5:1 on paper). */
   --green: #2e7b47;
   --blue: #3b62c9;
-  --danger: #b5543c;
-  --amber: #c08a2e;
-  --amber-ink: #875d18;
+  --danger: #c2412d;
+  --amber: #e0a12a;
+  --amber-ink: #8a5a00;
   --scrim: rgb(0 0 0 / 0.35);
   --accent: var(--green);
-  --accent-contrast: #fffdf8;
-  --grain-opacity: 0.035;
-  --paper-shadow: 0 4px 13px -5px rgb(117 96 60 / 0.22), 0 1px 2px rgb(117 96 60 / 0.05);
+  --accent-contrast: #ffffff;
+  --grain-opacity: 0.05;
+  --paper-shadow: 0 0 0 1.5px var(--edge), 3px 3px 0 1.5px var(--edge);
   --spring: cubic-bezier(0.32, 1.28, 0.5, 1);
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   /* Motion: taps answer at once, things that move travel, things that fill take their time. */
@@ -31,15 +31,15 @@
   /* Tab bar height above the safe area (58px row + hairline); bars that sit on it use this. */
   --tabbar-h: 82px;
   /* Floating navigation bar and other dark chrome. */
-  --chrome: #1f3b31;
-  --chrome-ink: #f3ede2;
-  --chrome-muted: #a9b5a6;
-  --chrome-mark: #d8b477;
+  --chrome: #17183b;
+  --chrome-ink: #f6f3ff;
+  --chrome-muted: #b3b1d6;
+  --chrome-mark: #ffc24b;
   /* Small labels printed on covers. */
   --badge-bg: #ffffff;
-  --badge-ink: #24221e;
+  --badge-ink: #17183b;
   /* Sequential ramps (validated): reading time per day and star ratings, less → more. */
-  --heat-0: #e7e0d2;
+  --heat-0: #ebe6f2;
   --heat-1: #b3a7d7;
   --heat-2: #9688c6;
   --heat-3: #7a6bb2;
@@ -50,28 +50,30 @@
   --rate-3: #906a2b;
   --rate-4: #71501a;
   --rate-5: #52380c;
-  --grid: #e4dccd;
+  --edge: var(--ink);
+  --hard: 3px 3px 0 var(--edge);
+  --grid: #ebe6f2;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #1d231e;
-    --surface: #252c25;
-    --ink: #eee8da;
-    --muted: #b0aa9e;
-    --rule: #41483e;
+    --bg: #111228;
+    --surface: #1b1c3d;
+    --ink: #f2efff;
+    --muted: #aba9cf;
+    --rule: #2f3163;
     --green: #56a36b;
     --blue: #6c8ff0;
-    --danger: #e6a08b;
-    --amber: #d9a85a;
-    --amber-ink: #e6b96d;
-    --accent-contrast: #1d231e;
-    --grain-opacity: 0.018;
-    --paper-shadow: 0 4px 13px -5px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.12);
-    --chrome: #0f1a15;
-    --chrome-ink: #eee8da;
-    --chrome-muted: #a9b5a6;
-    --heat-0: #323a31;
+    --danger: #ff8a73;
+    --amber: #ffc24b;
+    --amber-ink: #ffcf6e;
+    --accent-contrast: #111228;
+    --grain-opacity: 0.03;
+    --paper-shadow: 0 0 0 1.5px var(--edge), 3px 3px 0 1.5px #05060f;
+    --chrome: #0a0b1c;
+    --chrome-ink: #f2efff;
+    --chrome-muted: #aba9cf;
+    --heat-0: #262857;
     --heat-1: #5a4f8f;
     --heat-2: #6e63a8;
     --heat-3: #8579bf;
@@ -82,28 +84,30 @@
     --rate-3: #ae8b4b;
     --rate-4: #c6a465;
     --rate-5: #ddbf86;
-    --grid: #3a4238;
+    --edge: #3b3e7a;
+    --hard: 3px 3px 0 #05060f;
+    --grid: #2a2c5c;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #1d231e;
-  --surface: #252c25;
-  --ink: #eee8da;
-  --muted: #b0aa9e;
-  --rule: #41483e;
+  --bg: #111228;
+  --surface: #1b1c3d;
+  --ink: #f2efff;
+  --muted: #aba9cf;
+  --rule: #2f3163;
   --green: #56a36b;
   --blue: #6c8ff0;
-  --danger: #e6a08b;
-  --amber: #d9a85a;
-  --amber-ink: #e6b96d;
-  --accent-contrast: #1d231e;
-  --grain-opacity: 0.018;
-  --paper-shadow: 0 4px 13px -5px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.12);
-  --chrome: #0f1a15;
-  --chrome-ink: #eee8da;
-  --chrome-muted: #a9b5a6;
-  --heat-0: #323a31;
+  --danger: #ff8a73;
+  --amber: #ffc24b;
+  --amber-ink: #ffcf6e;
+  --accent-contrast: #111228;
+  --grain-opacity: 0.03;
+  --paper-shadow: 0 0 0 1.5px var(--edge), 3px 3px 0 1.5px #05060f;
+  --chrome: #0a0b1c;
+  --chrome-ink: #f2efff;
+  --chrome-muted: #aba9cf;
+  --heat-0: #262857;
   --heat-1: #5a4f8f;
   --heat-2: #6e63a8;
   --heat-3: #8579bf;
@@ -114,7 +118,9 @@
   --rate-3: #ae8b4b;
   --rate-4: #c6a465;
   --rate-5: #ddbf86;
-  --grid: #3a4238;
+  --edge: #3b3e7a;
+  --hard: 3px 3px 0 #05060f;
+  --grid: #2a2c5c;
   color-scheme: dark;
 }
 :root[data-accent='blue'] {
@@ -148,13 +154,13 @@
   --color-chrome-muted: var(--chrome-muted);
   --color-chrome-mark: var(--chrome-mark);
   --color-grid: var(--grid);
-  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --font-serif: 'Bricolage Grotesque Variable', 'Inter', system-ui, sans-serif;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-hand: 'Caveat', cursive;
-  --radius-card: 14px;
-  --radius-btn: 12px;
-  --radius-cover: 2px;
-  --shadow-cover: 3px 5px 11px -3px rgb(117 96 60 / 0.3);
+  --radius-card: 20px;
+  --radius-btn: 999px;
+  --radius-cover: 4px;
+  --shadow-cover: 3px 3px 0 1.5px var(--edge);
   --ease-spring: var(--spring);
   --ease-soft: var(--ease);
 }
@@ -166,9 +172,6 @@
     font-family: var(--font-sans);
     font-size: 16px;
     font-optical-sizing: auto;
-    font-variation-settings:
-      'SOFT' 20,
-      'WONK' 1;
     -webkit-tap-highlight-color: transparent;
     text-wrap: pretty;
     scrollbar-color: var(--rule) var(--bg);
@@ -202,17 +205,17 @@
   }
   h1 {
     font-family: var(--font-serif);
-    font-weight: 400;
-    font-size: 30px;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-weight: 750;
+    font-size: 32px;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
   }
   h2 {
     font-family: var(--font-serif);
-    font-weight: 450;
+    font-weight: 700;
     font-size: 22px;
-    line-height: 1.18;
-    letter-spacing: -0.012em;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
   }
   button,
   a,
@@ -252,33 +255,33 @@
 @layer components {
   .display {
     font-family: var(--font-serif);
-    font-size: 30px;
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-size: 32px;
+    font-weight: 750;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
     text-wrap: balance;
   }
   .display-italic {
     font-family: var(--font-serif);
-    font-size: 30px;
-    font-weight: 350;
-    font-style: italic;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-size: 32px;
+    font-weight: 750;
+    color: var(--accent);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
     text-wrap: balance;
   }
   .title {
     font-family: var(--font-serif);
     font-size: 22px;
-    font-weight: 450;
-    line-height: 1.18;
-    letter-spacing: -0.012em;
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
   }
   /* Data values (stats, tiles): same sans as the interface, proportional figures. */
   .figure {
-    font-family: var(--font-sans);
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-family: var(--font-serif);
+    font-weight: 750;
+    letter-spacing: -0.035em;
     line-height: 1.05;
     font-variant-numeric: proportional-nums lining-nums;
   }
@@ -296,8 +299,8 @@
   .num,
   .stat-number {
     font-family: var(--font-serif);
-    font-weight: 400;
-    font-variant-numeric: oldstyle-nums tabular-nums;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
   }
   .folio {
     font-size: 20px;
@@ -322,7 +325,8 @@
   }
   .card {
     background: var(--surface);
-    border: 0;
+    border: 1.5px solid var(--edge);
+    box-shadow: var(--hard) !important;
     border-radius: var(--radius-card);
     padding: 16px;
     box-shadow: var(--paper-shadow);
@@ -356,6 +360,13 @@
   .btn-primary {
     background: var(--accent);
     color: var(--accent-contrast);
+    border: 1.5px solid var(--edge);
+    box-shadow: var(--hard);
+    font-weight: 600;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--edge);
   }
   .btn-soft {
     background: var(--soft);
@@ -365,7 +376,8 @@
   .btn-secondary {
     background: transparent;
     color: var(--ink);
-    border: 1.5px solid var(--ink);
+    border: 1.5px solid var(--edge);
+    font-weight: 600;
   }
   .btn-link {
     display: inline-flex;
@@ -385,11 +397,11 @@
     width: 44px;
     height: 44px;
     flex: none;
-    border-radius: 12px;
+    border-radius: 999px;
     display: grid;
     place-items: center;
-    background: transparent;
-    border: 1px solid var(--rule);
+    background: var(--surface);
+    border: 1.5px solid var(--edge);
     transition: transform 140ms var(--ease);
   }
   .pressable {
@@ -399,10 +411,10 @@
     min-height: 44px;
     padding: 0 14px;
     border-radius: 999px;
-    border: 1px solid var(--rule);
-    background: transparent;
+    border: 1.5px solid var(--edge);
+    background: var(--surface);
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -413,16 +425,17 @@
       border-color 140ms var(--ease);
   }
   .chip[aria-pressed='true'] {
-    background: var(--ink);
-    border-color: var(--ink);
-    color: var(--bg);
+    background: var(--chrome-mark);
+    border-color: var(--edge);
+    color: #17183b;
+    box-shadow: 2px 2px 0 var(--edge);
   }
   .input {
     width: 100%;
     min-height: 44px;
     padding: 0.5rem 0.875rem;
-    border-radius: var(--radius-btn);
-    border: 1px solid var(--rule);
+    border-radius: 14px;
+    border: 1.5px solid var(--edge);
     background: var(--surface);
     color: var(--ink);
   }
@@ -444,8 +457,9 @@
     position: relative;
     flex: none;
     overflow: hidden;
-    border-radius: 2px;
-    box-shadow: 3px 5px 11px -3px rgb(117 96 60 / 0.3);
+    border-radius: 4px;
+    outline: 1.5px solid var(--edge);
+    box-shadow: 3px 3px 0 1.5px var(--edge);
   }
   .book-cover::before {
     content: '';
