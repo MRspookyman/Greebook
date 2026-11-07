@@ -10,11 +10,14 @@ import { activityByDay, summarize, timeSpent } from '@/lib/stats/aggregate'
 import { dailySeries, monthlySeries, pctChange, periodRange, previousRange, type Period } from '@/lib/stats/insights'
 import { level, levelColor } from '@/lib/stats/intensity'
 import { formatDays } from '@/lib/units'
+import { StatFigure } from '@/components/StatFigure'
 import { CoupleCompare } from './CoupleCompare'
 import { DaySheet } from './DaySheet'
 import { Insights } from './Insights'
 import { MonthGrid } from './MonthGrid'
+import { Journal } from './Journal'
 import { PagesChart, type ChartPoint } from './PagesChart'
+import { Records, RatingShelf, TimeOfDay } from './Personal'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week', label: 'Semana' },
@@ -29,6 +32,11 @@ const formatTime = (value: number) => {
   const minutes = Math.round(value)
   return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}` : `${minutes} min`
 }
+const changeNote = (value: number, previous: number, label: string) => {
+  const change = pctChange(value, previous)
+  if (change === null || change < 0) return undefined
+  return change > 0 ? `${change} % más que ${label}` : `Como ${label}`
+}
 const formatNumber = (value: number) => Math.round(value).toLocaleString('es')
 
 export function StatsPage() {
@@ -37,6 +45,7 @@ export function StatsPage() {
   const sessionsQuery = useSessions(userId)
   const [period, setPeriod] = useState<Period>('week')
   const [view, setView] = useState<'bars' | 'map'>('bars')
+  const [tab, setTab] = useState<'summary' | 'journal'>('summary')
   const today = todayISO()
   const [month, setMonth] = useState(() => fromISODate(today))
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -90,18 +99,29 @@ export function StatsPage() {
     <div className="flex flex-col gap-6 py-5">
       <header className="enter flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="display">Estadísticas</h1>
-        <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
+        {tab === 'summary' && <span className="text-[13px] text-muted">{PERIOD_LABELS[period]}</span>}
       </header>
       <Segmented
-        variant="underline"
-        options={PERIODS}
-        value={period}
-        onChange={(value) => {
-          setPeriod(value)
-          setMonth(fromISODate(today))
-        }}
-        aria-label="Periodo de estadísticas"
+        options={[
+          { value: 'summary', label: 'Resumen' },
+          { value: 'journal', label: 'Diario' },
+        ]}
+        value={tab}
+        onChange={setTab}
+        aria-label="Sección de estadísticas"
       />
+      {tab === 'summary' && (
+        <Segmented
+          variant="underline"
+          options={PERIODS}
+          value={period}
+          onChange={(value) => {
+            setPeriod(value)
+            setMonth(fromISODate(today))
+          }}
+          aria-label="Periodo de estadísticas"
+        />
+      )}
       {failed ? (
         <div className="rule py-5 text-sm text-ink" role="alert">
           <p>No se han podido cargar tus estadísticas.</p>
@@ -121,34 +141,28 @@ export function StatsPage() {
             <div key={metric.label} className="rule h-28 animate-pulse bg-track" />
           ))}
         </div>
+      ) : tab === 'journal' ? (
+        <Journal sessions={sessions} readings={readings} />
       ) : (
         <>
-          <p className="font-serif text-2xl leading-snug">
-            Has leído {formatNumber(summary.pages)} {summary.pages === 1 ? 'página' : 'páginas'} {PERIOD_LABELS[period]}
-            .
-          </p>
-          <section className="grid grid-cols-2 border-b border-rule" aria-label="Resumen del periodo">
-            {metrics.map((metric) => {
-              const change = pctChange(metric.value, metric.previous)
-              return (
-                <article key={metric.label} className="rule min-h-32 py-4 pr-3 even:pl-4">
-                  <h2 className="eyebrow text-muted">{metric.label}</h2>
-                  <p className="folio mt-2 text-[32px] leading-none">
-                    <CountUp value={metric.value} format={metric.format ?? formatNumber} />
-                  </p>
-                  {change !== null && change >= 0 ? (
-                    <p className="mt-1 text-xs leading-tight text-muted">
-                      {change > 0
-                        ? `${change} % más que ${PREVIOUS_LABELS[period]}`
-                        : `Como ${PREVIOUS_LABELS[period]}`}
-                    </p>
-                  ) : (
-                    metric.detail && <p className="mt-1 text-xs text-muted">{metric.detail}</p>
-                  )}
-                </article>
-              )
-            })}
-          </section>
+          <dl className="grid grid-cols-3 gap-x-4 gap-y-5" aria-label="Resumen del periodo">
+            <div className="col-span-3">
+              <StatFigure
+                size="lg"
+                label={`Tiempo leyendo ${PERIOD_LABELS[period]}`}
+                value={<CountUp value={metrics[1].value} format={formatTime} />}
+                note={changeNote(metrics[1].value, metrics[1].previous, PREVIOUS_LABELS[period])}
+              />
+            </div>
+            {[metrics[0], metrics[2], metrics[3]].map((metric) => (
+              <StatFigure
+                key={metric.label}
+                label={metric.label}
+                value={<CountUp value={metric.value} format={formatNumber} />}
+                note={changeNote(metric.value, metric.previous, PREVIOUS_LABELS[period]) ?? metric.detail}
+              />
+            ))}
+          </dl>
           <section className="space-y-4" aria-labelledby="pages-chart-heading">
             <header className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="pages-chart-heading" className="title">
@@ -205,6 +219,9 @@ export function StatsPage() {
               </>
             )}
           </section>
+          <TimeOfDay sessions={sessions} />
+          <RatingShelf readings={readings} year={today.slice(0, 4)} />
+          <Records sessions={sessions} readings={readings} />
           <CoupleCompare key={period} period={period} today={today} label={PERIOD_LABELS[period]} />
           <Insights readings={readings} sessions={sessions} period={period} today={today} goal={profile.yearly_goal} />
         </>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { minutesLeft, pagesPerHour, readingMinutes, roughDuration } from './personal'
+import { minutesLeft, pagesPerHour, readingMinutes, records, roughDuration, timeOfDay } from './personal'
 
 const paper = { id: 'p', unit: 'pages' as const, current_position: 100, total_units: 400 }
 const audio = { id: 'a', unit: 'minutes' as const, current_position: 90, total_units: 600 }
@@ -51,5 +51,33 @@ describe('roughDuration', () => {
     expect(roughDuration(62)).toBe('una hora')
     expect(roughDuration(150)).toBe('unas 2,5 h')
     expect(roughDuration(800)).toBe('unas 13 h')
+  })
+})
+
+describe('timeOfDay', () => {
+  it('buckets by the hour each session started', () => {
+    const at = (h: number, minutes: number) => ({ created_at: new Date(2026, 10, 7, h, 0).toISOString(), minutes })
+    const parts = timeOfDay([at(23, 30), at(22, 0), at(10, 60), at(3, 0)])
+    expect(parts).toEqual({ morning: 0.25, afternoon: 0, evening: 0.5, night: 0.25 })
+    expect(timeOfDay([])).toBeNull()
+  })
+})
+
+describe('records', () => {
+  it('finds personal bests', () => {
+    const readings = [
+      { id: 'p', unit: 'pages' as const, status: 'finished' as const, started_on: '2026-03-01', finished_on: '2026-03-06', book: { title: 'Nada' } },
+      { id: 'q', unit: 'pages' as const, status: 'finished' as const, started_on: '2026-04-01', finished_on: '2026-04-20', book: { title: 'Otro' } },
+    ]
+    const sessions = [
+      { reading_id: 'p', read_on: '2026-03-02', start_pos: 0, end_pos: 40, minutes: 50 },
+      { reading_id: 'p', read_on: '2026-03-02', start_pos: 40, end_pos: 70, minutes: 20 },
+      { reading_id: 'q', read_on: '2026-04-02', start_pos: 0, end_pos: 50, minutes: 90 },
+    ]
+    expect(records(sessions, readings)).toEqual({
+      longestSession: { minutes: 90, date: '2026-04-02' },
+      bestDay: { pages: 70, date: '2026-03-02' },
+      fastestBook: { title: 'Nada', days: 6 },
+    })
   })
 })

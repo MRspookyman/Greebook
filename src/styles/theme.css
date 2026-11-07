@@ -586,6 +586,11 @@
     transform: scale(0.75);
   }
 }
+@keyframes gb-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
 @keyframes gb-grow-y {
   from {
     transform: scaleY(0);

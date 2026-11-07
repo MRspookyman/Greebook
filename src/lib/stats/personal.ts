@@ -55,3 +55,62 @@ export function roughDuration(minutes: number): string {
   if (rounded === 1) return 'una hora'
   return `unas ${rounded.toLocaleString('es')} h`
 }
+
+export type DayPart = 'morning' | 'afternoon' | 'evening' | 'night'
+export const DAY_PARTS: { value: DayPart; label: string; hours: string }[] = [
+  { value: 'morning', label: 'Mañana', hours: '7–14 h' },
+  { value: 'afternoon', label: 'Tarde', hours: '14–20 h' },
+  { value: 'evening', label: 'Noche', hours: '20–1 h' },
+  { value: 'night', label: 'Madrugada', hours: '1–7 h' },
+]
+
+/** Hour a session started: saved time minus its minutes (sessions are saved when they end). */
+function startHour(session: Pick<Session, 'created_at' | 'minutes'>): number {
+  const end = new Date(session.created_at)
+  return new Date(end.getTime() - (session.minutes ?? 0) * 60_000).getHours()
+}
+
+/** Share of sessions by part of the day (0..1 each), or null without sessions. */
+export function timeOfDay(
+  sessions: readonly Pick<Session, 'created_at' | 'minutes'>[],
+): Record<DayPart, number> | null {
+  if (!sessions.length) return null
+  const counts: Record<DayPart, number> = { morning: 0, afternoon: 0, evening: 0, night: 0 }
+  for (const session of sessions) {
+    const h = startHour(session)
+    const part: DayPart = h >= 7 && h < 14 ? 'morning' : h >= 14 && h < 20 ? 'afternoon' : h >= 20 || h < 1 ? 'evening' : 'night'
+    counts[part] += 1
+  }
+  for (const key of Object.keys(counts) as DayPart[]) counts[key] /= sessions.length
+  return counts
+}
+
+export interface Records {
+  longestSession: { minutes: number; date: string } | null
+  bestDay: { pages: number; date: string } | null
+  fastestBook: { title: string; days: number } | null
+}
+
+/** Personal bests: the longest timed session, the most pages in a day and the quickest finished book. */
+export function records(
+  sessions: readonly Pick<Session, 'reading_id' | 'read_on' | 'start_pos' | 'end_pos' | 'minutes'>[],
+  readings: readonly (Pick<Reading, 'id' | 'unit' | 'status' | 'started_on' | 'finished_on'> & { book: { title: string } })[],
+): Records {
+  const paper = new Set(readings.filter((r) => r.unit === 'pages').map((r) => r.id))
+  let longestSession: Records['longestSession'] = null
+  const pagesByDay = new Map<string, number>()
+  for (const s of sessions) {
+    if (s.minutes && (!longestSession || s.minutes > longestSession.minutes))
+      longestSession = { minutes: s.minutes, date: s.read_on }
+    if (paper.has(s.reading_id)) pagesByDay.set(s.read_on, (pagesByDay.get(s.read_on) ?? 0) + s.end_pos - s.start_pos)
+  }
+  let bestDay: Records['bestDay'] = null
+  for (const [date, pages] of pagesByDay) if (!bestDay || pages > bestDay.pages) bestDay = { pages, date }
+  let fastestBook: Records['fastestBook'] = null
+  for (const r of readings) {
+    if (r.status !== 'finished' || !r.started_on || !r.finished_on) continue
+    const days = Math.round((Date.parse(r.finished_on) - Date.parse(r.started_on)) / 86_400_000) + 1
+    if (!fastestBook || days < fastestBook.days) fastestBook = { title: r.book.title, days }
+  }
+  return { longestSession, bestDay, fastestBook }
+}

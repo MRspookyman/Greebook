@@ -127,6 +127,23 @@ export function useNotes(readingId: string | null | undefined) {
   })
 }
 
+/** Every private note and quote of the user, newest first (the diary). */
+export function useAllNotes(userId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['notes', 'all', userId ?? ''] as const,
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('user_id', userId!)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data as Note[]
+    },
+  })
+}
+
 export function useReactions() {
   return useQuery({
     queryKey: qk.reactions(),
