@@ -1,27 +1,24 @@
 @import 'tailwindcss';
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
 
 :root {
-  --bg: #faf6ef;
-  --surface: #ffffff;
-  --ink: #17183b;
-  --muted: #5d5c7c;
+  --bg: #f6eedf;
+  --surface: #fff9ee;
+  --ink: #3a2a1e;
+  --muted: #76604d;
   --placeholder: var(--muted);
-  --rule: #e2ddea;
+  --rule: #e7d8c2;
   --border: var(--rule);
   /* Identity colours, validated for charts (ΔE ≥ 15 between them, ≥ 4.5:1 on paper). */
   --green: #2e7b47;
   --blue: #3b62c9;
-  --danger: #c2412d;
-  --amber: #e0a12a;
-  --amber-ink: #8a5a00;
+  --danger: #b4472f;
+  --amber: #d39a4a;
+  --amber-ink: #8a5a1e;
   --scrim: rgb(0 0 0 / 0.35);
   --accent: var(--green);
-  --accent-contrast: #ffffff;
-  --grain-opacity: 0.05;
-  --paper-shadow: 0 0 0 1.5px var(--edge), 3px 3px 0 1.5px var(--edge);
+  --accent-contrast: #fff9ee;
+  --grain-opacity: 0.06;
+  --paper-shadow: 0 10px 24px -14px rgb(92 60 30 / 0.4), 0 2px 5px rgb(92 60 30 / 0.07);
   --spring: cubic-bezier(0.32, 1.28, 0.5, 1);
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   /* Motion: taps answer at once, things that move travel, things that fill take their time. */
@@ -31,96 +28,99 @@
   /* Tab bar height above the safe area (58px row + hairline); bars that sit on it use this. */
   --tabbar-h: 82px;
   /* Floating navigation bar and other dark chrome. */
-  --chrome: #17183b;
-  --chrome-ink: #f6f3ff;
-  --chrome-muted: #b3b1d6;
-  --chrome-mark: #ffc24b;
+  --chrome: #4a3226;
+  --chrome-ink: #f8ebd6;
+  --chrome-muted: #cdb8a0;
+  --chrome-mark: #e9b872;
   /* Small labels printed on covers. */
-  --badge-bg: #ffffff;
-  --badge-ink: #17183b;
+  --badge-bg: #fff9ee;
+  --badge-ink: #3a2a1e;
   /* Sequential ramps (validated): reading time per day and star ratings, less → more. */
-  --heat-0: #ebe6f2;
-  --heat-1: #b3a7d7;
-  --heat-2: #9688c6;
-  --heat-3: #7a6bb2;
-  --heat-4: #605299;
-  --heat-5: #473c7e;
+  --heat-0: #eadcc6;
+  --heat-1: #f0c9a8;
+  --heat-2: #e3a27a;
+  --heat-3: #cf7c55;
+  --heat-4: #b05a38;
+  --heat-5: #8a3f24;
   --rate-1: #c8a15c;
   --rate-2: #ae8641;
   --rate-3: #906a2b;
   --rate-4: #71501a;
   --rate-5: #52380c;
-  --edge: var(--ink);
-  --hard: 3px 3px 0 var(--edge);
-  --grid: #ebe6f2;
+  --edge: transparent;
+  --glow: rgb(255 205 140 / 0.38);
+  --hard: 0 10px 24px -14px rgb(92 60 30 / 0.4), 0 2px 5px rgb(92 60 30 / 0.07);
+  --grid: #ecdfcb;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #111228;
-    --surface: #1b1c3d;
-    --ink: #f2efff;
-    --muted: #aba9cf;
-    --rule: #2f3163;
+    --bg: #1e1813;
+    --surface: #2a221b;
+    --ink: #f3e6d1;
+    --muted: #bfae98;
+    --rule: #43372b;
     --green: #56a36b;
     --blue: #6c8ff0;
-    --danger: #ff8a73;
-    --amber: #ffc24b;
-    --amber-ink: #ffcf6e;
-    --accent-contrast: #111228;
-    --grain-opacity: 0.03;
-    --paper-shadow: 0 0 0 1.5px var(--edge), 3px 3px 0 1.5px #05060f;
-    --chrome: #0a0b1c;
-    --chrome-ink: #f2efff;
-    --chrome-muted: #aba9cf;
-    --heat-0: #262857;
-    --heat-1: #5a4f8f;
-    --heat-2: #6e63a8;
-    --heat-3: #8579bf;
-    --heat-4: #9f95d3;
-    --heat-5: #bcb4e6;
+    --danger: #e9a58d;
+    --amber: #e9b872;
+    --amber-ink: #efc285;
+    --accent-contrast: #1e1813;
+    --grain-opacity: 0.035;
+    --paper-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
+    --chrome: #140f0b;
+    --chrome-ink: #f3e6d1;
+    --chrome-muted: #bfae98;
+    --heat-0: #3a2f25;
+    --heat-1: #6b3e28;
+    --heat-2: #8c5233;
+    --heat-3: #b06a42;
+    --heat-4: #d08a5c;
+    --heat-5: #eab084;
     --rate-1: #7a5e2c;
     --rate-2: #94743a;
     --rate-3: #ae8b4b;
     --rate-4: #c6a465;
     --rate-5: #ddbf86;
-    --edge: #3b3e7a;
-    --hard: 3px 3px 0 #05060f;
-    --grid: #2a2c5c;
+    --edge: transparent;
+    --glow: rgb(233 160 80 / 0.12);
+    --hard: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
+    --grid: #3a2f25;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #111228;
-  --surface: #1b1c3d;
-  --ink: #f2efff;
-  --muted: #aba9cf;
-  --rule: #2f3163;
+  --bg: #1e1813;
+  --surface: #2a221b;
+  --ink: #f3e6d1;
+  --muted: #bfae98;
+  --rule: #43372b;
   --green: #56a36b;
   --blue: #6c8ff0;
-  --danger: #ff8a73;
-  --amber: #ffc24b;
-  --amber-ink: #ffcf6e;
-  --accent-contrast: #111228;
-  --grain-opacity: 0.03;
-  --paper-shadow: 0 0 0 1.5px var(--edge), 3px 3px 0 1.5px #05060f;
-  --chrome: #0a0b1c;
-  --chrome-ink: #f2efff;
-  --chrome-muted: #aba9cf;
-  --heat-0: #262857;
-  --heat-1: #5a4f8f;
-  --heat-2: #6e63a8;
-  --heat-3: #8579bf;
-  --heat-4: #9f95d3;
-  --heat-5: #bcb4e6;
+  --danger: #e9a58d;
+  --amber: #e9b872;
+  --amber-ink: #efc285;
+  --accent-contrast: #1e1813;
+  --grain-opacity: 0.035;
+  --paper-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
+  --chrome: #140f0b;
+  --chrome-ink: #f3e6d1;
+  --chrome-muted: #bfae98;
+  --heat-0: #3a2f25;
+  --heat-1: #6b3e28;
+  --heat-2: #8c5233;
+  --heat-3: #b06a42;
+  --heat-4: #d08a5c;
+  --heat-5: #eab084;
   --rate-1: #7a5e2c;
   --rate-2: #94743a;
   --rate-3: #ae8b4b;
   --rate-4: #c6a465;
   --rate-5: #ddbf86;
-  --edge: #3b3e7a;
-  --hard: 3px 3px 0 #05060f;
-  --grid: #2a2c5c;
+  --glow: rgb(233 160 80 / 0.12);
+  --edge: transparent;
+  --hard: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
+  --grid: #3a2f25;
   color-scheme: dark;
 }
 :root[data-accent='blue'] {
@@ -154,13 +154,13 @@
   --color-chrome-muted: var(--chrome-muted);
   --color-chrome-mark: var(--chrome-mark);
   --color-grid: var(--grid);
-  --font-serif: 'Bricolage Grotesque Variable', 'Inter', system-ui, sans-serif;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --font-sans: 'Nunito Variable', system-ui, -apple-system, sans-serif;
   --font-hand: 'Caveat', cursive;
-  --radius-card: 20px;
-  --radius-btn: 999px;
-  --radius-cover: 4px;
-  --shadow-cover: 3px 3px 0 1.5px var(--edge);
+  --radius-card: 22px;
+  --radius-btn: 16px;
+  --radius-cover: 3px;
+  --shadow-cover: 2px 8px 16px -6px rgb(74 50 38 / 0.45);
   --ease-spring: var(--spring);
   --ease-soft: var(--ease);
 }
@@ -172,6 +172,9 @@
     font-family: var(--font-sans);
     font-size: 16px;
     font-optical-sizing: auto;
+    font-variation-settings:
+      'SOFT' 100,
+      'WONK' 0;
     -webkit-tap-highlight-color: transparent;
     text-wrap: pretty;
     scrollbar-color: var(--rule) var(--bg);
@@ -179,6 +182,9 @@
   /* Texture sits behind the application, never over text or controls. */
   body {
     isolation: isolate;
+    background:
+      radial-gradient(120% 60% at 50% -12%, var(--glow), transparent 62%) fixed,
+      var(--bg);
   }
   body::before {
     content: '';
@@ -205,17 +211,17 @@
   }
   h1 {
     font-family: var(--font-serif);
-    font-weight: 750;
+    font-weight: 500;
     font-size: 32px;
-    line-height: 1.02;
-    letter-spacing: -0.035em;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
   }
   h2 {
     font-family: var(--font-serif);
-    font-weight: 700;
+    font-weight: 550;
     font-size: 22px;
-    line-height: 1.12;
-    letter-spacing: -0.025em;
+    line-height: 1.15;
+    letter-spacing: -0.012em;
   }
   button,
   a,
@@ -256,32 +262,33 @@
   .display {
     font-family: var(--font-serif);
     font-size: 32px;
-    font-weight: 750;
-    line-height: 1.02;
-    letter-spacing: -0.035em;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
   .display-italic {
     font-family: var(--font-serif);
     font-size: 32px;
-    font-weight: 750;
-    color: var(--accent);
-    line-height: 1.02;
-    letter-spacing: -0.035em;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--amber-ink);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
   .title {
     font-family: var(--font-serif);
     font-size: 22px;
-    font-weight: 700;
-    line-height: 1.12;
-    letter-spacing: -0.025em;
+    font-weight: 550;
+    line-height: 1.15;
+    letter-spacing: -0.012em;
   }
   /* Data values (stats, tiles): same sans as the interface, proportional figures. */
   .figure {
     font-family: var(--font-serif);
-    font-weight: 750;
-    letter-spacing: -0.035em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
     line-height: 1.05;
     font-variant-numeric: proportional-nums lining-nums;
   }
@@ -325,7 +332,7 @@
   }
   .card {
     background: var(--surface);
-    border: 1.5px solid var(--edge);
+    border: 0;
     box-shadow: var(--hard) !important;
     border-radius: var(--radius-card);
     padding: 16px;
@@ -360,13 +367,8 @@
   .btn-primary {
     background: var(--accent);
     color: var(--accent-contrast);
-    border: 1.5px solid var(--edge);
-    box-shadow: var(--hard);
-    font-weight: 600;
-  }
-  .btn-primary:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 var(--edge);
+    box-shadow: 0 8px 18px -10px color-mix(in oklab, var(--accent) 70%, transparent);
+    font-weight: 700;
   }
   .btn-soft {
     background: var(--soft);
@@ -376,8 +378,8 @@
   .btn-secondary {
     background: transparent;
     color: var(--ink);
-    border: 1.5px solid var(--edge);
-    font-weight: 600;
+    border: 1.5px solid color-mix(in oklab, var(--ink) 30%, var(--rule));
+    font-weight: 700;
   }
   .btn-link {
     display: inline-flex;
@@ -397,11 +399,12 @@
     width: 44px;
     height: 44px;
     flex: none;
-    border-radius: 999px;
+    border-radius: 14px;
     display: grid;
     place-items: center;
     background: var(--surface);
-    border: 1.5px solid var(--edge);
+    border: 0;
+    box-shadow: var(--paper-shadow);
     transition: transform 140ms var(--ease);
   }
   .pressable {
@@ -411,10 +414,10 @@
     min-height: 44px;
     padding: 0 14px;
     border-radius: 999px;
-    border: 1.5px solid var(--edge);
+    border: 1px solid var(--rule);
     background: var(--surface);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -425,17 +428,16 @@
       border-color 140ms var(--ease);
   }
   .chip[aria-pressed='true'] {
-    background: var(--chrome-mark);
-    border-color: var(--edge);
-    color: #17183b;
-    box-shadow: 2px 2px 0 var(--edge);
+    background: var(--chrome);
+    border-color: var(--chrome);
+    color: var(--chrome-ink);
   }
   .input {
     width: 100%;
     min-height: 44px;
     padding: 0.5rem 0.875rem;
     border-radius: 14px;
-    border: 1.5px solid var(--edge);
+    border: 1px solid var(--rule);
     background: var(--surface);
     color: var(--ink);
   }
@@ -457,9 +459,8 @@
     position: relative;
     flex: none;
     overflow: hidden;
-    border-radius: 4px;
-    outline: 1.5px solid var(--edge);
-    box-shadow: 3px 3px 0 1.5px var(--edge);
+    border-radius: 3px 5px 5px 3px;
+    box-shadow: var(--shadow-cover);
   }
   .book-cover::before {
     content: '';
@@ -475,7 +476,7 @@
     position: absolute;
     inset: 1px 0 1px auto;
     width: 2px;
-    background: repeating-linear-gradient(0deg, #e5ddcc 0 1px, #fff9ec 1px 2px);
+    background: repeating-linear-gradient(0deg, #e8d9bf 0 1px, #fff6e4 1px 2px);
     opacity: 0.7;
     z-index: 2;
     pointer-events: none;
