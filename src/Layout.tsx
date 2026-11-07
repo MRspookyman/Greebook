@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { TabBar } from '@/components/TabBar'
 import { useMe } from '@/features/auth/me'
@@ -24,6 +24,14 @@ export function Layout() {
   const location = useLocation()
   const [action, setAction] = useState<'menu' | 'log' | 'trace' | 'ratito' | null>(null)
   const prev = useRef(location.pathname)
+  const mainRef = useRef<HTMLElement>(null)
+  const focusedRoute = useRef(location.pathname)
+  useEffect(() => {
+    if (focusedRoute.current !== location.pathname) {
+      focusedRoute.current = location.pathname
+      mainRef.current?.focus({ preventScroll: true })
+    }
+  }, [location.pathname])
   useRealtimeSync()
   useOfflineSync()
   useRatitoTimer()
@@ -35,7 +43,16 @@ export function Layout() {
 
   return (
     <>
+      <a
+        className="sr-only z-50 min-h-11 bg-surface p-3 text-accent focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        href="#main-content"
+      >
+        Ir al contenido
+      </a>
       <main
+        ref={mainRef}
+        id="main-content"
+        tabIndex={-1}
         className="mx-auto max-w-xl px-[18px]"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 12px)',

@@ -18,6 +18,7 @@ function SurpriseModal({ surprise, onClose, busy }: { surprise: Surprise; onClos
   useEffect(() => {
     const element = dialog.current
     element?.showModal()
+    element?.querySelector<HTMLElement>('#surprise-title')?.focus()
     return () => element?.close()
   }, [])
   return (
@@ -37,8 +38,12 @@ function SurpriseModal({ surprise, onClose, busy }: { surprise: Surprise; onClos
         <span className="font-serif text-5xl text-green" aria-hidden="true">
           ♡
         </span>
-        <h1 id="surprise-title">{surprise.title}</h1>
-        <p className="whitespace-pre-line font-serif text-xl leading-relaxed">{surprise.message}</p>
+        <h1 id="surprise-title" tabIndex={-1} className="[overflow-wrap:anywhere]">
+          {surprise.title}
+        </h1>
+        <p className="whitespace-pre-line font-serif text-xl leading-relaxed [overflow-wrap:anywhere]">
+          {surprise.message}
+        </p>
         <button type="button" className="btn btn-primary" onClick={onClose} disabled={busy}>
           {busy ? 'Guardando…' : 'Cerrar'}
         </button>

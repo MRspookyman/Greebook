@@ -12,6 +12,22 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
 
   useEffect(() => {
+    const root = document.documentElement
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const syncThemeColor = () => {
+      const background = getComputedStyle(root).getPropertyValue('--bg').trim()
+      document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', background)
+    }
+    const observer = new MutationObserver(syncThemeColor)
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] })
+    media.addEventListener('change', syncThemeColor)
+    syncThemeColor()
+    return () => {
+      observer.disconnect()
+      media.removeEventListener('change', syncThemeColor)
+    }
+  }, [])
+  useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)

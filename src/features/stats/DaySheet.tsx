@@ -29,7 +29,7 @@ export function DaySheet({ date, onClose, sessions, readings, onRegister }: Prop
               <div className="min-w-0">
                 {reading ? (
                   <Link
-                    className="inline-flex min-h-11 items-center font-medium"
+                    className="inline-flex min-h-11 items-center font-medium [overflow-wrap:anywhere]"
                     to={`/libro/${reading.id}`}
                     onClick={onClose}
                   >

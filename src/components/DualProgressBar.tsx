@@ -30,34 +30,39 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
     return (
       <div
         key={m.label + below}
-        className={`absolute flex -translate-x-1/2 items-center text-[10px] font-semibold ${below ? 'top-[34px] flex-col' : 'bottom-[34px] flex-col-reverse'}`}
-        style={{ left: entered ? `${pct}%` : 0, color: `var(--${m.accent})`, transition: 'left 1.2s var(--ease)' }}
+        className={`pointer-events-none absolute inset-x-0 text-xs font-semibold ${below ? 'top-[34px]' : 'bottom-[50px]'}`}
+        style={{ transform: `translateX(${entered ? pct : 0}%)`, transition: 'transform 1.2s var(--ease)' }}
         title={`${m.label}: ${Math.round(pct)} %`}
       >
-        <span className="h-2 w-0.5 bg-current" />
-        <span
-          className="num whitespace-nowrap rounded-[7px] px-1.5 py-px text-surface"
-          style={{ background: `var(--${m.accent})` }}
+        <div
+          className={`flex w-fit max-w-[90%] items-center ${below ? 'flex-col' : 'flex-col-reverse'}`}
+          style={{ transform: `translateX(-${entered ? pct : 0}%)`, transition: 'transform 1.2s var(--ease)' }}
         >
-          {m.label}
-          {m.caption ? ` · ${m.caption}` : ''}
-        </span>
+          <span className="h-2 w-0.5" style={{ background: `var(--${m.accent})` }} />
+          <span
+            className="num wrap-anywhere rounded-[7px] px-1.5 py-px text-center text-ink"
+            style={{ background: `color-mix(in oklab, var(--${m.accent}) 14%, var(--surface))` }}
+          >
+            {m.label}
+            {m.caption ? ` · ${m.caption}` : ''}
+          </span>
+        </div>
       </div>
     )
   }
   return (
     <div
-      className="relative mx-3 h-[62px]"
+      className="relative mx-3 min-h-[78px] overflow-x-clip"
       role="img"
       aria-label={`${a.label}: ${Math.round(clamp(a.value))} %. ${b.label}: ${Math.round(clamp(b.value))} %`}
     >
       <div className="absolute inset-x-0 top-[28px] h-1.5 rounded-full bg-border" />
       <div
-        className="absolute top-[28px] left-0 h-1.5 rounded-full opacity-50"
+        className="absolute inset-x-0 top-[28px] h-1.5 origin-left rounded-full opacity-50"
         style={{
-          width: entered ? `${clamp(Math.min(a.value, b.value))}%` : 0,
+          transform: `scaleX(${entered ? clamp(Math.min(a.value, b.value)) / 100 : 0})`,
           background: 'var(--amber)',
-          transition: 'width 1.2s var(--ease)',
+          transition: 'transform 1.2s var(--ease)',
         }}
       />
       {stops.map((stop) => (

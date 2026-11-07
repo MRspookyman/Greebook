@@ -39,7 +39,7 @@ export function Toaster() {
       {list.map((t) => (
         <div
           key={t.id}
-          className="w-full max-w-sm rounded-2xl bg-ink px-3.5 py-3 text-[13.5px] text-surface shadow-lg"
+          className="wrap-anywhere w-full max-w-sm rounded-2xl bg-ink px-3.5 py-3 text-[13.5px] text-surface shadow-lg"
           style={{ animation: 'gb-fade-up 0.5s var(--spring)' }}
         >
           <p className="font-semibold">{t.message}</p>

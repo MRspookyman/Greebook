@@ -18,8 +18,9 @@ export function Switch({ checked, onChange, children, disabled }: Props) {
       className="flex min-h-11 w-full items-center justify-between gap-3 text-left disabled:opacity-50"
       onClick={() => onChange(!checked)}
     >
-      <span>{children}</span>
+      <span className="min-w-0 wrap-anywhere">{children}</span>
       <span
+        aria-hidden
         className={`relative h-[30px] w-[50px] flex-none rounded-full transition-colors duration-200 ${checked ? 'bg-accent' : 'bg-track'}`}
       >
         <span

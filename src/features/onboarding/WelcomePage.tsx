@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from 'react'
+import { useEffect, useRef, useState, type SubmitEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { WELCOME } from '@/config/surprises'
 import { useMe } from '@/features/auth/me'
@@ -14,6 +14,10 @@ export function WelcomePage() {
   const [goal, setGoal] = useState(String(profile.yearly_goal))
   const [time, setTime] = useState(profile.reminder_time.slice(0, 5))
   const [error, setError] = useState('')
+  const container = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    container.current?.querySelector('h1')?.focus()
+  }, [step])
 
   if (profile.onboarded_at) return <Navigate to="/" replace />
 
@@ -48,13 +52,14 @@ export function WelcomePage() {
   return (
     <main className="min-h-dvh bg-bg px-6 text-ink pt-safe pb-safe">
       <div
+        ref={container}
         className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 py-10"
         style={{ animation: 'gb-fade-up 300ms ease-out' }}
       >
         <p className="font-serif text-xl text-green">Greenbook</p>
         {step === 1 ? (
           <>
-            <h1>{WELCOME.title}</h1>
+            <h1 tabIndex={-1}>{WELCOME.title}</h1>
             <p className="whitespace-pre-line font-serif text-xl leading-relaxed">{WELCOME.message}</p>
             <p className="text-muted">{WELCOME.signature}</p>
             <button type="button" className="btn btn-primary" onClick={() => setStep(2)}>
@@ -68,11 +73,12 @@ export function WelcomePage() {
             </p>
             {step === 2 ? (
               <>
-                <h1>Tu rincón de lectura</h1>
+                <h1 tabIndex={-1}>Tu rincón de lectura</h1>
                 <label className="label">
                   Tu nombre
                   <input
                     className="input mt-2"
+                    name="given-name"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     required
@@ -83,6 +89,8 @@ export function WelcomePage() {
                   Objetivo anual de libros
                   <input
                     className="input mt-2"
+                    name="yearly-goal"
+                    autoComplete="off"
                     type="number"
                     inputMode="numeric"
                     min="1"
@@ -97,11 +105,13 @@ export function WelcomePage() {
               </>
             ) : (
               <>
-                <h1>Un ratito para leer</h1>
+                <h1 tabIndex={-1}>Un ratito para leer</h1>
                 <label className="label">
                   Hora del recordatorio
                   <input
                     className="input mt-2"
+                    name="reminder-time"
+                    autoComplete="off"
                     type="time"
                     value={time}
                     onChange={(event) => setTime(event.target.value)}

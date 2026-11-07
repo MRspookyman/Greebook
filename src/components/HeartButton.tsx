@@ -10,13 +10,15 @@ interface Props {
 
 /** ❤️ reaction pill: pops when switched on. */
 export function HeartButton({ on, count, onToggle, label = 'Me gusta' }: Props) {
-  const cls = `flex min-h-9 items-center gap-1 rounded-full border px-2.5 text-xs transition-transform duration-300 [transition-timing-function:var(--spring)] ${
+  const cls = `flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2.5 text-xs transition-transform duration-300 [transition-timing-function:var(--spring)] ${
     on
-      ? 'border-transparent bg-[color-mix(in_oklab,var(--danger)_14%,var(--surface))] text-danger'
+      ? 'border-transparent bg-[color-mix(in_oklab,var(--danger)_14%,var(--surface))] text-ink'
       : 'border-border text-muted'
   }`
   const icon = (
     <Heart
+      aria-hidden
+      className={on ? 'text-danger' : undefined}
       size={14}
       fill={on ? 'currentColor' : 'none'}
       style={on ? { animation: 'gb-pop 0.5s var(--spring)' } : undefined}

@@ -26,18 +26,24 @@ export function NotificationsSection() {
   return (
     <section className="card space-y-4 p-5" aria-labelledby="notifications-title">
       <h2 id="notifications-title">Avisos</h2>
+      <PushEnableButton />
+      <p className="text-sm text-muted">
+        Preferencias de tu cuenta. Solo recibirás estos avisos en los dispositivos donde los hayas activado.
+      </p>
       <Switch
         checked={profile.notify_reminder}
         disabled={update.isPending}
         onChange={(checked) => save({ notify_reminder: checked })}
       >
-        Recordatorio diario
+        Recibir recordatorio diario
       </Switch>
       <label className="label" htmlFor="reminder-time">
         Hora del recordatorio
       </label>
       <input
         id="reminder-time"
+        name="reminder-time"
+        autoComplete="off"
         type="time"
         className="input"
         required
@@ -55,12 +61,11 @@ export function NotificationsSection() {
         disabled={update.isPending}
         onChange={(checked) => save({ notify_partner: checked })}
       >
-        <span className="block">Avisos de {partner?.display_name ?? 'tu pareja'}</span>
+        <span className="block">Recibir avisos de {partner?.display_name ?? 'tu pareja'}</span>
         <span className="block text-xs text-muted">
-          Toques, mensajes del club, recomendaciones, reacciones y cuando se pone a leer
+          Toques, mensajes de la sala, recomendaciones, reacciones y cuando se pone a leer
         </span>
       </Switch>
-      <PushEnableButton />
     </section>
   )
 }

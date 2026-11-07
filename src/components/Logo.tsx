@@ -9,7 +9,9 @@ export function Logo({ size = 28 }: { size?: number }) {
           <path d="M256 158v236" />
         </g>
       </svg>
-      <span className="font-serif font-semibold">Greenbook</span>
+      <span className="font-serif font-semibold" translate="no">
+        Greenbook
+      </span>
     </span>
   )
 }

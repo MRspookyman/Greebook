@@ -98,18 +98,111 @@ export function TodayPage() {
         </Link>
       </header>
 
+      {readings.isPending ? (
+        <div className="card h-[218px] animate-pulse" role="status" aria-label="Cargando lecturas" />
+      ) : readings.isError && !readings.data ? (
+        <p className="text-sm text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
+      ) : active.length === 0 ? (
+        <div className="card">
+          <EmptyState title="Aún no estás leyendo nada">
+            <Link className="btn btn-primary mt-3" to="/biblioteca/buscar">
+              Buscar un libro
+            </Link>
+          </EmptyState>
+        </div>
+      ) : (
+        <section className="rise" style={{ '--k': 2 } as CSSProperties} aria-label="Tus lecturas actuales">
+          <div
+            ref={carousel}
+            className="no-scrollbar -mx-[18px] flex snap-x snap-mandatory scroll-px-[18px] gap-3 overflow-x-auto px-[18px] pb-1"
+            onScroll={(event) => {
+              const element = event.currentTarget
+              const stride = (element.firstElementChild as HTMLElement | null)?.offsetWidth ?? element.clientWidth
+              setCardIndex(Math.round(element.scrollLeft / (stride + 12)))
+            }}
+          >
+            {active.map((reading, index) => (
+              <ReadingCard
+                key={reading.id}
+                reading={reading}
+                priority={index === 0}
+                sessions={sessions.data ?? []}
+                today={today}
+                onLog={() => setLogging(reading)}
+              />
+            ))}
+          </div>
+          {active.length > 1 && (
+            <div className="flex h-11 items-center justify-center" aria-label="Elegir lectura">
+              {active.map((reading, index) => (
+                <button
+                  key={reading.id}
+                  className="flex h-11 min-w-11 items-center justify-center"
+                  aria-label={`Ver ${reading.book.title}`}
+                  aria-pressed={index === cardIndex}
+                  onClick={() => {
+                    const element = carousel.current?.children[index] as HTMLElement | undefined
+                    element?.scrollIntoView({
+                      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                      block: 'nearest',
+                      inline: 'start',
+                    })
+                  }}
+                >
+                  <span
+                    className={`h-1.5 rounded-full transition-colors duration-300 ${
+                      index === cardIndex ? 'w-5 bg-accent' : 'w-1.5 bg-border'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {partner && inlineInvite ? (
+        <InviteCard invite={inlineInvite} compact />
+      ) : (
+        partner &&
+        (priority || (live && liveReading) || (latest && latestReading)) && (
+          <Link
+            to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
+            className="flex min-h-11 items-center gap-2 text-xs"
+          >
+            <Avatar person={partner} size={28} />
+            <span className="line-clamp-2">
+              {partner.display_name}{' '}
+              {priority
+                ? priority.type === 'invite'
+                  ? 'te invita a un ratito'
+                  : priority.type === 'together'
+                    ? 'quiere leer contigo'
+                    : priority.type === 'goal'
+                      ? 'te propone un reto para los dos'
+                      : `te dejó algo · ${forMe.count}`
+                : live && liveReading
+                  ? `está leyendo «${liveReading.book.title}»`
+                  : latest && latestReading
+                    ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
+                    : ''}
+            </span>
+          </Link>
+        )
+      )}
       <section className="card rise space-y-3" style={{ '--k': 1 } as CSSProperties} aria-label="Tu racha de lectura">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-amber"
-            style={{ background: 'color-mix(in oklab, var(--amber) 14%, var(--surface))' }}
-          >
-            <Flame size={14} fill="currentColor" aria-hidden />
-            {formatDays(streak)}
-          </span>
-          {partner && (
+          {streak > 0 && (
             <span
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--amber-ink)]"
+              style={{ background: 'color-mix(in oklab, var(--amber) 14%, var(--surface))' }}
+            >
+              <Flame size={14} fill="currentColor" aria-hidden />
+              {formatDays(streak)}
+            </span>
+          )}
+          {partner && duo > 0 && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[var(--amber-ink)]"
               aria-label={`${formatDays(duo)} leyendo los dos`}
             >
               <span className="flex -space-x-1" aria-hidden>
@@ -122,14 +215,14 @@ export function TodayPage() {
                   style={{ background: `var(--${partner.accent})` }}
                 />
               </span>
-              {duo} días leyendo los dos este mes
+              {formatDays(duo)} leyendo los dos este mes
             </span>
           )}
           <p className="text-xs text-muted">
             {dates.has(today)
               ? 'Hoy ya has leído'
               : streak === 0
-                ? 'Empieza tu racha hoy'
+                ? 'Cuando te apetezca, un ratito'
                 : 'Un ratito para ti, cuando quieras'}
           </p>
         </div>
@@ -142,7 +235,7 @@ export function TodayPage() {
             return (
               <div
                 key={`${date}-${done}-${theirs}`}
-                className="flex flex-col items-center gap-1 text-[11px] text-muted"
+                className="flex flex-col items-center gap-1 text-xs text-muted"
                 aria-label={`${fmt(date, 'EEEE')}: ${
                   partner
                     ? both
@@ -186,11 +279,7 @@ export function TodayPage() {
                           : 'bg-border'
                     }`}
                     style={{
-                      animation: isToday
-                        ? done
-                          ? 'gb-pop .45s var(--spring)'
-                          : 'gb-breathe 2s var(--ease) infinite'
-                        : undefined,
+                      animation: isToday && done ? 'gb-pop .45s var(--spring)' : undefined,
                     }}
                   >
                     {done && <Check size={17} strokeWidth={3} aria-hidden />}
@@ -202,94 +291,6 @@ export function TodayPage() {
           })}
         </div>
       </section>
-
-      {partner && inlineInvite ? (
-        <InviteCard invite={inlineInvite} compact />
-      ) : (
-        partner &&
-        (priority || (live && liveReading) || (latest && latestReading)) && (
-          <Link
-            to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
-            className="flex min-h-11 items-center gap-2 text-xs"
-          >
-            <Avatar person={partner} size={28} />
-            <span className="line-clamp-2">
-              {partner.display_name}{' '}
-              {priority
-                ? priority.type === 'invite'
-                  ? 'te invita a un ratito'
-                  : priority.type === 'together'
-                    ? 'quiere leer contigo'
-                    : priority.type === 'goal'
-                      ? 'te propone un reto para los dos'
-                      : `te dejó algo · ${forMe.count}`
-                : live && liveReading
-                  ? `está leyendo «${liveReading.book.title}»`
-                  : latest && latestReading
-                    ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
-                    : ''}
-            </span>
-          </Link>
-        )
-      )}
-
-      {readings.isPending ? (
-        <div className="card h-[218px] animate-pulse" aria-label="Cargando lecturas" />
-      ) : readings.isError && !readings.data ? (
-        <p className="text-sm text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
-      ) : active.length === 0 ? (
-        <div className="card">
-          <EmptyState title="Aún no estás leyendo nada">
-            <Link className="btn btn-primary mt-3" to="/biblioteca/buscar">
-              Buscar un libro
-            </Link>
-          </EmptyState>
-        </div>
-      ) : (
-        <section className="rise" style={{ '--k': 2 } as CSSProperties} aria-label="Tus lecturas actuales">
-          <div
-            ref={carousel}
-            className="no-scrollbar -mx-[18px] flex snap-x snap-mandatory scroll-px-[18px] gap-3 overflow-x-auto px-[18px] pb-1"
-            onScroll={(event) => {
-              const element = event.currentTarget
-              const stride = (element.firstElementChild as HTMLElement | null)?.offsetWidth ?? element.clientWidth
-              setCardIndex(Math.round(element.scrollLeft / (stride + 12)))
-            }}
-          >
-            {active.map((reading) => (
-              <ReadingCard
-                key={reading.id}
-                reading={reading}
-                sessions={sessions.data ?? []}
-                today={today}
-                onLog={() => setLogging(reading)}
-              />
-            ))}
-          </div>
-          {active.length > 1 && (
-            <div className="flex h-11 items-center justify-center" aria-label="Elegir lectura">
-              {active.map((reading, index) => (
-                <button
-                  key={reading.id}
-                  className="flex h-11 min-w-11 items-center justify-center"
-                  aria-label={`Ver ${reading.book.title}`}
-                  aria-pressed={index === cardIndex}
-                  onClick={() => {
-                    const element = carousel.current?.children[index] as HTMLElement | undefined
-                    element?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
-                  }}
-                >
-                  <span
-                    className={`h-1.5 rounded-full transition-all duration-300 [transition-timing-function:var(--spring)] ${
-                      index === cardIndex ? 'w-5 bg-accent' : 'w-1.5 bg-border'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       <section className="grid grid-cols-2 gap-3" aria-label="Resumen de lectura">
         <Link
@@ -303,7 +304,9 @@ export function TodayPage() {
               {finished}
               <span className="text-sm">/{goal}</span>
             </p>
-            <p className="mt-1 text-[11px] leading-tight text-muted">libros en {today.slice(0, 4)}</p>
+            <p className="mt-1 text-xs leading-tight text-muted">
+              {finished === 1 ? 'libro' : 'libros'} en {today.slice(0, 4)}
+            </p>
           </div>
         </Link>
         <Link
@@ -312,8 +315,11 @@ export function TodayPage() {
           aria-label={`Esta semana ${weeklyPages} páginas. Ver estadísticas`}
         >
           <div className="flex items-baseline justify-between gap-1">
-            <span className="text-[10px] text-muted">Esta semana</span>
-            <span className="whitespace-nowrap text-xs font-semibold">{weeklyPages} pág</span>
+            <span className="text-xs text-muted">Esta semana</span>
+            <span className="whitespace-nowrap text-xs font-semibold">
+              {weeklyPages}
+              {'\u00a0'}pág
+            </span>
           </div>
           <div className="flex h-8 items-end gap-1.5" aria-hidden>
             {series.map((day) => (
@@ -327,7 +333,7 @@ export function TodayPage() {
         </Link>
       </section>
       {pending > 0 && (
-        <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted" role="status">
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted" role="status">
           <CloudUpload size={13} aria-hidden />
           {pending} {pending === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de sincronizar
         </p>
@@ -339,11 +345,13 @@ export function TodayPage() {
 
 function ReadingCard({
   reading,
+  priority,
   sessions,
   today,
   onLog,
 }: {
   reading: ReadingWithBook
+  priority: boolean
   sessions: Session[]
   today: string
   onLog: () => void
@@ -354,7 +362,7 @@ function ReadingCard({
   return (
     <article className="card w-[calc(100%_-_22px)] flex-none snap-start space-y-3">
       <Link to={`/libro/${reading.id}`} className="flex gap-3">
-        <Cover book={reading.book} width={58} />
+        <Cover book={reading.book} width={58} priority={priority} />
         <div className="min-w-0 flex-1 space-y-1">
           <h2 className="line-clamp-2 font-serif text-lg font-semibold leading-tight">{reading.book.title}</h2>
           <p className="truncate text-xs text-muted">
@@ -372,7 +380,7 @@ function ReadingCard({
       </Link>
       <div className="space-y-1.5">
         <ProgressBar value={fraction} />
-        <div className="flex justify-between gap-2 text-[11px] text-muted">
+        <div className="flex justify-between gap-2 text-xs text-muted">
           <span>{formatPosition(reading)}</span>
           <span className="shrink-0">
             {pace === null ? 'Sin ritmo aún' : `${Math.round(pace)} ${reading.unit === 'minutes' ? 'min' : 'pág'}/día`}

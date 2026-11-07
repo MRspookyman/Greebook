@@ -4,11 +4,11 @@ import { enablePush, getPushState, type PushState } from '@/lib/push'
 import { toast } from '@/components/toast'
 
 const messages: Record<PushState, string> = {
-  enabled: 'Avisos activados en este dispositivo',
-  denied: 'Avisos desactivados en Ajustes del iPhone',
-  'needs-install': 'Añade Greenbook a tu pantalla de inicio para recibir avisos',
-  unsupported: 'Este dispositivo no admite avisos web. En iPhone necesitas iOS 16.4 o posterior.',
-  default: 'Activa los avisos para recibir recordatorios y noticias de tu pareja.',
+  enabled: 'En este iPhone: avisos activados',
+  denied: 'En este iPhone: avisos no activados. Permítelos en Ajustes del iPhone.',
+  'needs-install': 'En este iPhone: avisos no activados. Añade Greenbook a tu pantalla de inicio para recibirlos.',
+  unsupported: 'En este dispositivo: avisos no disponibles. En iPhone necesitas iOS 16.4 o posterior.',
+  default: 'En este iPhone: avisos no activados',
 }
 
 export function PushEnableButton() {

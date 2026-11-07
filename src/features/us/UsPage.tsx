@@ -6,6 +6,7 @@ import { Cover } from '@/components/Cover'
 import { useMe } from '@/features/auth/me'
 import { useInvites, useMessages, useReactions, useReadings, useSessions, useTogether } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
+import { formatDays } from '@/lib/units'
 import type { Profile, ReadingWithBook } from '@/lib/types'
 import { InviteCard } from './InviteCard'
 import { MessageCard } from './MessageCard'
@@ -31,7 +32,7 @@ function ReadingNow({ person, readings }: { person: Profile; readings: ReadingWi
     <div className="min-w-0 flex-1 space-y-2">
       <p className="text-xs font-medium text-muted">{person.display_name}</p>
       {current.length ? (
-        current.map((reading) => (
+        current.slice(0, 1).map((reading) => (
           <Link key={reading.id} to={`/libro/${reading.id}`} className="flex min-h-11 items-center gap-2">
             <Cover book={reading.book} width={28} />
             <div className="min-w-0">
@@ -42,6 +43,20 @@ function ReadingNow({ person, readings }: { person: Profile; readings: ReadingWi
         ))
       ) : (
         <p className="text-sm text-muted">El próximo libro os espera</p>
+      )}
+      {current.length > 1 && (
+        <details>
+          <summary className="min-h-11 cursor-pointer py-3 text-xs text-muted">Ver {current.length - 1} más</summary>
+          {current.slice(1).map((reading) => (
+            <Link
+              key={reading.id}
+              to={`/libro/${reading.id}`}
+              className="flex min-h-11 items-center text-sm [overflow-wrap:anywhere]"
+            >
+              {reading.book.title}
+            </Link>
+          ))}
+        </details>
       )}
     </div>
   )
@@ -67,6 +82,7 @@ export function UsPage() {
   const goalPendingAbove = items.some((item) => item.type === 'goal')
   const rooms = useRooms()
   const [adding, setAdding] = useState(false)
+  const [showAllPending, setShowAllPending] = useState(false)
   const [bookId, setBookId] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -102,6 +118,16 @@ export function UsPage() {
   const linkedId = location.hash.startsWith('#m-') ? location.hash.slice(3) : null
   const linkedMessage = linkedId ? messages.find((message) => message.id === linkedId) : undefined
   const linkedAlreadyPending = items.some((item) => item.type === 'message' && item.message.id === linkedId)
+  const linkedItem = items.find((item) =>
+    item.type === 'message'
+      ? item.message.id === linkedId
+      : item.type === 'invite'
+        ? item.invite.id === linkedId
+        : item.type === 'together' && item.item.id === linkedId,
+  )
+  const prioritizedItems = linkedItem ? [linkedItem, ...items.filter((item) => item !== linkedItem)] : items
+  const previewCount = linkedMessage && !linkedAlreadyPending ? 0 : 1
+  const visibleItems = showAllPending ? prioritizedItems : prioritizedItems.slice(0, previewCount)
   useEffect(() => {
     if (!linkedId || !messages.length) return
     const frame = requestAnimationFrame(() => {
@@ -127,7 +153,7 @@ export function UsPage() {
         </div>
         <div>
           <h1 className="text-2xl">Rincón de los dos</h1>
-          <p className="text-xs text-muted">{summary.daysTogether} días leyendo los dos este mes</p>
+          <p className="text-xs text-muted">{formatDays(summary.daysTogether)} leyendo los dos este mes</p>
         </div>
       </header>
       {(mineQuery.isPending || theirsQuery.isPending || messagesQuery.isPending) && (
@@ -143,12 +169,12 @@ export function UsPage() {
       {(items.length > 0 || linkedMessage) && (
         <section className="space-y-3" aria-label="Para ti">
           <h2 className="text-lg">Para ti</h2>
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             switch (item.type) {
               case 'message':
-                return <MessageCard key={`m-${item.message.id}`} message={item.message} />
+                return <MessageCard key={`m-${item.message.id}`} message={item.message} preview={!showAllPending} />
               case 'invite':
-                return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} />
+                return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} compact />
               case 'together':
                 return (
                   <div className="card" key={`t-${item.item.id}`}>
@@ -163,11 +189,40 @@ export function UsPage() {
                 )
             }
           })}
-          {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} />}
+          {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} preview={!showAllPending} />}
+          {items.length > previewCount && (
+            <button
+              className="btn btn-ghost min-h-11"
+              aria-expanded={showAllPending}
+              onClick={() => setShowAllPending(!showAllPending)}
+            >
+              {showAllPending ? 'Ver menos' : `Ver ${items.length - previewCount} más`}
+            </button>
+          )}
         </section>
       )}
       <section className="card space-y-3" aria-label="Ahora mismo">
         <h2 className="text-lg">Ahora mismo</h2>
+        {rooms.length > 0 && (
+          <div>
+            {rooms.map((room) => {
+              const unread = messages.filter(
+                (message) =>
+                  message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
+              ).length
+              return (
+                <Link
+                  key={room.book.id}
+                  to={`/sala/${room.book.id}`}
+                  className="flex min-h-11 items-center justify-between gap-2 text-sm"
+                >
+                  <span className="min-w-0 flex-1 truncate">Vuestra sala · {room.book.title}</span>
+                  <span className="shrink-0 text-accent">{unread ? `${unread} por abrir` : 'Entrar →'}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
         <div className="flex gap-4">
           <ReadingNow person={profile} readings={mine} />
           <ReadingNow person={partner} readings={theirs} />
@@ -181,25 +236,33 @@ export function UsPage() {
           .map((invite) => (
             <InviteCard key={invite.id} invite={invite} />
           ))}
-        {rooms.length > 0 && (
-          <div className="border-t border-border pt-2">
-            {rooms.map((room) => {
-              const unread = messages.filter(
-                (message) =>
-                  message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
-              ).length
-              return (
-                <Link
-                  key={room.book.id}
-                  to={`/sala/${room.book.id}`}
-                  className="flex min-h-11 items-center justify-between gap-2 text-sm"
-                >
-                  <span>Vuestra sala · {room.book.title}</span>
-                  <span className="text-accent">{unread ? `${unread} por abrir` : 'Entrar →'}</span>
-                </Link>
-              )
-            })}
-          </div>
+      </section>
+      <section className="space-y-3" aria-label="Vuestros recuerdos">
+        <h2 className="text-lg">Vuestros recuerdos</h2>
+        <div className="card space-y-3">
+          <h3 className="font-serif">{monthLabel(month)}</h3>
+          <MemoriesCard summary={summary} goalPendingAbove={goalPendingAbove} />
+        </div>
+        {previousMonths.length > 0 && (
+          <details className="card">
+            <summary className="min-h-11 cursor-pointer py-3 text-sm">
+              Meses anteriores ({previousMonths.length})
+            </summary>
+            <div className="space-y-3">
+              {previousMonths.map((value) => {
+                const past = summarize(value)
+                return (
+                  <details key={value}>
+                    <summary className="min-h-11 cursor-pointer py-3 text-sm">
+                      {monthLabel(value)} · {past.books.length} {past.books.length === 1 ? 'libro' : 'libros'} ·{' '}
+                      {formatDays(past.daysTogether)} juntos
+                    </summary>
+                    <MemoriesCard summary={past} />
+                  </details>
+                )
+              })}
+            </div>
+          </details>
         )}
       </section>
       <section className="card space-y-3" aria-label="Queremos leer juntos">
@@ -231,34 +294,12 @@ export function UsPage() {
           </details>
         )}
       </section>
-      <section className="space-y-3" aria-label="Vuestros recuerdos">
-        <h2 className="text-lg">Vuestros recuerdos</h2>
-        <div className="card space-y-3">
-          <h3 className="font-serif">{monthLabel(month)}</h3>
-          <MemoriesCard summary={summary} goalPendingAbove={goalPendingAbove} />
-        </div>
-        {previousMonths.length > 0 && (
-          <details className="card">
-            <summary className="min-h-11 cursor-pointer py-3 text-sm">
-              Meses anteriores ({previousMonths.length})
-            </summary>
-            <div className="space-y-3">
-              {previousMonths.map((value) => {
-                const past = summarize(value)
-                return (
-                  <details key={value}>
-                    <summary className="min-h-11 cursor-pointer py-3 text-sm">
-                      {monthLabel(value)} · {past.books.length} libros · {past.daysTogether} días juntos
-                    </summary>
-                    <MemoriesCard summary={past} />
-                  </details>
-                )
-              })}
-            </div>
-          </details>
-        )}
-      </section>
-      <BottomSheet open={adding} onClose={() => setAdding(false)} title="Queremos leer juntos">
+      <BottomSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Queremos leer juntos"
+        dirty={!!bookId || !!reason.trim()}
+      >
         <form
           className="space-y-4"
           onSubmit={(event) => {
@@ -282,7 +323,9 @@ export function UsPage() {
             <label className="lbl">
               Un libro de vuestras listas
               <select
-                className="min-h-11 w-full"
+                className="input min-h-11 w-full"
+                name="book"
+                autoComplete="off"
                 required
                 value={bookId}
                 onChange={(event) => setBookId(event.target.value)}
@@ -296,13 +339,15 @@ export function UsPage() {
               </select>
             </label>
           ) : (
-            <p className="text-sm text-muted">Añadid un libro a «Quiero leer» para encontrarlo aquí.</p>
+            <p className="text-sm text-muted">Añadid un libro a «Pendientes» para encontrarlo aquí.</p>
           )}
           <label className="lbl">
             ¿Por qué este? (opcional)
             <textarea
               className="min-h-20 w-full"
               maxLength={300}
+              name="reason"
+              autoComplete="off"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
@@ -314,7 +359,7 @@ export function UsPage() {
           )}
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-primary" disabled={busy || !bookId}>
-              Añadir
+              {busy ? 'Añadiendo…' : 'Añadir a juntos'}
             </button>
             <Link to="/biblioteca/buscar" className="btn btn-ghost" onClick={() => setAdding(false)}>
               Buscar otro libro

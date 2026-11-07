@@ -19,6 +19,7 @@ export function SettingsSection() {
   const [busy, setBusy] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [error, setError] = useState('')
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   async function changePassword(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -37,6 +38,7 @@ export function SettingsSection() {
       if (result.error) throw result.error
       setPassword('')
       setConfirmation('')
+      setPasswordOpen(false)
       toast('Contraseña actualizada')
     } catch {
       setError('No se pudo cambiar la contraseña. Comprueba la conexión e inténtalo de nuevo.')
@@ -79,42 +81,53 @@ export function SettingsSection() {
           ))}
         </div>
       </fieldset>
-      <form onSubmit={changePassword} className="space-y-4">
-        <h3 className="font-medium">Cambiar contraseña</h3>
-        <label className="label">
-          Nueva contraseña
-          <input
-            type="password"
-            className="input mt-2"
-            minLength={8}
-            autoComplete="new-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        <p className="text-sm text-muted">Al menos 8 caracteres.</p>
-        <label className="label">
-          Confirmar contraseña
-          <input
-            type="password"
-            className="input mt-2"
-            minLength={8}
-            autoComplete="new-password"
-            required
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-          />
-        </label>
-        {error && (
-          <p role="alert" className="text-danger">
-            {error}
-          </p>
-        )}
-        <button type="submit" className="btn btn-secondary" disabled={busy}>
-          {busy ? 'Guardando…' : 'Cambiar contraseña'}
-        </button>
-      </form>
+      <button
+        type="button"
+        className="flex min-h-11 w-full items-center justify-between text-left font-medium"
+        aria-expanded={passwordOpen}
+        aria-controls="password-form"
+        onClick={() => setPasswordOpen(!passwordOpen)}
+      >
+        Cambiar contraseña
+        <span aria-hidden="true">{passwordOpen ? '−' : '+'}</span>
+      </button>
+      {passwordOpen && (
+        <form id="password-form" onSubmit={changePassword} className="space-y-4">
+          <label className="label">
+            Nueva contraseña
+            <input
+              type="password"
+              className="input mt-2"
+              minLength={8}
+              autoComplete="new-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          <p className="text-sm text-muted">Al menos 8 caracteres.</p>
+          <label className="label">
+            Confirmar contraseña
+            <input
+              type="password"
+              className="input mt-2"
+              minLength={8}
+              autoComplete="new-password"
+              required
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-danger">
+              {error}
+            </p>
+          )}
+          <button type="submit" className="btn btn-secondary" disabled={busy}>
+            {busy ? 'Guardando…' : 'Cambiar contraseña'}
+          </button>
+        </form>
+      )}
       <button type="button" className="btn btn-ghost text-danger" disabled={signingOut} onClick={signOut}>
         {signingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
       </button>

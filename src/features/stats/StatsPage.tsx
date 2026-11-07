@@ -9,6 +9,7 @@ import { fmt, fromISODate, todayISO } from '@/lib/dates'
 import { activityByDay, summarize, timeSpent } from '@/lib/stats/aggregate'
 import { dailySeries, monthlySeries, pctChange, periodRange, previousRange, type Period } from '@/lib/stats/insights'
 import { level, levelColor } from '@/lib/stats/intensity'
+import { formatDays } from '@/lib/units'
 import { DaySheet } from './DaySheet'
 import { Insights } from './Insights'
 import { MonthGrid } from './MonthGrid'
@@ -20,7 +21,7 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'year', label: 'Año' },
 ]
 const PERIOD_LABELS = { week: 'esta semana', month: 'este mes', year: 'este año' }
-const PREVIOUS_LABELS = { week: 'semana pasada', month: 'mes pasado', year: 'año pasado' }
+const PREVIOUS_LABELS = { week: 'la semana pasada', month: 'el mes pasado', year: 'el año pasado' }
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const MONTHS = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 const formatTime = (value: number) => {
@@ -58,7 +59,7 @@ export function StatsPage() {
       label: 'Días con lectura',
       value: summary.activeDays,
       previous: previous.activeDays,
-      detail: `${summary.activeDays} de ${elapsedDays} días`,
+      detail: `${summary.activeDays} de ${formatDays(elapsedDays)}`,
     },
     {
       label: 'Libros terminados',
@@ -74,14 +75,12 @@ export function StatsPage() {
           label: MONTHS[index],
           fullLabel: fmt(new Date(Number(today.slice(0, 4)), index, 1), 'MMMM'),
           pages: point.pages,
-          showLabel: true,
         }))
       : dailySeries(sessions, readings, range).map((point, index) => ({
           key: point.date,
           label: period === 'week' ? WEEKDAYS[index] : String(index + 1),
           fullLabel: fmt(point.date, "EEEE d 'de' MMMM"),
           pages: point.pages,
-          showLabel: period === 'week' || index === 0 || (index + 1) % 5 === 0,
         }))
   const pending = readingsQuery.isPending || sessionsQuery.isPending
   const failed = readingsQuery.isError || sessionsQuery.isError
@@ -102,7 +101,7 @@ export function StatsPage() {
         aria-label="Periodo de estadísticas"
       />
       {failed ? (
-        <div className="card text-sm text-danger" role="alert">
+        <div className="card text-sm text-ink" role="alert">
           <p>No se han podido cargar tus estadísticas.</p>
           <button
             className="btn btn-secondary mt-2"
@@ -122,6 +121,10 @@ export function StatsPage() {
         </div>
       ) : (
         <>
+          <p className="font-serif text-xl">
+            Has leído {formatNumber(summary.pages)} {summary.pages === 1 ? 'página' : 'páginas'} {PERIOD_LABELS[period]}
+            .
+          </p>
           <section className="grid grid-cols-2 gap-2.5" aria-label="Resumen del periodo">
             {metrics.map((metric) => {
               const change = pctChange(metric.value, metric.previous)
@@ -131,12 +134,11 @@ export function StatsPage() {
                   <p className="stat-number mt-1 text-[29px] leading-none">
                     <CountUp value={metric.value} format={metric.format ?? formatNumber} />
                   </p>
-                  {change !== null ? (
-                    <p
-                      className={`mt-1 text-[11px] font-medium leading-tight ${change < 0 ? 'text-danger' : 'text-green'}`}
-                    >
-                      {change > 0 ? '+' : change < 0 ? '−' : ''}
-                      {Math.abs(change)} % vs {PREVIOUS_LABELS[period]}
+                  {change !== null && change >= 0 ? (
+                    <p className="mt-1 text-xs leading-tight text-muted">
+                      {change > 0
+                        ? `${change} % más que ${PREVIOUS_LABELS[period]}`
+                        : `Como ${PREVIOUS_LABELS[period]}`}
                     </p>
                   ) : (
                     metric.detail && <p className="mt-1 text-xs text-muted">{metric.detail}</p>
@@ -180,7 +182,7 @@ export function StatsPage() {
                   )}
                 />
                 <div
-                  className="mt-2 flex items-center justify-end gap-1 text-[10px] text-muted"
+                  className="mt-2 flex items-center justify-end gap-1 text-xs text-muted"
                   aria-label="Intensidad de lectura de menos a más"
                 >
                   <span>Menos</span>

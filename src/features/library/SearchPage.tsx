@@ -46,10 +46,13 @@ export function SearchPage() {
           <input
             className="input pl-10"
             type="search"
-            placeholder="Título, autor o ISBN"
+            name="book-search"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="p. ej. Patria o 978…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            autoFocus
+            autoFocus={window.matchMedia('(pointer: fine)').matches}
           />
         </label>
         <button className="icon-btn" onClick={() => setScanner(true)} aria-label="Escanear ISBN con la cámara">
@@ -111,7 +114,12 @@ export function SearchPage() {
                       {book.authors.join(', ') || 'Autor desconocido'}
                     </p>
                     <p className="text-muted text-sm">
-                      {[book.published_year, book.page_count ? `${book.page_count} páginas` : null]
+                      {[
+                        book.published_year,
+                        book.page_count
+                          ? `${new Intl.NumberFormat('es').format(book.page_count)} ${book.page_count === 1 ? 'página' : 'páginas'}`
+                          : null,
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>

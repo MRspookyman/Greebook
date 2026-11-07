@@ -72,24 +72,24 @@ export function FinishSheet({
           </div>
         </div>
         <section className="space-y-2" aria-label="Valoración del libro">
-          <h3 className="lbl">¿Qué te ha parecido?</h3>
+          <h3 className="lbl">¿Qué te ha parecido? · opcional</h3>
           <Stars value={rating} onChange={setRating} />
         </section>
         <section className="space-y-2" aria-label="Ánimos de la lectura">
-          <h3 className="lbl">Cómo te hizo sentir · hasta 3</h3>
+          <h3 className="lbl">Cómo te hizo sentir · hasta 3 · opcional</h3>
           <MoodChips value={moods} onChange={setMoods} />
         </section>
         {!online && (
           <p className="text-muted">Sin conexión. Puedes terminarlo desde la ficha cuando vuelvas a conectarte.</p>
         )}
         <button className="btn btn-primary w-full" disabled={!online || busy} onClick={() => void finish(true)}>
-          Sí, lo he terminado
+          {busy ? 'Terminando…' : 'Sí, lo he terminado'}
         </button>
         <button className="btn btn-ghost w-full" disabled={!online || busy} onClick={() => void finish(false)}>
-          Ahora no
+          Terminar sin valorar
         </button>
         <p className="text-muted text-sm">
-          «Ahora no» guarda el libro como terminado, sin valoración. Puedes valorarlo después.
+          La valoración y las emociones son opcionales. Puedes añadirlas después desde la ficha.
         </p>
       </div>
     </BottomSheet>

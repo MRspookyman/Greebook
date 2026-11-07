@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { addDays } from 'date-fns'
 import { Link, useMatch } from 'react-router'
 import { BottomSheet } from '@/components/BottomSheet'
@@ -11,12 +11,13 @@ import { useMe } from '@/features/auth/me'
 import { useReadings, useSessions } from '@/lib/data'
 import { fromISODate, todayISO, toISODate } from '@/lib/dates'
 import { currentStreak } from '@/lib/stats/streak'
-import { formatUnitDelta, formatUnitValue, toHMM } from '@/lib/units'
+import { formatDays, formatUnitDelta, formatUnitValue, parseHMM, toHMM } from '@/lib/units'
 import type { ReadingWithBook } from '@/lib/types'
 import { logSession } from '@/lib/offline/sessionQueue'
 import { FinishSheet } from './FinishSheet'
 import { TraceComposer } from '@/features/us/TraceSheet'
 import { useOnline } from './useOnline'
+import { recentReadings } from '@/features/today/recentReadings'
 
 type Props = {
   open: boolean
@@ -47,12 +48,8 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
   const readings = useReadings(userId)
   const sessions = useSessions(userId)
   const bookRoute = useMatch('/libro/:readingId')
-  const choices = (readings.data ?? [])
-    .filter((r) => r.status === 'reading' || r.status === 'want')
-    .sort(
-      (a, b) =>
-        Number(b.status === 'reading') - Number(a.status === 'reading') || b.updated_at.localeCompare(a.updated_at),
-    )
+  const ordered = recentReadings(readings.data ?? [], sessions.data ?? [])
+  const choices = [...ordered.filter((r) => r.status === 'reading'), ...ordered.filter((r) => r.status === 'want')]
   const [selected, setSelected] = useState(initial?.id ?? null)
   const routeReading = !initial
     ? choices.find((choice) => choice.id === bookRoute?.params.readingId && choice.user_id === userId)
@@ -71,6 +68,10 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
   )
   const [picker, setPicker] = useState(false)
   const [error, setError] = useState('')
+  const [errorField, setErrorField] = useState<'position' | 'date' | 'minutes' | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [showTrace, setShowTrace] = useState(false)
+  const [traceDirty, setTraceDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [finished, setFinished] = useState<ReadingWithBook | null>(null)
   const [closing, setClosing] = useState(false)
@@ -87,24 +88,36 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
     setSelected(reading.id)
     setPosition({ readingId: reading.id, value })
     setError('')
+    setErrorField(null)
+  }
+
+  function invalid(field: 'position' | 'date' | 'minutes', message: string) {
+    setErrorField(field)
+    setError(message)
+    requestAnimationFrame(() => {
+      formRef.current?.querySelector<HTMLElement>(`[data-field="${field}"], #session-${field}`)?.focus()
+    })
   }
 
   async function save() {
     if (!reading || busy) return
     if (!Number.isInteger(end) || end <= reading.current_position) {
-      setError(`Debe ser mayor que tu posición actual (${formatUnitValue(reading.unit, reading.current_position)})`)
+      invalid(
+        'position',
+        `Debe ser mayor que tu posición actual (${formatUnitValue(reading.unit, reading.current_position)})`,
+      )
       return
     }
     if (end > reading.total_units) {
-      setError(`Este libro tiene ${formatUnitValue(reading.unit, reading.total_units)}`)
+      invalid('position', `Este libro tiene ${formatUnitValue(reading.unit, reading.total_units)}`)
       return
     }
     if (!date || date > today) {
-      setError('Elige una fecha que no sea futura')
+      invalid('date', 'Elige una fecha que no sea futura')
       return
     }
     if (minutes !== null && (!Number.isInteger(minutes) || minutes <= 0)) {
-      setError('Los minutos deben ser mayores que cero')
+      invalid('minutes', 'Los minutos deben ser mayores que cero')
       return
     }
     setBusy(true)
@@ -115,15 +128,10 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
       dates.add(date)
       const streak = currentStreak(dates, today)
       const label = `+${formatUnitDelta(reading.unit, end - reading.current_position)}`
-      if (partner && online) {
-        setSaved({
-          reading: { ...reading, current_position: end },
-          label: `${label} · racha de ${streak} días`,
-        })
-      } else {
-        toast(label, `Racha de ${streak} días`)
-        if (end !== reading.total_units) onClose()
-      }
+      setSaved({
+        reading: { ...reading, current_position: end },
+        label: `${label} · racha de ${formatDays(streak)}`,
+      })
       if (end === reading.total_units) {
         setClosing(true)
         setFinished({ ...reading, current_position: end })
@@ -138,15 +146,65 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
   const timeOptions = [null, 15, 30, 45, 60]
   if (initialMinutes && !timeOptions.includes(initialMinutes)) timeOptions.push(initialMinutes)
   const delta = end - (reading?.current_position ?? 0)
+  const activeChoices = choices.filter((choice) => choice.status === 'reading')
+  const compactPicker = !initial && !routeReading && activeChoices.length > 1 && activeChoices.length <= 3
   return (
     <>
-      <BottomSheet open={open && !closing} onClose={onClose}>
+      <BottomSheet
+        open={open && !closing}
+        onClose={onClose}
+        title={saved ? undefined : 'Registrar lectura'}
+        aria-label={saved ? 'Sesión guardada' : undefined}
+        dirty={
+          saved
+            ? traceDirty
+            : !!reading &&
+              (end !== reading.current_position ||
+                minutes !== (initialMinutes ?? null) ||
+                date !== (initialDate ?? today))
+        }
+      >
         {saved ? (
-          <TraceComposer reading={saved.reading} savedLabel={saved.label} onClose={onClose} />
+          <div className="space-y-4 py-2">
+            <div role="status">
+              <h2 className="font-serif text-2xl font-semibold text-accent">✓ Sesión guardada</h2>
+              <p className="mt-2 text-sm text-muted">{saved.label}</p>
+            </div>
+            <button
+              className="btn btn-primary w-full"
+              onClick={() => {
+                if (!traceDirty || window.confirm('¿Descartar la huella que has escrito?')) onClose()
+              }}
+            >
+              Listo
+            </button>
+            {partner && online && (
+              <button
+                type="button"
+                className="btn btn-ghost w-full"
+                aria-expanded={showTrace}
+                onClick={() => {
+                  if (!traceDirty || window.confirm('¿Descartar la huella que has escrito?')) setShowTrace(!showTrace)
+                }}
+              >
+                {showTrace ? 'Cerrar huella' : `Dejarle algo a ${partner.display_name}`}
+              </button>
+            )}
+            {showTrace && (
+              <TraceComposer
+                reading={saved.reading}
+                prefill={{ page: saved.reading.unit === 'pages' ? saved.reading.current_position : null }}
+                onClose={onClose}
+                onDirtyChange={setTraceDirty}
+              />
+            )}
+          </div>
         ) : !reading ? (
           <div className="space-y-3 py-3">
             {readings.isPending ? (
-              <p className="text-muted">Cargando libros…</p>
+              <p role="status" className="text-muted">
+                Cargando libros…
+              </p>
             ) : readings.isError ? (
               <p className="text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
             ) : (
@@ -160,6 +218,8 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
           </div>
         ) : (
           <form
+            ref={formRef}
+            noValidate
             className="space-y-4 pt-2"
             aria-label="Registrar sesión"
             onSubmit={(event) => {
@@ -167,19 +227,44 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
               void save()
             }}
           >
-            <div className="flex items-center gap-3">
-              <Cover book={reading.book} width={44} />
-              <div className="min-w-0 flex-1">
-                <h2 className="line-clamp-2 font-serif text-xl font-semibold leading-tight">{reading.book.title}</h2>
-                <p className="mt-1 text-xs text-muted">
-                  Vas por {formatUnitValue(reading.unit, reading.current_position)}
-                </p>
+            {compactPicker && (
+              <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Libro para esta sesión">
+                {activeChoices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border p-2 text-left text-xs ${
+                      reading.id === choice.id ? 'border-accent bg-soft' : 'border-border'
+                    }`}
+                    aria-pressed={reading.id === choice.id}
+                    onClick={() => {
+                      setSelected(choice.id)
+                      setPosition(null)
+                      setError('')
+                      setErrorField(null)
+                    }}
+                  >
+                    <Cover book={choice.book} width={28} />
+                    <span className="line-clamp-2">{choice.book.title}</span>
+                  </button>
+                ))}
               </div>
-              <button type="button" className="btn btn-secondary px-3 text-sm" onClick={() => setPicker(!picker)}>
-                {picker ? 'Cerrar' : 'Cambiar'}
-              </button>
-            </div>
-            {picker && (
+            )}
+            {!compactPicker && (
+              <div className="flex items-center gap-3">
+                <Cover book={reading.book} width={44} />
+                <div className="min-w-0 flex-1">
+                  <h2 className="line-clamp-2 font-serif text-xl font-semibold leading-tight">{reading.book.title}</h2>
+                  <p className="mt-1 text-xs text-muted">
+                    Vas por {formatUnitValue(reading.unit, reading.current_position)}
+                  </p>
+                </div>
+                <button type="button" className="btn btn-secondary px-3 text-sm" onClick={() => setPicker(!picker)}>
+                  {picker ? 'Cerrar' : 'Cambiar'}
+                </button>
+              </div>
+            )}
+            {!compactPicker && picker && (
               <div className="max-h-40 space-y-1 overflow-y-auto" aria-label="Elegir libro">
                 {choices.map((choice) => (
                   <button
@@ -201,6 +286,9 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
             )}
             <section className="space-y-3" aria-label="Posición alcanzada">
               <h3 className="lbl">He llegado a</h3>
+              {compactPicker && (
+                <p className="text-xs text-muted">Vas por {formatUnitValue(reading.unit, reading.current_position)}</p>
+              )}
               <Stepper
                 value={end}
                 onChange={changePosition}
@@ -210,7 +298,23 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                 display={reading.unit === 'minutes' ? toHMM(end) : `p. ${end}`}
                 caption={`+${formatUnitDelta(reading.unit, delta)} · ${Math.round((end / reading.total_units) * 100)} %`}
                 label="He llegado a"
+                editable
+                inputId="session-position"
+                invalid={errorField === 'position'}
+                describedBy={errorField === 'position' ? 'session-position-error' : undefined}
+                editLabel={reading.unit === 'minutes' ? 'Escribir el tiempo alcanzado' : 'Escribir la página'}
+                inputMode={reading.unit === 'minutes' ? 'text' : 'numeric'}
+                parse={reading.unit === 'minutes' ? parseHMM : undefined}
+                format={reading.unit === 'minutes' ? toHMM : undefined}
               />
+              {reading.unit === 'minutes' && (
+                <p className="text-center text-xs text-muted">Escribe h:mm o minutos, por ejemplo 9:30 o 570.</p>
+              )}
+              {errorField === 'position' && (
+                <p id="session-position-error" role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              )}
               <input
                 type="range"
                 className="h-7 w-full cursor-pointer accent-accent"
@@ -226,7 +330,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                 {(reading.unit === 'minutes' ? [5, 10, 15, 30] : [5, 10, 25, 50]).map((amount) => (
                   <button
                     type="button"
-                    className="chip px-3"
+                    className="chip min-h-11 px-3"
                     key={amount}
                     onClick={() => changePosition(Math.min(reading.total_units, end + amount))}
                     disabled={end >= reading.total_units}
@@ -235,7 +339,11 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                     {reading.unit === 'minutes' ? ' min' : ''}
                   </button>
                 ))}
-                <button type="button" className="chip px-3" onClick={() => changePosition(reading.total_units)}>
+                <button
+                  type="button"
+                  className="chip min-h-11 px-3"
+                  onClick={() => changePosition(reading.total_units)}
+                >
                   Lo terminé
                 </button>
               </div>
@@ -247,15 +355,21 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                   <button
                     type="button"
                     key={value ?? 'none'}
-                    className="chip px-3"
+                    className="chip min-h-11 px-3"
                     aria-pressed={minutes === value}
                     aria-label={value === null ? 'Sin tiempo registrado' : undefined}
+                    data-field="minutes"
                     onClick={() => setMinutes(value)}
                   >
                     {value === null ? '—' : value === 60 ? '1 h' : `${value} min`}
                   </button>
                 ))}
               </div>
+              {errorField === 'minutes' && (
+                <p role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              )}
             </section>
             <section className="space-y-2" aria-label="Fecha de lectura">
               <h3 className="lbl">Cuándo</h3>
@@ -268,6 +382,8 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                 value={dateChoice}
                 onChange={(choice) => {
                   setDateChoice(choice)
+                  setError('')
+                  setErrorField(null)
                   if (choice !== 'other') setDate(choice === 'today' ? today : yesterday)
                 }}
                 aria-label="Cuándo has leído"
@@ -275,6 +391,11 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
               {dateChoice === 'other' && (
                 <input
                   className="input"
+                  id="session-date"
+                  name="read-on"
+                  autoComplete="off"
+                  aria-invalid={errorField === 'date'}
+                  aria-describedby={errorField === 'date' ? 'session-date-error' : undefined}
                   type="date"
                   max={today}
                   value={date}
@@ -283,13 +404,13 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                   aria-label="Fecha de la sesión"
                 />
               )}
+              {errorField === 'date' && (
+                <p id="session-date-error" role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              )}
             </section>
-            {error && (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
-            <button className="btn btn-primary w-full" disabled={busy || end <= reading.current_position}>
+            <button className="btn btn-primary w-full" disabled={busy} aria-busy={busy}>
               {busy ? 'Guardando…' : 'Guardar sesión'}
             </button>
           </form>

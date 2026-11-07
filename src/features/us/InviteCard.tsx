@@ -11,6 +11,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
   const { userId, partner } = useMe()
   const readings = useReadings(userId)
   const [busy, setBusy] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const mine = invite.from_user === userId
   const reading = readings.data
     ?.filter((item) => item.status === 'reading')
@@ -50,9 +51,23 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
       </p>
       {invite.status === 'pending' ? (
         mine ? (
-          <button className="btn btn-ghost w-full" disabled={busy} onClick={() => void act('cancel')}>
-            Cancelar
-          </button>
+          confirmCancel ? (
+            <div className="space-y-1">
+              <p className="text-sm">¿Cancelar la invitación?</p>
+              <div className="flex gap-2">
+                <button className="btn btn-ghost" disabled={busy} onClick={() => void act('cancel')}>
+                  Sí, cancelar
+                </button>
+                <button className="btn btn-soft" disabled={busy} onClick={() => setConfirmCancel(false)}>
+                  No, mantener
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-ghost" disabled={busy} onClick={() => setConfirmCancel(true)}>
+              Cancelar invitación
+            </button>
+          )
         ) : (
           <div className="flex gap-2">
             <button

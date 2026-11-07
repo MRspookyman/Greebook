@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
-import { ArrowLeft, MoreHorizontal, Play, Plus, Square } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus, Square } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useMessages, useNotes, useReadings, useSessions, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
@@ -42,7 +42,20 @@ export function BookPage() {
   return reading ? (
     <BookDetail key={reading.id} reading={reading} />
   ) : mine.isPending || (partner && theirs.isPending) ? (
-    <div className="card h-64 animate-pulse" aria-label="Cargando libro" />
+    <div className="card h-64 animate-pulse" role="status" aria-label="Cargando libro" />
+  ) : mine.isError || (partner && theirs.isError) ? (
+    <div role="alert" className="space-y-3">
+      <p>No se ha podido cargar esta lectura.</p>
+      <button
+        className="btn btn-secondary"
+        onClick={() => {
+          void mine.refetch()
+          if (partner) void theirs.refetch()
+        }}
+      >
+        Reintentar
+      </button>
+    </div>
   ) : (
     <p>No se ha encontrado esta lectura.</p>
   )
@@ -78,6 +91,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [editingReading, setEditingReading] = useState(false)
   const [editingMoods, setEditingMoods] = useState(false)
   const [tab, setTab] = useState<BookTab>('sessions')
+  const [allSessions, setAllSessions] = useState(false)
   const disabled = !online || busy || pending > 0
   const tabs: { value: BookTab; label: string }[] = [
     { value: 'sessions', label: 'Sesiones' },
@@ -164,8 +178,8 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       <header className="flex gap-4">
         <Cover book={reading.book} width={90} />
         <div className="min-w-0 pt-0.5">
-          <h1 className="font-serif text-[23px] leading-tight">{reading.book.title}</h1>
-          <p className="mt-1 text-[13px] text-muted">
+          <h1 className="font-serif text-[23px] leading-tight [overflow-wrap:anywhere]">{reading.book.title}</h1>
+          <p className="mt-1 text-[13px] text-muted [overflow-wrap:anywhere]">
             {reading.book.authors.join(', ')}
             {reading.book.published_year ? ` · ${reading.book.published_year}` : ''}
           </p>
@@ -198,7 +212,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <p className="text-sm text-muted">{statuses[reading.status]}</p>
       )}
       <div
-        className="grid transition-[grid-template-rows] duration-300 [transition-timing-function:var(--spring)]"
+        className="grid"
         style={{ gridTemplateRows: reading.status === 'finished' ? '1fr' : '0fr' }}
         aria-hidden={reading.status !== 'finished'}
         inert={reading.status !== 'finished'}
@@ -283,6 +297,24 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               role="tab"
               aria-selected={tab === item.value}
               aria-controls="book-panel"
+              tabIndex={tab === item.value ? 0 : -1}
+              onKeyDown={(event) => {
+                const index = tabs.findIndex((candidate) => candidate.value === item.value)
+                const next =
+                  event.key === 'ArrowRight'
+                    ? (index + 1) % tabs.length
+                    : event.key === 'ArrowLeft'
+                      ? (index + tabs.length - 1) % tabs.length
+                      : event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? tabs.length - 1
+                          : null
+                if (next === null) return
+                event.preventDefault()
+                setTab(tabs[next].value)
+                document.getElementById(`book-tab-${tabs[next].value}`)?.focus()
+              }}
               className={`min-h-11 text-sm ${tab === item.value ? 'font-semibold text-ink' : 'text-muted'}`}
               onClick={() => setTab(item.value)}
             >
@@ -308,12 +340,23 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         >
           {tab === 'sessions' && (
             <div>
-              {sessionsQuery.isPending && <p className="py-3 text-sm text-muted">Cargando sesiones…</p>}
-              {sessionsQuery.isError && <p className="py-3 text-sm text-danger">No se pudieron cargar las sesiones.</p>}
+              {sessionsQuery.isPending && (
+                <p role="status" className="py-3 text-sm text-muted">
+                  Cargando sesiones…
+                </p>
+              )}
+              {sessionsQuery.isError && (
+                <div role="alert" className="space-y-2 py-3">
+                  <p className="text-sm text-danger">No se pudieron cargar las sesiones.</p>
+                  <button className="btn btn-secondary" onClick={() => void sessionsQuery.refetch()}>
+                    Reintentar
+                  </button>
+                </div>
+              )}
               {!sessionsQuery.isPending && !sessionsQuery.isError && sessions.length === 0 && (
                 <p className="py-3 text-sm text-muted">Todavía no hay sesiones registradas.</p>
               )}
-              {sessions.map((session) => {
+              {(allSessions ? sessions : sessions.slice(0, 10)).map((session) => {
                 const daysAgo = differenceInCalendarDays(fromISODate(today), fromISODate(session.read_on))
                 const label = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : fmt(session.read_on, 'EEE d')
                 const editable = own && session.id === newest?.id
@@ -326,21 +369,25 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 )
                 return (
                   <div key={session.id} className="flex items-center gap-2 border-b border-dashed border-border">
-                    {editable ? (
+                    <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-xs">{content}</div>
+                    {editable && (
                       <button
-                        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left text-xs"
-                        aria-label={`${label}: +${session.end_pos - session.start_pos} ${reading.unit === 'pages' ? 'páginas' : 'minutos'}. Editar última sesión`}
+                        className="icon-btn h-11 w-11 shrink-0"
+                        aria-label="Editar la última sesión"
                         disabled={disabled}
                         onClick={() => setEditing(session)}
                       >
-                        {content}
+                        <Pencil size={18} aria-hidden="true" />
                       </button>
-                    ) : (
-                      <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-xs">{content}</div>
                     )}
                   </div>
                 )
               })}
+              {!allSessions && sessions.length > 10 && (
+                <button className="btn btn-ghost w-full" onClick={() => setAllSessions(true)}>
+                  Ver todas ({new Intl.NumberFormat('es').format(sessions.length)})
+                </button>
+              )}
             </div>
           )}
           {tab === 'notes' && own && <Notes readingId={reading.id} />}
@@ -498,6 +545,8 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
                 ¿Por qué te apetece? (opcional)
                 <input
                   className="input mt-2"
+                  name="reason"
+                  autoComplete="off"
                   maxLength={500}
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
@@ -539,22 +588,40 @@ function ReadingEditor({
   const [total, setTotal] = useState(
     reading.unit === 'minutes' ? toHMM(reading.total_units) : String(reading.total_units),
   )
+  const [errors, setErrors] = useState<Record<string, string>>({})
   return (
-    <BottomSheet open onClose={onClose} title="Editar lectura">
+    <BottomSheet
+      open
+      onClose={onClose}
+      title="Editar lectura"
+      dirty={
+        start !== (reading.started_on ?? '') ||
+        finish !== (reading.finished_on ?? '') ||
+        total !== (reading.unit === 'minutes' ? toHMM(reading.total_units) : String(reading.total_units))
+      }
+    >
       <form
+        noValidate
+        autoComplete="off"
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
           const units = reading.unit === 'minutes' ? parseHMM(total) : /^\d+$/.test(total) ? Number(total) : null
+          const next: Record<string, string> = {}
+          if (start && start > todayISO()) next.start = 'El inicio no puede ser una fecha futura.'
+          if ((finish && finish > todayISO()) || (start && finish && start > finish)) {
+            next.finish = 'El fin debe estar entre el inicio y hoy.'
+          }
           if (units === null || !Number.isSafeInteger(units) || units <= 0 || units < reading.current_position) {
-            toast('El total debe ser mayor o igual a tu posición actual')
+            next.total = `Indica un total válido, igual o mayor que ${formatUnitValue(reading.unit, reading.current_position)}.`
+          }
+          setErrors(next)
+          const first = Object.keys(next)[0]
+          if (first) {
+            event.currentTarget.querySelector<HTMLInputElement>(`[name="${first}"]`)?.focus()
             return
           }
-          if ((start && start > todayISO()) || (finish && finish > todayISO()) || (start && finish && start > finish)) {
-            toast('Revisa las fechas de inicio y fin')
-            return
-          }
-          void onSave({ started_on: start || null, finished_on: finish || null, total_units: units }).then((saved) => {
+          void onSave({ started_on: start || null, finished_on: finish || null, total_units: units! }).then((saved) => {
             if (saved) onClose()
           })
         }}
@@ -564,32 +631,57 @@ function ReadingEditor({
             Inicio
             <input
               className="input mt-2"
+              name="start"
+              aria-invalid={!!errors.start}
+              aria-describedby={errors.start ? 'reading-start-error' : undefined}
               type="date"
               max={todayISO()}
               value={start}
               onChange={(event) => setStart(event.target.value)}
             />
+            {errors.start && (
+              <span id="reading-start-error" role="alert" className="mt-2 block text-sm text-danger">
+                {errors.start}
+              </span>
+            )}
           </label>
           <label className="label">
             Fin
             <input
               className="input mt-2"
+              name="finish"
+              aria-invalid={!!errors.finish}
+              aria-describedby={errors.finish ? 'reading-finish-error' : undefined}
               type="date"
               min={start || undefined}
               max={todayISO()}
               value={finish}
               onChange={(event) => setFinish(event.target.value)}
             />
+            {errors.finish && (
+              <span id="reading-finish-error" role="alert" className="mt-2 block text-sm text-danger">
+                {errors.finish}
+              </span>
+            )}
           </label>
           <label className="label">
             {reading.unit === 'pages' ? 'Total de páginas' : 'Duración total (h:mm)'}
             <input
               className="input mt-2"
+              name="total"
+              aria-invalid={!!errors.total}
+              aria-describedby={errors.total ? 'reading-total-error' : undefined}
+              placeholder={reading.unit === 'minutes' ? 'p. ej. 9:30…' : 'p. ej. 320…'}
               inputMode={reading.unit === 'pages' ? 'numeric' : 'text'}
               value={total}
               onChange={(event) => setTotal(event.target.value)}
               required
             />
+            {errors.total && (
+              <span id="reading-total-error" role="alert" className="mt-2 block text-sm text-danger">
+                {errors.total}
+              </span>
+            )}
           </label>
           <button className="btn btn-primary w-full">Guardar cambios</button>
         </fieldset>
@@ -610,6 +702,7 @@ function SessionEditor({
   const [date, setDate] = useState(session.read_on)
   const [minutes, setMinutes] = useState(session.minutes === null ? '' : String(session.minutes))
   const [busy, setBusy] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const online = useOnline()
   const { userId } = useMe()
   const pending = usePendingSessionCount()
@@ -624,16 +717,28 @@ function SessionEditor({
   async function save(remove: boolean) {
     if (disabled) return
     const endPos = reading.unit === 'minutes' ? parseHMM(end) : /^\d+$/.test(end) ? Number(end) : null
-    if (
-      !remove &&
-      (endPos === null ||
+    const next: Record<string, string> = {}
+    if (!remove) {
+      if (
+        endPos === null ||
+        !Number.isSafeInteger(endPos) ||
         endPos <= session.start_pos ||
-        endPos > reading.total_units ||
-        !date ||
-        date > todayISO() ||
-        (minutes !== '' && (!/^\d+$/.test(minutes) || Number(minutes) <= 0)))
-    ) {
-      toast('Revisa el avance, la fecha y los minutos')
+        endPos > reading.total_units
+      ) {
+        next.end = `Indica una posición mayor que ${formatUnitValue(reading.unit, session.start_pos)} y no superior a ${formatUnitValue(reading.unit, reading.total_units)}.`
+      }
+      if (!date || date > todayISO()) next.date = 'Elige una fecha no posterior a hoy.'
+      if (
+        minutes !== '' &&
+        (!/^\d+$/.test(minutes) || !Number.isSafeInteger(Number(minutes)) || Number(minutes) <= 0)
+      ) {
+        next.minutes = 'Indica un número entero de minutos mayor que cero.'
+      }
+    }
+    setErrors(next)
+    const first = Object.keys(next)[0]
+    if (first) {
+      document.getElementById(`session-${first}`)?.focus()
       return
     }
     if (remove && !window.confirm('¿Borrar la última sesión y restaurar la posición anterior?')) return
@@ -673,8 +778,19 @@ function SessionEditor({
     }
   }
   return (
-    <BottomSheet open onClose={onClose} title="Editar última sesión">
+    <BottomSheet
+      open
+      onClose={onClose}
+      title="Editar última sesión"
+      dirty={
+        end !== (reading.unit === 'minutes' ? toHMM(session.end_pos) : String(session.end_pos)) ||
+        date !== session.read_on ||
+        minutes !== (session.minutes === null ? '' : String(session.minutes))
+      }
+    >
       <form
+        noValidate
+        autoComplete="off"
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
@@ -682,33 +798,68 @@ function SessionEditor({
         }}
       >
         <label className="label">
-          He llegado a …<input className="input mt-2" value={end} onChange={(e) => setEnd(e.target.value)} required />
+          He llegado a…
+          <input
+            id="session-end"
+            name="end"
+            className="input mt-2"
+            inputMode={reading.unit === 'minutes' ? 'text' : 'numeric'}
+            placeholder={reading.unit === 'minutes' ? 'p. ej. 9:30…' : 'p. ej. 72…'}
+            value={end}
+            aria-invalid={!!errors.end}
+            aria-describedby={errors.end ? 'session-end-error' : undefined}
+            onChange={(e) => setEnd(e.target.value)}
+            required
+          />
+          {errors.end && (
+            <span id="session-end-error" role="alert" className="mt-2 block text-sm text-danger">
+              {errors.end}
+            </span>
+          )}
         </label>
         <label className="label">
           Fecha
           <input
             className="input mt-2"
+            id="session-date"
+            name="date"
+            aria-invalid={!!errors.date}
+            aria-describedby={errors.date ? 'session-date-error' : undefined}
             type="date"
             value={date}
             max={todayISO()}
             onChange={(e) => setDate(e.target.value)}
             required
           />
+          {errors.date && (
+            <span id="session-date-error" role="alert" className="mt-2 block text-sm text-danger">
+              {errors.date}
+            </span>
+          )}
         </label>
         <label className="label">
           Minutos (opcional)
           <input
             className="input mt-2"
+            id="session-minutes"
+            name="minutes"
+            aria-invalid={!!errors.minutes}
+            aria-describedby={errors.minutes ? 'session-minutes-error' : undefined}
             type="number"
             min="1"
             step="1"
             value={minutes}
             onChange={(e) => setMinutes(e.target.value)}
           />
+          {errors.minutes && (
+            <span id="session-minutes-error" role="alert" className="mt-2 block text-sm text-danger">
+              {errors.minutes}
+            </span>
+          )}
         </label>
         {!online && <p className="text-muted">Sin conexión</p>}
         <button className="btn btn-primary w-full" disabled={disabled}>
-          Guardar cambios
+          {busy ? 'Guardando…' : 'Guardar cambios'}
         </button>
         <button
           type="button"

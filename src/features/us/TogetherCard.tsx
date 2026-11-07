@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Cover } from '@/components/Cover'
 import { useMe } from '@/features/auth/me'
-import { todayISO } from '@/lib/dates'
+import { fmt, todayISO } from '@/lib/dates'
 import type { TogetherItemWithBook } from '@/lib/types'
 import { answerTogether, startTogether } from './together'
 
@@ -24,7 +24,7 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
   }
   const mine = item.added_by === userId
   return (
-    <article className="space-y-2">
+    <article className="space-y-2 [overflow-wrap:anywhere]">
       <div className="flex items-center gap-3">
         <Cover book={item.book} width={34} />
         <div className="min-w-0 flex-1">
@@ -90,6 +90,8 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
               <input
                 className="min-h-11 min-w-0"
                 type="date"
+                name="startDate"
+                autoComplete="off"
                 aria-label="Fecha para empezar"
                 min={todayISO()}
                 value={date}
@@ -108,7 +110,7 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
       )}
       {item.start_on && (
         <p className="text-xs text-muted">
-          {item.start_on > todayISO() ? 'Lo empezamos el' : 'Empezado el'} {item.start_on}
+          {item.start_on > todayISO() ? 'Lo empezamos el' : 'Empezado el'} {fmt(item.start_on, "d 'de' MMMM")}
         </p>
       )}
       {error && (

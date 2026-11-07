@@ -3,6 +3,7 @@ import { fmt } from '@/lib/dates'
 import { goalProjection, bestWeekday, topMood, periodRange, type Period } from '@/lib/stats/insights'
 import { currentStreak, bestStreak } from '@/lib/stats/streak'
 import type { ReadingWithBook, Session } from '@/lib/types'
+import { formatDays } from '@/lib/units'
 
 interface Props {
   readings: ReadingWithBook[]
@@ -36,22 +37,27 @@ export function Insights({ readings, sessions, period, today, goal }: Props) {
   const dates = new Set(sessions.filter((session) => session.read_on <= today).map((session) => session.read_on))
   const cards = [
     {
-      title: 'A este ritmo',
+      title: 'Tu camino lector',
       icon: Sparkles,
-      value: `${projection.projected} libros en ${today.slice(0, 4)}`,
+      value:
+        finished.length >= goal
+          ? '¡Objetivo alcanzado!'
+          : projection.reachOn
+            ? 'Vas por buen camino'
+            : 'Cada página cuenta',
       detail:
         finished.length >= goal
-          ? `Ya has alcanzado tu objetivo de ${goal}.`
+          ? `Ya has disfrutado de ${finished.length} ${finished.length === 1 ? 'libro' : 'libros'} este año.`
           : projection.reachOn
-            ? `${projection.projected > goal ? 'Superas' : 'Alcanzas'} tu objetivo de ${goal} hacia el ${fmt(projection.reachOn, 'd MMM')}.`
-            : `Te faltarían ${Math.max(0, goal - projection.projected)} para tu objetivo de ${goal}.`,
+            ? `A tu ritmo, tu objetivo de ${goal} ${goal === 1 ? 'libro' : 'libros'} se acerca hacia el ${fmt(projection.reachOn, 'd MMM')}.`
+            : `Llevas ${finished.length} ${finished.length === 1 ? 'libro' : 'libros'} este año. Disfruta del siguiente ratito.`,
     },
     {
       title: 'Tu mejor día',
       icon: Sun,
       value: best ? best.name.charAt(0).toUpperCase() + best.name.slice(1) : 'Por descubrir',
       detail:
-        best?.morePct != null
+        best?.morePct != null && best.morePct > 0
           ? `Lees un ${best.morePct} % más que el resto de días.`
           : best
             ? 'Tu día con más lectura de este periodo.'
@@ -66,20 +72,25 @@ export function Insights({ readings, sessions, period, today, goal }: Props) {
     {
       title: 'Racha',
       icon: Flame,
-      value: `${currentStreak(dates, today)} días seguidos`,
-      detail: `Tu mejor racha: ${bestStreak(dates)} días. Cada ratito cuenta.`,
+      value: currentStreak(dates, today) > 0 ? `${formatDays(currentStreak(dates, today))} de lectura` : 'A tu ritmo',
+      detail: `Tu mejor racha: ${formatDays(bestStreak(dates))}. Cada ratito cuenta.`,
     },
   ]
 
   return (
     <section
-      aria-label="Hallazgos"
+      aria-label="Hallazgos. Usa Tab para recorrer los recuerdos de lectura"
       className="no-scrollbar -mx-[18px] flex snap-x snap-mandatory gap-3 overflow-x-auto px-[18px] pb-1"
     >
       {cards.map(({ title, icon: Icon, value, detail }) => (
-        <article key={title} className="card w-[88%] shrink-0 snap-center">
+        <article
+          key={title}
+          className="card w-[88%] shrink-0 snap-center"
+          tabIndex={0}
+          aria-label={`${title}: ${value}`}
+        >
           <h2 className="flex items-center gap-1.5 text-xs font-medium text-muted">
-            <Icon size={14} className="text-accent" />
+            <Icon size={14} className="text-accent" aria-hidden />
             {title}
           </h2>
           <p className="mt-1 font-serif text-xl font-semibold">{value}</p>

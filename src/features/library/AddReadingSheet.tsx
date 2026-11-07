@@ -17,7 +17,7 @@ import { parseHMM, toHMM } from '@/lib/units'
 
 export function AddReadingSheet({ candidate, onClose }: { candidate: BookCandidate | null; onClose: () => void }) {
   return (
-    <BottomSheet open={!!candidate} onClose={onClose}>
+    <BottomSheet open={!!candidate} onClose={onClose} title="Añadir a la biblioteca">
       {candidate && (
         <ReadingForm
           key={`${candidate.google_id}:${candidate.openlibrary_key}:${candidate.title}`}
@@ -40,22 +40,31 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   const [status, setStatus] = useState<'want' | 'reading'>('want')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [totalError, setTotalError] = useState('')
   const unit: Unit = format === 'paper' ? 'pages' : 'minutes'
   const source = candidate.google_id ? 'Google Books' : candidate.openlibrary_key ? 'Open Library' : null
   const audioDuration = customDuration ? parseHMM(durationInput) : duration
-  const validAudioDuration =
-    audioDuration !== null && Number.isSafeInteger(audioDuration) && audioDuration > 0 && audioDuration <= 2147483647
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
     const total = format === 'paper' ? pages : audioDuration
     if (!total || !Number.isSafeInteger(total) || total < 1 || total > 2147483647) {
-      setError(format === 'audio' ? 'Introduce una duración válida (h:mm)' : 'Indica cuántas páginas tiene el libro')
+      setTotalError(
+        format === 'audio'
+          ? 'Introduce una duración válida (h:mm), por ejemplo 9:30.'
+          : 'Indica cuántas páginas tiene el libro.',
+      )
+      const target =
+        event.currentTarget.querySelector<HTMLElement>(
+          format === 'audio' ? '[name="duration"]' : '#reading-total button',
+        ) ?? event.currentTarget.querySelector<HTMLElement>('#reading-total [aria-hidden="false"] button')
+      target?.focus()
       return
     }
     setBusy(true)
     setError('')
+    setTotalError('')
     try {
       const book = await upsertBook(candidate)
       const { data: active, error: activeError } = await supabase
@@ -101,11 +110,11 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4" autoComplete="off" noValidate>
       <div className="flex items-start gap-3">
         <Cover book={candidate} width={66} />
         <div className="min-w-0 pt-0.5">
-          <h2 className="line-clamp-3 text-xl leading-tight">{candidate.title}</h2>
+          <h2 className="line-clamp-3 text-xl leading-tight [overflow-wrap:anywhere]">{candidate.title}</h2>
           <p className="mt-1 text-sm text-muted">
             {[candidate.authors.join(', ') || 'Autor desconocido', candidate.published_year]
               .filter(Boolean)
@@ -139,7 +148,13 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
           ))}
         </div>
       </fieldset>
-      <div className="grid">
+      <div
+        id="reading-total"
+        className="grid"
+        role="group"
+        aria-label={format === 'paper' ? 'Total de páginas' : 'Duración total'}
+        aria-describedby={totalError ? 'reading-total-error' : undefined}
+      >
         {(['paper', 'audio'] as const).map((fieldFormat) => {
           const active = format === fieldFormat
           return (
@@ -153,6 +168,8 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
               <p className="lbl mb-2">{fieldFormat === 'paper' ? 'Páginas' : 'Duración'}</p>
               {fieldFormat === 'paper' ? (
                 <Stepper
+                  editable
+                  editLabel="Escribir las páginas"
                   value={pages}
                   onChange={setPages}
                   step={10}
@@ -164,6 +181,11 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
                 />
               ) : duration !== null ? (
                 <Stepper
+                  editable
+                  editLabel="Escribir la duración"
+                  parse={parseHMM}
+                  format={toHMM}
+                  inputMode="text"
                   value={duration}
                   onChange={updateDuration}
                   step={15}
@@ -178,6 +200,11 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
           )
         })}
       </div>
+      {format === 'paper' && totalError && (
+        <p id="reading-total-error" role="alert" className="text-sm text-danger">
+          {totalError}
+        </p>
+      )}
       {format === 'audio' && (
         <div className="flex flex-wrap items-center gap-2">
           {[6, 8, 10, 12, 15].map((hours) => (
@@ -206,21 +233,31 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
           >
             Otra…
           </button>
-          {customDuration && (
+          {(customDuration || duration === null) && (
             <label className="w-full">
               <span className="sr-only">Duración total (h:mm)</span>
               <input
                 className="input"
-                inputMode="numeric"
-                placeholder="h:mm"
+                name="duration"
+                autoComplete="off"
+                inputMode="text"
+                placeholder="p. ej. 9:30…"
+                aria-invalid={!!totalError}
+                aria-describedby={totalError ? 'reading-total-error' : undefined}
                 value={durationInput}
                 onChange={(event) => {
                   setDurationInput(event.target.value)
+                  setCustomDuration(true)
                   const parsed = parseHMM(event.target.value)
                   setDuration(parsed)
                 }}
               />
             </label>
+          )}
+          {totalError && (
+            <p id="reading-total-error" role="alert" className="w-full text-sm text-danger">
+              {totalError}
+            </p>
           )}
         </div>
       )}
@@ -228,7 +265,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
         <p className="lbl mb-2">Estado</p>
         <Segmented
           options={[
-            { value: 'want', label: 'Pendiente' },
+            { value: 'want', label: 'Pendientes' },
             { value: 'reading', label: 'Empiezo hoy' },
           ]}
           value={status}
@@ -241,7 +278,7 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
           {error}
         </p>
       )}
-      <button className="btn btn-primary w-full" disabled={busy || (format === 'audio' && !validAudioDuration)}>
+      <button className="btn btn-primary w-full" disabled={busy}>
         {busy ? 'Añadiendo…' : 'Añadir a la biblioteca'}
       </button>
     </form>

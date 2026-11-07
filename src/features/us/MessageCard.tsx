@@ -11,12 +11,14 @@ export function MessageCard({
   message,
   showBook = true,
   variant = 'card',
+  preview = false,
 }: {
   message: Message
   showBook?: boolean
   variant?: MessageVariant
+  preview?: boolean
 }) {
-  return <MessageContent message={message} showBook={showBook} variant={variant} ancestors={[]} />
+  return <MessageContent message={message} showBook={showBook} variant={variant} ancestors={[]} preview={preview} />
 }
 
 function MessageContent({
@@ -24,11 +26,13 @@ function MessageContent({
   showBook,
   variant,
   ancestors,
+  preview = false,
 }: {
   message: Message
   showBook: boolean
   variant: MessageVariant
   ancestors: string[]
+  preview?: boolean
 }) {
   const { userId, profile, partner } = useMe()
   const mine = message.from_user === userId
@@ -78,27 +82,29 @@ function MessageContent({
       id={`m-${message.id}`}
       className={
         bubble
-          ? `w-fit max-w-[92%] space-y-1 rounded-2xl border border-border scroll-mt-5 target:ring-2 target:ring-accent ${mine ? 'ml-auto bg-soft' : 'mr-auto bg-surface'}`
-          : 'card space-y-1 scroll-mt-5 target:ring-2 target:ring-accent'
+          ? `w-fit max-w-[92%] space-y-1 rounded-2xl border border-border scroll-mt-5 target:ring-2 target:ring-accent [overflow-wrap:anywhere] ${mine ? 'ml-auto bg-soft' : 'mr-auto bg-surface'}`
+          : 'card space-y-1 scroll-mt-5 target:ring-2 target:ring-accent [overflow-wrap:anywhere]'
       }
       style={{ padding: bubble ? '10px 12px' : 12 }}
     >
       {!bubble && (
         <div className="flex items-center gap-2">
           {author && <Avatar person={author} size={28} />}
-          <span className="shrink-0 text-xs font-medium">{author?.display_name ?? 'Tu pareja'}</span>
+          <span className="min-w-0 flex-1 text-xs font-medium [overflow-wrap:anywhere]">
+            {author?.display_name ?? 'Tu pareja'}
+          </span>
           {emotion && (
-            <span className="min-w-0 rounded-full bg-soft px-2 py-1 text-[11px] leading-tight">
+            <span className="min-w-0 rounded-full bg-soft px-2 py-1 text-xs leading-tight">
               {emotion.emoji} {emotion.label}
             </span>
           )}
-          <time className="ml-auto shrink-0 text-[10px] text-muted" dateTime={message.created_at}>
+          <time className="ml-auto shrink-0 text-xs text-muted" dateTime={message.created_at}>
             {time}
           </time>
         </div>
       )}
       {bubble && emotion && (
-        <p className="text-[11px] text-muted">
+        <p className="text-xs text-muted">
           {emotion.emoji} {emotion.label}
         </p>
       )}
@@ -133,7 +139,22 @@ function MessageContent({
               »
             </p>
           )}
-          {message.body && <p className="whitespace-pre-wrap break-words text-sm leading-5">{message.body}</p>}
+          {message.body && (
+            <p
+              className={`whitespace-pre-wrap text-sm leading-5 [overflow-wrap:anywhere] ${preview && !expanded ? 'line-clamp-3' : ''}`}
+            >
+              {message.body}
+            </p>
+          )}
+          {preview && (message.body || replies.length > 0) && (
+            <button
+              className="btn btn-ghost min-h-11 text-xs"
+              aria-expanded={expanded}
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? 'Ver menos' : 'Leer el mensaje completo'}
+            </button>
+          )}
           {!bubble && showBook && book && (
             <p className="truncate text-xs text-muted">
               {book.title}
@@ -141,7 +162,7 @@ function MessageContent({
             </p>
           )}
           {bubble && (
-            <p className="text-right text-[10px] text-muted">
+            <p className="text-right text-xs text-muted">
               {message.page !== null ? `p. ${message.page} · ` : ''}
               <time dateTime={message.created_at}>{time}</time>
             </p>
@@ -167,10 +188,11 @@ function MessageContent({
               {!message.read_at && (
                 <button
                   className="btn btn-ghost min-h-11 text-xs"
+                  aria-label="Quitar de Para ti"
                   disabled={busy}
                   onClick={() => void run(() => markRead([message.id]))}
                 >
-                  Visto
+                  Hecho
                 </button>
               )}
             </div>
@@ -195,7 +217,9 @@ function MessageContent({
               }}
             >
               <input
-                autoFocus
+                autoFocus={window.matchMedia('(pointer: fine)').matches}
+                name="reply"
+                autoComplete="off"
                 className="min-h-11 min-w-0 flex-1"
                 aria-label="Responder al mensaje"
                 placeholder="Responder…"
@@ -221,7 +245,7 @@ function MessageContent({
           {error}
         </p>
       )}
-      {!message.locked && replies.length > 0 && (
+      {!message.locked && replies.length > 0 && (!preview || expanded) && (
         <div className="space-y-2 border-l border-border pl-3">
           {(expanded ? replies : replies.slice(0, 2)).map((reply) => (
             <MessageContent

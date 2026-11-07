@@ -35,7 +35,7 @@ export function ProfilePage() {
           <ArrowLeft size={20} />
         </Link>
         <Avatar person={profile} size={44} />
-        <h1 className="min-w-0 font-serif text-2xl font-semibold">{profile.display_name}</h1>
+        <h1 className="min-w-0 font-serif text-2xl font-semibold [overflow-wrap:anywhere]">{profile.display_name}</h1>
       </header>
       <section className="card" aria-labelledby="yearly-goal-heading">
         <header className="mb-3 flex items-center justify-between gap-2">
@@ -46,6 +46,8 @@ export function ProfilePage() {
         </header>
         <fieldset disabled={updateProfile.isPending}>
           <Stepper
+            editable
+            editLabel="Escribir el objetivo"
             label="Libros que quieres leer este año"
             value={goal}
             onChange={(value) => {
@@ -56,7 +58,7 @@ export function ProfilePage() {
             min={1}
             max={365}
             display={goal}
-            caption="libros este año"
+            caption={goal === 1 ? 'libro este año' : 'libros este año'}
           />
         </fieldset>
         {goal !== profile.yearly_goal && (

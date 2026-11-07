@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { MoreHorizontal, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
-import { qk, useNotes } from '@/lib/data'
+import { qk, useNotes, useReadings } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/queryClient'
 import type { Note, NoteKind } from '@/lib/types'
@@ -14,6 +14,8 @@ import { useOnline } from '@/features/session/useOnline'
 export function Notes({ readingId }: { readingId: string }) {
   const { userId, partner } = useMe()
   const query = useNotes(readingId)
+  const readings = useReadings(userId)
+  const reading = readings.data?.find((item) => item.id === readingId)
   const online = useOnline()
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<NoteKind>('note')
@@ -21,6 +23,10 @@ export function Notes({ readingId }: { readingId: string }) {
   const [body, setBody] = useState('')
   const [page, setPage] = useState('')
   const [traceOpen, setTraceOpen] = useState(false)
+  const [traceNote, setTraceNote] = useState<Note | null>(null)
+  const [error, setError] = useState<{ field: 'body' | 'page'; message: string } | null>(null)
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
+  const pageRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const notes = query.data?.filter((note) => note.user_id === userId) ?? []
   function create() {
@@ -28,6 +34,7 @@ export function Notes({ readingId }: { readingId: string }) {
     setKind('note')
     setBody('')
     setPage('')
+    setError(null)
     setOpen(true)
   }
   function edit(note: Note) {
@@ -35,12 +42,30 @@ export function Notes({ readingId }: { readingId: string }) {
     setKind(note.kind)
     setBody(note.body)
     setPage(note.page === null ? '' : String(note.page))
+    setError(null)
     setOpen(true)
   }
   async function save() {
-    if (!online || busy || !body.trim()) return
-    if (page !== '' && (!/^\d+$/.test(page) || !Number.isSafeInteger(Number(page)))) {
-      toast('La página debe ser un número entero positivo')
+    if (!online || busy) return
+    if (!body.trim()) {
+      setError({ field: 'body', message: `Escribe ${kind === 'note' ? 'una nota' : 'una cita'} antes de guardar` })
+      bodyRef.current?.focus()
+      return
+    }
+    if (
+      page !== '' &&
+      (!/^\d+$/.test(page) ||
+        !Number.isSafeInteger(Number(page)) ||
+        (reading?.unit === 'pages' && Number(page) > reading.total_units))
+    ) {
+      setError({
+        field: 'page',
+        message:
+          reading?.unit === 'pages'
+            ? `Escribe una página entre 0 y ${reading.total_units}`
+            : 'Escribe un número de página entero, a partir de 0',
+      })
+      pageRef.current?.focus()
       return
     }
     setBusy(true)
@@ -74,8 +99,16 @@ export function Notes({ readingId }: { readingId: string }) {
   }
   return (
     <section className="space-y-2">
-      {query.isPending && <p className="py-3 text-sm text-muted">Cargando notas…</p>}
-      {query.isError && <p className="py-3 text-sm text-danger">No se pudieron cargar las notas.</p>}
+      {query.isPending && (
+        <p role="status" className="py-3 text-sm text-muted">
+          Cargando notas…
+        </p>
+      )}
+      {query.isError && (
+        <p role="alert" className="py-3 text-sm text-danger">
+          No se pudieron cargar las notas. Vuelve a abrirlas cuando tengas conexión.
+        </p>
+      )}
       {!query.isPending && !query.isError && notes.length === 0 && (
         <p className="py-3 text-sm text-muted">Guarda una idea o una cita para recordar.</p>
       )}
@@ -87,11 +120,22 @@ export function Notes({ readingId }: { readingId: string }) {
             >
               {note.kind === 'quote' ? `«${note.body}»` : note.body}
             </p>
-            <p className="mt-1.5 text-[11px] text-muted">
+            <p className="mt-1.5 text-xs text-muted">
               {note.kind === 'quote' ? 'Cita' : 'Nota'}
               {note.page !== null ? ` · p. ${note.page}` : ''}
               {' · Privada'}
             </p>
+            <button
+              type="button"
+              className="mt-1 min-h-11 text-left text-xs font-medium text-accent"
+              disabled={!online || !partner || !reading}
+              onClick={() => {
+                setTraceNote(note)
+                setTraceOpen(true)
+              }}
+            >
+              Déjasela a {partner?.display_name ?? 'tu pareja'}
+            </button>
           </div>
           <button
             className="icon-btn"
@@ -99,20 +143,42 @@ export function Notes({ readingId }: { readingId: string }) {
             disabled={!online || busy}
             onClick={() => edit(note)}
           >
-            <MoreHorizontal size={18} />
+            <MoreHorizontal size={18} aria-hidden />
           </button>
         </article>
       ))}
       <button className="btn btn-soft w-full" disabled={!online || busy} onClick={create}>
-        <Plus size={17} /> {online ? 'Añadir nota/cita' : 'Sin conexión'}
+        <Plus size={17} aria-hidden /> {online ? 'Añadir nota/cita' : 'Sin conexión'}
       </button>
-      <button className="min-h-11 text-left text-xs text-muted" onClick={() => setTraceOpen(true)}>
+      <button
+        className="min-h-11 text-left text-xs text-muted"
+        disabled={!online || !partner || !reading}
+        onClick={() => {
+          setTraceNote(null)
+          setTraceOpen(true)
+        }}
+      >
         Para compartir una frase, déjasela a {partner?.display_name ?? 'tu pareja'}
       </button>
-      <TraceSheet open={traceOpen} onClose={() => setTraceOpen(false)} />
-      <BottomSheet open={open} onClose={() => setOpen(false)} title={editing ? 'Editar nota/cita' : 'Añadir nota/cita'}>
+      <TraceSheet
+        open={traceOpen}
+        onClose={() => setTraceOpen(false)}
+        reading={reading}
+        prefill={traceNote ? { body: traceNote.body, page: traceNote.page } : undefined}
+      />
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? 'Editar nota/cita' : 'Añadir nota/cita'}
+        dirty={
+          body !== (editing?.body ?? '') ||
+          page !== (editing?.page === null || !editing ? '' : String(editing.page)) ||
+          kind !== (editing?.kind ?? 'note')
+        }
+      >
         <form
           className="space-y-4"
+          noValidate
           onSubmit={(event) => {
             event.preventDefault()
             void save()
@@ -132,16 +198,31 @@ export function Notes({ readingId }: { readingId: string }) {
               {kind === 'note' ? 'Tu nota' : 'Tu cita'}
               <textarea
                 className="input mt-2 min-h-28"
+                ref={bodyRef}
+                name="note-body"
+                autoComplete="off"
+                aria-invalid={error?.field === 'body'}
+                aria-describedby={error?.field === 'body' ? 'note-body-error' : undefined}
                 required
                 maxLength={5000}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
               />
             </label>
+            {error?.field === 'body' && (
+              <p id="note-body-error" role="alert" className="text-sm text-danger">
+                {error.message}
+              </p>
+            )}
             <label className="label">
               Página (opcional)
               <input
                 className="input mt-2"
+                ref={pageRef}
+                name="note-page"
+                autoComplete="off"
+                aria-invalid={error?.field === 'page'}
+                aria-describedby={error?.field === 'page' ? 'note-page-error' : undefined}
                 type="number"
                 inputMode="numeric"
                 min="0"
@@ -150,8 +231,13 @@ export function Notes({ readingId }: { readingId: string }) {
                 onChange={(event) => setPage(event.target.value)}
               />
             </label>
-            <button className="btn btn-primary w-full" disabled={!body.trim()}>
-              {!online ? 'Sin conexión' : busy ? 'Guardando…' : 'Guardar'}
+            {error?.field === 'page' && (
+              <p id="note-page-error" role="alert" className="text-sm text-danger">
+                {error.message}
+              </p>
+            )}
+            <button className="btn btn-primary w-full" disabled={busy} aria-busy={busy}>
+              {!online ? 'Sin conexión' : busy ? 'Guardando…' : kind === 'note' ? 'Guardar nota' : 'Guardar cita'}
             </button>
             {editing && (
               <button type="button" className="btn btn-danger w-full" onClick={() => void remove()}>

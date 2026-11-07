@@ -11,7 +11,7 @@ import type { ReadingStatus, TogetherItemWithBook } from '@/lib/types'
 import { progressFraction } from '@/lib/units'
 import { useRooms } from '@/features/us/rooms'
 import { answerTogether, startTogether } from '@/features/us/together'
-import { todayISO } from '@/lib/dates'
+import { fmt, todayISO } from '@/lib/dates'
 
 const segments = [
   { value: 'reading', label: 'Leyendo' },
@@ -57,8 +57,11 @@ export function LibraryPage() {
         <input
           className="input pl-10"
           type="search"
+          name="library-search"
+          autoComplete="off"
+          spellCheck={false}
           aria-label="Buscar por título o autor"
-          placeholder="Título o autor"
+          placeholder="p. ej. Patria…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -86,13 +89,15 @@ export function LibraryPage() {
               {value === 'recent' ? 'Recientes' : value === 'title' ? 'Título' : 'Nota'}
             </button>
           ))}
-        <button
-          className="btn btn-ghost ml-auto text-xs"
-          aria-pressed={view === 'abandoned'}
-          onClick={() => setView(view === 'abandoned' ? 'reading' : 'abandoned')}
-        >
-          Ver dejados
-        </button>
+        {view !== 'together' && (
+          <button
+            className="btn btn-ghost ml-auto text-xs"
+            aria-pressed={view === 'abandoned'}
+            onClick={() => setView(view === 'abandoned' ? 'reading' : 'abandoned')}
+          >
+            Ver dejados
+          </button>
+        )}
       </div>
       {view === 'together' ? (
         <div className="space-y-4">
@@ -201,11 +206,11 @@ function TogetherBook({ item }: { item: TogetherItemWithBook }) {
         <Cover book={item.book} width={52} />
         <div className="min-w-0">
           <p className="font-serif">{item.book.title}</p>
-          {item.reason && <p className="mt-1 text-sm text-muted">{item.reason}</p>}
+          {item.reason && <p className="mt-1 text-sm text-muted [overflow-wrap:anywhere]">{item.reason}</p>}
         </div>
       </div>
       {item.start_on ? (
-        <p className="text-sm text-muted">Para empezar el {item.start_on}</p>
+        <p className="text-sm text-muted">Para empezar el {fmt(item.start_on, "d 'de' MMM")}</p>
       ) : item.partner_answer === 'yes' ? (
         <div className="space-y-2">
           <p className="text-sm">¿Empezamos?</p>

@@ -45,12 +45,12 @@ export function Segmented<T extends string>({ options, value, onChange, classNam
             type="button"
             aria-pressed={on}
             onClick={() => onChange(o.value)}
-            className={`relative z-[1] flex min-h-10 items-center justify-center gap-1.5 px-1 text-[13px] transition-colors duration-200 ${on ? 'font-semibold text-ink' : 'font-medium text-muted'}`}
+            className={`relative z-[1] flex min-h-11 items-center justify-center gap-1.5 px-1 text-[13px] transition-colors duration-200 ${on ? 'font-semibold text-ink' : 'font-medium text-muted'}`}
           >
             {o.label}
             {o.count !== undefined && (
               <span
-                className={`num rounded-[9px] px-1.5 py-px text-[11px] ${on ? 'bg-soft text-accent' : 'bg-border text-muted'}`}
+                className={`num rounded-[9px] px-1.5 py-px text-xs ${on ? 'bg-soft text-ink' : 'bg-border text-ink'}`}
               >
                 {o.count}
               </span>

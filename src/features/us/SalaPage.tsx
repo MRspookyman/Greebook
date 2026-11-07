@@ -39,11 +39,16 @@ export function SalaPage() {
   }, [bookId, newestMessageId, room?.book.id])
 
   useEffect(() => {
-    const input = composerInput.current
-    if (!input) return
-    input.style.height = '44px'
-    input.style.height = `${Math.min(116, Math.max(44, input.scrollHeight))}px`
-  }, [body])
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const keepComposerVisible = () => {
+      if (document.activeElement === composerInput.current) {
+        composerInput.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+      }
+    }
+    viewport.addEventListener('resize', keepComposerVisible)
+    return () => viewport.removeEventListener('resize', keepComposerVisible)
+  }, [])
 
   useEffect(() => {
     const ids = conversation
@@ -68,7 +73,7 @@ export function SalaPage() {
           <ArrowLeft size={18} /> Volver al rincón
         </Link>
         <h1>La sala de los dos</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted" role="status">
           {loading ? 'Cargando la sala…' : 'La sala se abre cuando los dos tenéis este libro en Leyendo.'}
         </p>
       </section>
@@ -104,9 +109,9 @@ export function SalaPage() {
       </Link>
       <header className="flex items-center gap-4">
         <Cover book={room.book} width={60} />
-        <div>
-          <p className="lbl">Vuestra sala</p>
-          <h1 className="text-2xl">{room.book.title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl [overflow-wrap:anywhere]">{room.book.title}</h1>
+          <p className="mt-1 text-xs text-muted">Vuestra sala</p>
         </div>
       </header>
       <div className="card space-y-2">
@@ -125,8 +130,18 @@ export function SalaPage() {
           }}
         />
       </div>
-      <div className="space-y-3 pb-4" aria-label="Mensajes de la sala">
-        {messages.isPending && <p className="text-sm text-muted">Cargando mensajes…</p>}
+      <div
+        className="space-y-3 pb-4"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label="Mensajes de la sala"
+      >
+        {messages.isPending && (
+          <p className="text-sm text-muted" role="status">
+            Cargando mensajes…
+          </p>
+        )}
         {messages.isError && (
           <button className="btn btn-secondary" onClick={() => void messages.refetch()}>
             Reintentar mensajes
@@ -140,7 +155,7 @@ export function SalaPage() {
         ))}
       </div>
       <form
-        className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex items-end gap-1 rounded-2xl border border-border bg-surface p-2 shadow-sm"
+        className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex scroll-mb-[calc(96px+env(safe-area-inset-bottom))] items-end gap-1 rounded-2xl border border-border bg-surface p-2 shadow-sm"
         onSubmit={(event) => {
           event.preventDefault()
           void send()
@@ -176,8 +191,10 @@ export function SalaPage() {
         </button>
         <textarea
           ref={composerInput}
+          name="message"
+          autoComplete="off"
           rows={1}
-          className="min-h-11 min-w-0 flex-1 resize-none rounded-xl bg-bg px-2 py-3 text-sm leading-[22px] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-11 max-h-28 min-w-0 flex-1 resize-y scroll-mb-[calc(96px+env(safe-area-inset-bottom))] rounded-xl bg-bg px-2 py-3 text-sm leading-[22px] outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Mensaje para tu pareja"
           placeholder="Déjale algo…"
           maxLength={5000}
@@ -193,7 +210,9 @@ export function SalaPage() {
             max={maxPage}
             step={1}
             required
-            autoFocus
+            autoFocus={window.matchMedia('(pointer: fine)').matches}
+            name="messagePage"
+            autoComplete="off"
             value={currentPage}
             onChange={(event) => setPage(Math.max(0, Math.trunc(Number(event.target.value))))}
             onBlur={() => setEditingPage(false)}

@@ -5,6 +5,7 @@ import { useMe } from '@/features/auth/me'
 import { useCoupleGoal } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
 import type { CoupleGoal } from '@/lib/types'
+import { formatDays } from '@/lib/units'
 import { answerGoal, proposeGoal } from './goals'
 import { EMOTIONS } from './messages'
 import type { MonthMemories } from './memories'
@@ -25,7 +26,11 @@ export function GoalProposal({ goal }: { goal: CoupleGoal }) {
   return (
     <div className="space-y-2">
       <p className="text-sm">
-        ¿Este mes, {goal.target} {goal.kind === 'days' ? 'días leyendo los dos' : 'ratitos juntos'}?
+        ¿Este mes,{' '}
+        {goal.kind === 'days'
+          ? `${formatDays(goal.target)} leyendo los dos`
+          : `${goal.target} ${goal.target === 1 ? 'ratito' : 'ratitos'} juntos`}
+        ?
       </p>
       <div className="flex gap-2">
         <button className="btn btn-soft" disabled={busy} onClick={() => void answer(true)}>
@@ -73,12 +78,12 @@ export function MemoriesCard({
         </div>
       )}
       <p className="text-sm">
-        <strong>{summary.daysTogether}</strong> días leyendo los dos · <strong>{summary.ratitos}</strong> ratitos
-        compartidos
+        {formatDays(summary.daysTogether)} leyendo los dos · {summary.ratitos}{' '}
+        {summary.ratitos === 1 ? 'ratito compartido' : 'ratitos compartidos'}
       </p>
       {quote && (
         <div className="flex items-center gap-2 rounded-xl bg-soft px-3">
-          <blockquote className="min-w-0 flex-1 py-3 text-sm italic">
+          <blockquote className="min-w-0 flex-1 py-3 text-sm italic [overflow-wrap:anywhere]">
             ❤️ {quote.body ?? (quote.emotion ? EMOTIONS[quote.emotion].label : 'Un recuerdo vuestro')}
           </blockquote>
           {summary.quotes.length > 1 && (
@@ -97,7 +102,8 @@ export function MemoriesCard({
           <div className="space-y-2">
             <p className="text-sm">
               {amount >= goal.target ? '¡Lo habéis hecho juntos! 💚' : 'Vuestro pequeño propósito'} ·{' '}
-              {Math.min(amount, goal.target)} / {goal.target} {goal.kind === 'days' ? 'días' : 'ratitos'}
+              {Math.min(amount, goal.target)} / {goal.target}{' '}
+              {goal.kind === 'days' ? (goal.target === 1 ? 'día' : 'días') : goal.target === 1 ? 'ratito' : 'ratitos'}
             </p>
             <div
               className="h-2 overflow-hidden rounded-full bg-soft"
@@ -108,23 +114,29 @@ export function MemoriesCard({
               aria-valuenow={Math.min(amount, goal.target)}
             >
               <div
-                className="h-full rounded-full bg-accent"
+                className="h-full origin-left rounded-full bg-accent"
                 style={{
-                  width: `${Math.min(100, (amount / goal.target) * 100)}%`,
-                  transition: 'width 400ms var(--ease)',
+                  transform: `scaleX(${Math.min(1, amount / goal.target)})`,
+                  transition: 'transform 400ms var(--ease)',
                 }}
               />
             </div>
           </div>
         ) : goal.proposed_by === userId ? (
           <p className="text-sm text-muted">
-            Propuesto: {goal.target} {goal.kind === 'days' ? 'días leyendo los dos' : 'ratitos juntos'} · esperando a tu
-            pareja
+            Propuesto:{' '}
+            {goal.kind === 'days'
+              ? `${formatDays(goal.target)} leyendo los dos`
+              : `${goal.target} ${goal.target === 1 ? 'ratito' : 'ratitos'} juntos`}{' '}
+            · esperando a tu pareja
           </p>
         ) : goalPendingAbove ? (
           <p className="text-sm text-muted">
-            Propuesto: {goal.target} {goal.kind === 'days' ? 'días leyendo los dos' : 'ratitos juntos'} · puedes
-            responder arriba
+            Propuesto:{' '}
+            {goal.kind === 'days'
+              ? `${formatDays(goal.target)} leyendo los dos`
+              : `${goal.target} ${goal.target === 1 ? 'ratito' : 'ratitos'} juntos`}{' '}
+            · puedes responder arriba
           </p>
         ) : (
           <GoalProposal goal={goal} />
@@ -151,7 +163,9 @@ export function MemoriesCard({
             <label className="lbl">
               Nuestro propósito
               <select
-                className="min-h-11 w-full"
+                className="input min-h-11 w-full"
+                name="goalKind"
+                autoComplete="off"
                 value={kind}
                 onChange={(event) => setKind(event.target.value as CoupleGoal['kind'])}
               >
@@ -167,6 +181,8 @@ export function MemoriesCard({
               max={31}
               display={target}
               label="Cantidad del propósito"
+              editable
+              editLabel="Escribir el objetivo"
             />
             <div className="flex gap-2">
               <button className="btn btn-soft" disabled={busy}>

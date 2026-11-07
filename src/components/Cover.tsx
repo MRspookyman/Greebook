@@ -8,33 +8,27 @@ interface Props {
   className?: string
   /** Overlay (progress badge, stars…) positioned inside the cover. */
   children?: ReactNode
+  /** Eagerly fetch an above-the-fold cover. */
+  priority?: boolean
 }
 
-/** Stable hue per title for generated covers. */
-function hueOf(title: string): number {
-  let h = 0
-  for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) % 360
-  return h
-}
-
-export function Cover({ book, width, className = '', children }: Props) {
+export function Cover({ book, width, className = '', children, priority = false }: Props) {
   const [failed, setFailed] = useState(false)
   const size = width ? { width, height: Math.round(width * 1.5) } : { width: '100%', aspectRatio: '2 / 3' }
   const base = `relative flex-none overflow-hidden rounded-[5px_7px_7px_5px] shadow-[0_3px_10px_-2px_rgb(0_0_0/0.25),inset_3px_0_0_rgb(0_0_0/0.12)] ${className}`
 
   if (!book.cover_url || failed) {
-    const hue = hueOf(book.title)
+    // Generated covers share the diary palette rather than introducing arbitrary hues.
     const fontSize = width ? Math.max(8, width * 0.15) : 13
     const author = book.authors?.[0]?.split(' ').at(-1)
     return (
       <div
-        className={`${base} flex flex-col justify-between font-serif leading-[1.05] text-[#fdf8ec]`}
+        className={`${base} flex flex-col justify-between bg-green font-serif leading-[1.05] text-bg`}
         style={{
           ...size,
           fontSize,
           // Percent padding resolves against the parent's width, so use px when the width is known.
           padding: width ? `${width * 0.12}px ${width * 0.1}px` : '12% 10%',
-          background: `linear-gradient(160deg, oklch(0.62 0.09 ${hue}), oklch(0.38 0.08 ${hue}))`,
         }}
         aria-label={book.title}
       >
@@ -53,7 +47,10 @@ export function Cover({ book, width, className = '', children }: Props) {
       <img
         src={book.cover_url}
         alt={book.title}
-        loading="lazy"
+        width={width ?? 200}
+        height={Math.round((width ?? 200) * 1.5)}
+        loading={priority ? 'eager' : 'lazy'}
+        fetchPriority={priority ? 'high' : 'auto'}
         onError={() => setFailed(true)}
         className="h-full w-full object-cover"
       />
