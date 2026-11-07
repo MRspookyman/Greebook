@@ -24,8 +24,8 @@ export function NotificationsSection() {
   }
 
   return (
-    <section className="rule space-y-4 pt-5" aria-labelledby="notifications-title">
-      <h2 id="notifications-title" className="eyebrow text-muted">
+    <section className="card space-y-4" aria-labelledby="notifications-title">
+      <h2 id="notifications-title" className="text-[15px] font-semibold">
         Avisos
       </h2>
       <PushEnableButton />

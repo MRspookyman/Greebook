@@ -22,8 +22,8 @@ export function DataSection() {
     }
   }
   return (
-    <section className="rule space-y-4 pt-5" aria-labelledby="data-title">
-      <h2 id="data-title" className="eyebrow text-muted">
+    <section className="card space-y-4" aria-labelledby="data-title">
+      <h2 id="data-title" className="text-[15px] font-semibold">
         Datos
       </h2>
       <p className="text-sm leading-relaxed text-muted">

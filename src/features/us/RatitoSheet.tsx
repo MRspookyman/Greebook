@@ -55,7 +55,7 @@ export function RatitoSheet({ open, onClose }: { open: boolean; onClose: () => v
           <p className="text-sm text-muted">
             Un rato de lectura con {partner?.display_name ?? 'tu pareja'}, cada uno con su libro.
           </p>
-          <div className="space-y-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Cuándo">
             {(
               [
                 ['now', 'Ahora'],
@@ -66,11 +66,11 @@ export function RatitoSheet({ open, onClose }: { open: boolean; onClose: () => v
               <button
                 key={value}
                 type="button"
-                className="btn btn-outline w-full justify-start"
+                className="chip"
                 aria-pressed={choice === value}
                 onClick={() => setChoice(value)}
               >
-                {choice === value ? '●' : '○'} {label}
+                {label}
               </button>
             ))}
           </div>

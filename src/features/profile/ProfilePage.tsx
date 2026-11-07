@@ -29,7 +29,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 py-5">
+    <div className="flex flex-col gap-4 py-5">
       <header className="enter flex flex-wrap items-center gap-3">
         <Link to="/" className="icon-btn" aria-label="Volver a Hoy">
           <ArrowLeft size={20} />
@@ -37,9 +37,9 @@ export function ProfilePage() {
         <Avatar person={profile} size={44} />
         <h1 className="display min-w-0 flex-1 [overflow-wrap:anywhere]">{profile.display_name}</h1>
       </header>
-      <section className="rule enter pt-5" style={{ '--i': 1 } as CSSProperties} aria-labelledby="yearly-goal-heading">
+      <section className="card enter" style={{ '--i': 1 } as CSSProperties} aria-labelledby="yearly-goal-heading">
         <header className="mb-4 flex items-center justify-between gap-2">
-          <h2 id="yearly-goal-heading" className="eyebrow text-muted">
+          <h2 id="yearly-goal-heading" className="text-[15px] font-semibold">
             Objetivo anual
           </h2>
           <span className="folio text-muted">{new Date().getFullYear()}</span>

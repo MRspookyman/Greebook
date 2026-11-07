@@ -60,8 +60,8 @@ export function SettingsSection() {
   }
 
   return (
-    <section className="rule space-y-5 pt-5" aria-labelledby="settings-title">
-      <h2 id="settings-title" className="eyebrow text-muted">
+    <section className="card space-y-5" aria-labelledby="settings-title">
+      <h2 id="settings-title" className="text-[15px] font-semibold">
         Ajustes
       </h2>
       <fieldset>
