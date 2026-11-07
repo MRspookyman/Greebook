@@ -50,7 +50,7 @@ function Tab({ tab, active, badge = 0 }: { tab: TabItem; active: boolean; badge?
         />
         {badge > 0 && (
           <span
-            className="absolute -top-1.5 -right-3 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-chrome-mark px-1 text-xs leading-none font-semibold text-chrome"
+            className="absolute -top-1.5 -right-3 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-chrome-mark px-1 text-xs leading-none font-semibold text-[#222228]"
             style={{ animation: 'gb-pop-in 320ms var(--ease) both' }}
             aria-label={`${badge} novedades`}
           >
@@ -82,7 +82,7 @@ function ReadButton() {
       <span
         className="relative -mt-[30px] grid h-[56px] w-[56px] place-items-center rounded-full transition-colors duration-300"
         style={{
-          background: timer && !paused ? 'var(--accent)' : 'color-mix(in oklab, var(--chrome) 84%, white)',
+          background: timer && !paused ? 'var(--accent)' : 'var(--chrome-strong)',
           color: timer && !paused ? 'var(--accent-contrast)' : 'var(--chrome-mark)',
           boxShadow: '0 0 0 4px var(--bg), inset 0 0 0 1.5px var(--chrome-mark)',
         }}
@@ -123,7 +123,7 @@ export function TabBar() {
       style={{ bottom: 'calc(10px + env(safe-area-inset-bottom))' }}
       aria-label="Secciones"
     >
-      <div className="relative mx-auto grid h-[64px] max-w-xl grid-cols-5 items-end rounded-[24px] bg-chrome px-1 pb-[7px] shadow-[0_14px_30px_-12px_rgb(15_26_21/0.55)]">
+      <div className="relative mx-auto grid h-[64px] max-w-xl grid-cols-5 items-end rounded-[24px] border border-rule bg-chrome px-1 pb-[7px] shadow-[0_14px_30px_-16px_rgb(20_20_30/0.35)]">
         <span
           aria-hidden
           className="pointer-events-none absolute top-[7px] left-1 flex h-[2px] w-[calc((100%-8px)/5)] justify-center"

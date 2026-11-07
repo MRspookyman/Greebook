@@ -1,24 +1,24 @@
 @import 'tailwindcss';
 
 :root {
-  --bg: #f6eedf;
-  --surface: #fff9ee;
-  --ink: #3a2a1e;
-  --muted: #76604d;
+  --bg: #faf9f5;
+  --surface: #ffffff;
+  --ink: #222228;
+  --muted: #64636c;
   --placeholder: var(--muted);
-  --rule: #e7d8c2;
+  --rule: #e5e2da;
   --border: var(--rule);
   /* Identity colours, validated for charts (ΔE ≥ 15 between them, ≥ 4.5:1 on paper). */
   --green: #2e7b47;
   --blue: #3b62c9;
-  --danger: #b4472f;
-  --amber: #d39a4a;
-  --amber-ink: #8a5a1e;
+  --danger: #c2412d;
+  --amber: #e3b23c;
+  --amber-ink: #7a5a00;
   --scrim: rgb(0 0 0 / 0.35);
   --accent: var(--green);
-  --accent-contrast: #fff9ee;
-  --grain-opacity: 0.06;
-  --paper-shadow: 0 10px 24px -14px rgb(92 60 30 / 0.4), 0 2px 5px rgb(92 60 30 / 0.07);
+  --accent-contrast: #ffffff;
+  --grain-opacity: 0.02;
+  --paper-shadow: 0 1px 0 rgb(20 20 30 / 0.03), 0 8px 20px -14px rgb(20 20 30 / 0.22);
   --spring: cubic-bezier(0.32, 1.28, 0.5, 1);
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   /* Motion: taps answer at once, things that move travel, things that fill take their time. */
@@ -28,99 +28,105 @@
   /* Tab bar height above the safe area (58px row + hairline); bars that sit on it use this. */
   --tabbar-h: 82px;
   /* Floating navigation bar and other dark chrome. */
-  --chrome: #4a3226;
-  --chrome-ink: #f8ebd6;
-  --chrome-muted: #cdb8a0;
-  --chrome-mark: #e9b872;
+  --chrome: #ffffff;
+  --chrome-ink: #222228;
+  --chrome-muted: #64636c;
+  --chrome-mark: #f5c518;
   /* Small labels printed on covers. */
-  --badge-bg: #fff9ee;
-  --badge-ink: #3a2a1e;
+  --badge-bg: #ffffff;
+  --badge-ink: #222228;
   /* Sequential ramps (validated): reading time per day and star ratings, less → more. */
-  --heat-0: #eadcc6;
-  --heat-1: #f0c9a8;
-  --heat-2: #e3a27a;
-  --heat-3: #cf7c55;
-  --heat-4: #b05a38;
-  --heat-5: #8a3f24;
+  --heat-0: #ecebf1;
+  --heat-1: #b3a7d7;
+  --heat-2: #9688c6;
+  --heat-3: #7a6bb2;
+  --heat-4: #605299;
+  --heat-5: #473c7e;
   --rate-1: #c8a15c;
   --rate-2: #ae8641;
   --rate-3: #906a2b;
   --rate-4: #71501a;
   --rate-5: #52380c;
   --edge: transparent;
-  --glow: rgb(255 205 140 / 0.38);
-  --hard: 0 10px 24px -14px rgb(92 60 30 / 0.4), 0 2px 5px rgb(92 60 30 / 0.07);
-  --grid: #ecdfcb;
+  --glow: transparent;
+  --hard: 0 1px 0 rgb(20 20 30 / 0.03), 0 8px 20px -14px rgb(20 20 30 / 0.22);
+  --hl: #ffe45c;
+  --chrome-strong: #232329;
+  --grid: #edebe5;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #1e1813;
-    --surface: #2a221b;
-    --ink: #f3e6d1;
-    --muted: #bfae98;
-    --rule: #43372b;
+    --bg: #16161a;
+    --surface: #1f1f24;
+    --ink: #edebe5;
+    --muted: #a6a4ad;
+    --rule: #33333a;
     --green: #56a36b;
     --blue: #6c8ff0;
-    --danger: #e9a58d;
-    --amber: #e9b872;
-    --amber-ink: #efc285;
-    --accent-contrast: #1e1813;
-    --grain-opacity: 0.035;
-    --paper-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
-    --chrome: #140f0b;
-    --chrome-ink: #f3e6d1;
-    --chrome-muted: #bfae98;
-    --heat-0: #3a2f25;
-    --heat-1: #6b3e28;
-    --heat-2: #8c5233;
-    --heat-3: #b06a42;
-    --heat-4: #d08a5c;
-    --heat-5: #eab084;
+    --danger: #ff8a73;
+    --amber: #f0c94c;
+    --amber-ink: #f3d36b;
+    --accent-contrast: #16161a;
+    --grain-opacity: 0.02;
+    --paper-shadow: 0 8px 22px -14px rgb(0 0 0 / 0.7);
+    --chrome: #1f1f24;
+    --chrome-ink: #edebe5;
+    --chrome-muted: #a6a4ad;
+    --heat-0: #2a2930;
+    --heat-1: #5a4f8f;
+    --heat-2: #6e63a8;
+    --heat-3: #8579bf;
+    --heat-4: #9f95d3;
+    --heat-5: #bcb4e6;
     --rate-1: #7a5e2c;
     --rate-2: #94743a;
     --rate-3: #ae8b4b;
     --rate-4: #c6a465;
     --rate-5: #ddbf86;
     --edge: transparent;
-    --glow: rgb(233 160 80 / 0.12);
-    --hard: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
-    --grid: #3a2f25;
+    --glow: transparent;
+    --hard: 0 8px 22px -14px rgb(0 0 0 / 0.7);
+    --hl: rgb(240 205 60 / 0.34);
+    --chrome-strong: #34343c;
+    --grid: #2a2a30;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #1e1813;
-  --surface: #2a221b;
-  --ink: #f3e6d1;
-  --muted: #bfae98;
-  --rule: #43372b;
+  --bg: #16161a;
+  --surface: #1f1f24;
+  --ink: #edebe5;
+  --muted: #a6a4ad;
+  --rule: #33333a;
   --green: #56a36b;
   --blue: #6c8ff0;
-  --danger: #e9a58d;
-  --amber: #e9b872;
-  --amber-ink: #efc285;
-  --accent-contrast: #1e1813;
-  --grain-opacity: 0.035;
-  --paper-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
-  --chrome: #140f0b;
-  --chrome-ink: #f3e6d1;
-  --chrome-muted: #bfae98;
-  --heat-0: #3a2f25;
-  --heat-1: #6b3e28;
-  --heat-2: #8c5233;
-  --heat-3: #b06a42;
-  --heat-4: #d08a5c;
-  --heat-5: #eab084;
+  --danger: #ff8a73;
+  --amber: #f0c94c;
+  --amber-ink: #f3d36b;
+  --accent-contrast: #16161a;
+  --grain-opacity: 0.02;
+  --paper-shadow: 0 8px 22px -14px rgb(0 0 0 / 0.7);
+  --chrome: #1f1f24;
+  --chrome-ink: #edebe5;
+  --chrome-muted: #a6a4ad;
+  --heat-0: #2a2930;
+  --heat-1: #5a4f8f;
+  --heat-2: #6e63a8;
+  --heat-3: #8579bf;
+  --heat-4: #9f95d3;
+  --heat-5: #bcb4e6;
   --rate-1: #7a5e2c;
   --rate-2: #94743a;
   --rate-3: #ae8b4b;
   --rate-4: #c6a465;
   --rate-5: #ddbf86;
-  --glow: rgb(233 160 80 / 0.12);
+  --glow: transparent;
   --edge: transparent;
-  --hard: 0 10px 24px -14px rgb(0 0 0 / 0.6), 0 2px 5px rgb(0 0 0 / 0.2);
-  --grid: #3a2f25;
+  --hard: 0 8px 22px -14px rgb(0 0 0 / 0.7);
+  --hl: rgb(240 205 60 / 0.34);
+  --chrome-strong: #34343c;
+  --grid: #2a2a30;
   color-scheme: dark;
 }
 :root[data-accent='blue'] {
@@ -154,11 +160,11 @@
   --color-chrome-muted: var(--chrome-muted);
   --color-chrome-mark: var(--chrome-mark);
   --color-grid: var(--grid);
-  --font-serif: 'Fraunces Variable', Georgia, serif;
-  --font-sans: 'Nunito Variable', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Schibsted Grotesk Variable', system-ui, sans-serif;
+  --font-sans: 'Schibsted Grotesk Variable', system-ui, -apple-system, sans-serif;
   --font-hand: 'Caveat', cursive;
-  --radius-card: 22px;
-  --radius-btn: 16px;
+  --radius-card: 18px;
+  --radius-btn: 12px;
   --radius-cover: 3px;
   --shadow-cover: 2px 8px 16px -6px rgb(74 50 38 / 0.45);
   --ease-spring: var(--spring);
@@ -172,9 +178,6 @@
     font-family: var(--font-sans);
     font-size: 16px;
     font-optical-sizing: auto;
-    font-variation-settings:
-      'SOFT' 100,
-      'WONK' 0;
     -webkit-tap-highlight-color: transparent;
     text-wrap: pretty;
     scrollbar-color: var(--rule) var(--bg);
@@ -182,9 +185,7 @@
   /* Texture sits behind the application, never over text or controls. */
   body {
     isolation: isolate;
-    background:
-      radial-gradient(120% 60% at 50% -12%, var(--glow), transparent 62%) fixed,
-      var(--bg);
+    background: var(--bg);
   }
   body::before {
     content: '';
@@ -211,17 +212,17 @@
   }
   h1 {
     font-family: var(--font-serif);
-    font-weight: 500;
-    font-size: 32px;
-    line-height: 1.08;
-    letter-spacing: -0.02em;
+    font-weight: 760;
+    font-size: 31px;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
   }
   h2 {
     font-family: var(--font-serif);
-    font-weight: 550;
-    font-size: 22px;
+    font-weight: 720;
+    font-size: 21px;
     line-height: 1.15;
-    letter-spacing: -0.012em;
+    letter-spacing: -0.02em;
   }
   button,
   a,
@@ -250,7 +251,7 @@
     opacity: 1;
   }
   ::selection {
-    background: var(--soft);
+    background: var(--hl);
     color: var(--ink);
   }
   :focus-visible {
@@ -261,34 +262,44 @@
 @layer components {
   .display {
     font-family: var(--font-serif);
-    font-size: 32px;
-    font-weight: 500;
-    line-height: 1.08;
-    letter-spacing: -0.02em;
+    font-size: 31px;
+    font-weight: 760;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
     text-wrap: balance;
   }
-  .display-italic {
+  /* The highlighter stroke: what matters on a page gets marked, like in a book you are reading. */
+  .display-italic,
+  .mark {
     font-family: var(--font-serif);
-    font-size: 32px;
-    font-weight: 400;
-    font-style: italic;
-    color: var(--amber-ink);
-    line-height: 1.08;
-    letter-spacing: -0.02em;
-    text-wrap: balance;
+    font-size: 31px;
+    font-weight: 760;
+    color: inherit;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    padding-inline: 0.08em;
+    margin-inline: -0.04em;
+    background: linear-gradient(176deg, transparent 52%, var(--hl) 52%, var(--hl) 90%, transparent 90%);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  .mark {
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
   }
   .title {
     font-family: var(--font-serif);
-    font-size: 22px;
-    font-weight: 550;
+    font-size: 21px;
+    font-weight: 720;
     line-height: 1.15;
-    letter-spacing: -0.012em;
+    letter-spacing: -0.02em;
   }
   /* Data values (stats, tiles): same sans as the interface, proportional figures. */
   .figure {
     font-family: var(--font-serif);
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 780;
+    letter-spacing: -0.035em;
     line-height: 1.05;
     font-variant-numeric: proportional-nums lining-nums;
   }
@@ -332,7 +343,7 @@
   }
   .card {
     background: var(--surface);
-    border: 0;
+    border: 1px solid var(--rule);
     box-shadow: var(--hard) !important;
     border-radius: var(--radius-card);
     padding: 16px;
@@ -378,8 +389,8 @@
   .btn-secondary {
     background: transparent;
     color: var(--ink);
-    border: 1.5px solid color-mix(in oklab, var(--ink) 30%, var(--rule));
-    font-weight: 700;
+    border: 1.5px solid var(--ink);
+    font-weight: 650;
   }
   .btn-link {
     display: inline-flex;
@@ -428,9 +439,9 @@
       border-color 140ms var(--ease);
   }
   .chip[aria-pressed='true'] {
-    background: var(--chrome);
-    border-color: var(--chrome);
-    color: var(--chrome-ink);
+    background: var(--hl);
+    border-color: transparent;
+    color: var(--ink);
   }
   .input {
     width: 100%;

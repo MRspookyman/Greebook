@@ -152,7 +152,7 @@ export function UsPage() {
     return (
       <section className="space-y-4">
         <h1 className="display">
-          Rincón <span className="display-italic block">de los dos</span>
+          Rincón <span className="display-italic table">de los dos</span>
         </h1>
         <p>Vuestro rincón estará aquí al vincular las dos cuentas.</p>
       </section>
@@ -162,7 +162,7 @@ export function UsPage() {
     <div className="space-y-8 pb-4">
       <header className="enter space-y-4">
         <h1 className="display">
-          Rincón <span className="display-italic block">de los dos</span>
+          Rincón <span className="display-italic table">de los dos</span>
         </h1>
         <div className="flex items-center gap-3">
           <div className="flex gap-2">

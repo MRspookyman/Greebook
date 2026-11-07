@@ -35,7 +35,7 @@ export function SessionStamp({ date, detail }: { date: string; detail: string })
         <g filter={`url(#ink-${id})`} fill="currentColor" stroke="currentColor">
           <circle cx="70" cy="70" r="64" fill="none" strokeWidth="2.4" />
           <circle cx="70" cy="70" r="40" fill="none" strokeWidth="1" />
-          <text fontFamily="Nunito Variable, sans-serif" fontSize="10.5" fontWeight="600" letterSpacing="2.6" stroke="none">
+          <text fontFamily="Schibsted Grotesk Variable, sans-serif" fontSize="10.5" fontWeight="600" letterSpacing="2.6" stroke="none">
             <textPath href={`#ring-${id}`} startOffset="2%">
               GREENBOOK · DIARIO DE LECTURA ·
             </textPath>
@@ -55,7 +55,7 @@ export function SessionStamp({ date, detail }: { date: string; detail: string })
             x="70"
             y="94"
             textAnchor="middle"
-            fontFamily="Nunito Variable, sans-serif"
+            fontFamily="Schibsted Grotesk Variable, sans-serif"
             fontSize="10.5"
             fontWeight="600"
             letterSpacing="2"
