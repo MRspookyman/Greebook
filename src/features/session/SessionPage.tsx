@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { addDays } from 'date-fns'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
@@ -22,6 +22,8 @@ import type { Message, ReadingWithBook } from '@/lib/types'
 import { formatDays, formatMinutes, formatUnitDelta, formatUnitValue, parseHMM, toHMM } from '@/lib/units'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
+import { QuickNote } from './QuickNote'
+import { pagesPerHour } from '@/lib/stats/personal'
 import {
   discardTimer,
   pauseTimer,
@@ -119,6 +121,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const mine = timer?.readingId === reading.id ? timer : null
   const paused = mine?.pausedAt != null
   const seconds = useElapsedSeconds(mine)
+  useNightReading(!!mine && !paused)
   const today = todayISO()
   const yesterday = toISODate(addDays(fromISODate(today), -1))
   const askedDay = params.get('dia')
@@ -747,6 +750,10 @@ function SavedPanel({
       ? Math.round((saved.delta / saved.minutes) * 60)
       : null
   const first = saved.unlocking[0]
+  const { userId } = useMe()
+  const allSessions = useSessions(userId).data ?? []
+  const allReadings = useReadings(userId).data ?? []
+  const average = pace !== null ? pagesPerHour(allReadings, allSessions) : null
   return (
     <div className="pt-4">
       <section role="status" className="flex flex-col items-center text-center">
@@ -760,8 +767,10 @@ function SavedPanel({
         <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
           {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del libro
           {pace !== null && ` · ${pace} págs/hora`}
+          {average !== null && pace !== null && ` (tu media, ${Math.round(average)})`}
         </p>
       </section>
+      {!tracing && <QuickNote readingId={reading.id} page={reading.unit === 'pages' ? reading.current_position : null} />}
       {first && (
         <Link
           to={`/nosotros#m-${first.id}`}
@@ -788,4 +797,22 @@ function SavedPanel({
       )}
     </div>
   )
+}
+
+/**
+ * Night reading: from 21:00 to 7:00, a running timer dims the screen to the dark palette
+ * (the light goes down like a reading lamp) and restores the user's theme when it stops.
+ */
+function useNightReading(active: boolean) {
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (!active || (hour >= 7 && hour < 21)) return
+    const root = document.documentElement
+    const previous = root.dataset.theme
+    root.dataset.theme = 'dark'
+    return () => {
+      if (previous === undefined) delete root.dataset.theme
+      else root.dataset.theme = previous
+    }
+  }, [active])
 }

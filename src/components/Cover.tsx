@@ -20,7 +20,7 @@ interface Props {
 const CLOTH = ['#3f5f4a', '#3d5677', '#7b4038', '#7d5f28', '#5b4762', '#4b5b5f', '#3e6a67', '#6b5a3e']
 const INK = '#f6efe1'
 
-function clothFor(title: string): string {
+export function clothFor(title: string): string {
   let hash = 0
   for (const char of title) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
   return CLOTH[hash % CLOTH.length]

@@ -709,3 +709,21 @@
     animation: none !important;
   }
 }
+/* A chart line drawing itself once (set pathLength="1" on the path). */
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: gb-draw-line 1s var(--ease) 150ms both;
+}
+@keyframes gb-draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+/* The page dims smoothly when reading at night switches to the dark palette. */
+html,
+body {
+  transition:
+    background-color 600ms var(--ease),
+    color 600ms var(--ease);
+}

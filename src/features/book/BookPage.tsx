@@ -12,7 +12,10 @@ import { fmt, fromISODate, todayISO } from '@/lib/dates'
 import { formatDays, formatMinutes, formatUnitValue, parseHMM, progressFraction, toHMM } from '@/lib/units'
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
 import { Avatar } from '@/components/Avatar'
-import { Cover } from '@/components/Cover'
+import { clothFor, Cover } from '@/components/Cover'
+import { StatFigure } from '@/components/StatFigure'
+import { minutesLeft, pagesPerHour, roughDuration } from '@/lib/stats/personal'
+import { ProgressChart } from './ProgressChart'
 import { ProgressBar } from '@/components/ProgressBar'
 import { Segmented } from '@/components/Segmented'
 import { Stars } from '@/components/Stars'
@@ -31,7 +34,7 @@ import { isReadingNow } from '@/features/us/CoupleProgress'
 import { Notes } from './Notes'
 
 const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
-type BookTab = 'sessions' | 'notes' | 'joint'
+type BookTab = 'progress' | 'sessions' | 'notes' | 'joint'
 
 export function BookPage() {
   const { readingId } = useParams()
@@ -79,6 +82,8 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const pace = pacePerDay(reading, sessions, today)
   const finish = estimatedFinish(reading, sessions, today)
   const remaining = Math.max(0, reading.total_units - reading.current_position)
+  const perHour = reading.unit === 'pages' ? pagesPerHour([reading], sessions) : null
+  const left = minutesLeft(reading, sessions)
   const online = useOnline()
   const pending = usePendingSessionCount()
   const timer = useActiveTimer()
@@ -87,10 +92,12 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [editing, setEditing] = useState<Session | null>(null)
   const [editingReading, setEditingReading] = useState(false)
   const [editingMoods, setEditingMoods] = useState(false)
-  const [tab, setTab] = useState<BookTab>('sessions')
+  const [tabChoice, setTab] = useState<BookTab | null>(null)
+  const tab: BookTab = tabChoice ?? (sessions.length >= 2 ? 'progress' : 'sessions')
   const [allSessions, setAllSessions] = useState(false)
   const disabled = !online || busy || pending > 0
   const tabs: { value: BookTab; label: string }[] = [
+    ...(sessions.length >= 2 ? [{ value: 'progress' as const, label: 'Avance' }] : []),
     { value: 'sessions', label: 'Sesiones' },
     ...(own
       ? [
@@ -144,7 +151,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
     }
   }
   return (
-    <div className="space-y-5 pb-20">
+    <div className="space-y-5 pb-24">
       <div className="flex items-center gap-2">
         <button
           className="icon-btn"
@@ -173,19 +180,23 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         )}
       </div>
       {!own && partner && <PartnerReadingBanner reading={reading} />}
-      <header className="enter flex items-start gap-5">
+      <header
+        className="enter flex items-start gap-5 rounded-[20px] p-4"
+        style={{ background: `color-mix(in oklab, ${clothFor(reading.book.title)} 12%, var(--surface))` }}
+      >
         <Cover
           book={reading.book}
-          width={90}
+          width={104}
+          transitionName={`cover-${reading.id}`}
           ribbon={reading.status === 'reading' ? (own ? profile.accent : partner?.accent) : undefined}
         />
         <div className="min-w-0">
-          <h1 className="display text-[30px] [overflow-wrap:anywhere]">{reading.book.title}</h1>
-          <p className="mt-2 text-xs text-muted [overflow-wrap:anywhere]">
+          <h1 className="display text-[28px] [overflow-wrap:anywhere]">{reading.book.title}</h1>
+          <p className="mt-2 text-[14px] text-muted [overflow-wrap:anywhere]">
             {reading.book.authors.join(', ')}
             {reading.book.published_year ? ` · ${reading.book.published_year}` : ''}
           </p>
-          <p className="mt-1 text-xs text-muted">
+          <p className="mt-1 text-[13px] text-muted">
             {reading.finished_on && reading.status === 'finished'
               ? `Terminado el ${fmt(reading.finished_on, 'd MMM')}`
               : reading.started_on
@@ -265,32 +276,52 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       ) : (
         <section className="space-y-4" aria-label="Progreso de lectura">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="folio text-[38px] leading-none text-accent">
-              {Math.round(progressFraction(reading) * 100)} <span className="text-2xl">%</span>
+            <p className="figure text-[40px]">
+              {Math.round(progressFraction(reading) * 100)}
+              <span className="ml-0.5 text-[22px] font-medium">%</span>
             </p>
-            <p className="folio text-[22px] text-muted">
+            <p className="text-[15px] text-muted">
               {reading.unit === 'pages'
-                ? `p. ${reading.current_position} — ${reading.total_units}`
-                : `${formatUnitValue(reading.unit, reading.current_position)} — ${formatUnitValue(reading.unit, reading.total_units)}`}
+                ? `p. ${reading.current_position} de ${reading.total_units}`
+                : `${formatUnitValue(reading.unit, reading.current_position)} de ${formatUnitValue(reading.unit, reading.total_units)}`}
             </p>
           </div>
-          <ProgressBar value={progressFraction(reading)} />
-          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
-            {[
-              ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : 'min'}/día`],
-              ['Tiempo', minutes > 0 ? formatMinutes(minutes) : '—'],
-              ['Te quedan', reading.unit === 'pages' ? `${remaining} págs.` : formatMinutes(remaining)],
-              ['Fin estimado', finish ? fmt(finish, 'd MMM') : '—'],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-xs text-muted">{label}</dt>
-                <dd className="mt-1 leading-tight">
-                  <span className="folio text-[25px]">{value.split(' ')[0]}</span>
-                  {value.includes(' ') && <span className="ml-1 text-xs">{value.slice(value.indexOf(' ') + 1)}</span>}
-                </dd>
-              </div>
-            ))}
+          {own ? (
+            <Link
+              to={`/leer/${reading.id}?modo=paginas`}
+              aria-label={reading.unit === 'minutes' ? 'Apuntar tiempo' : 'Apuntar páginas'}
+              className="-my-[19px] block py-[19px]"
+            >
+              <ProgressBar value={progressFraction(reading)} />
+            </Link>
+          ) : (
+            <ProgressBar value={progressFraction(reading)} />
+          )}
+          <dl className="grid grid-cols-3 gap-x-4 gap-y-4 border-t border-rule pt-4">
+            <StatFigure label="Llevas" value={minutes > 0 ? formatMinutes(minutes) : '—'} />
+            <StatFigure
+              label="Tu ritmo"
+              value={
+                reading.unit === 'pages'
+                  ? perHour
+                    ? Math.round(perHour)
+                    : pace
+                      ? Math.round(pace)
+                      : '—'
+                  : pace
+                    ? Math.round(pace)
+                    : '—'
+              }
+              unit={reading.unit === 'pages' ? (perHour ? 'pág/h' : pace ? 'pág/día' : undefined) : pace ? 'min/día' : undefined}
+            />
+            <StatFigure
+              label="Te quedan"
+              value={left !== null ? roughDuration(left).replace(/^unas? |^unos /, '≈ ') : `${remaining}`}
+              unit={left !== null ? undefined : reading.unit === 'pages' ? 'págs' : 'min'}
+              note={finish ? `hacia el ${fmt(finish, 'd MMM')}` : undefined}
+            />
           </dl>
+
         </section>
       )}
       {own && !online && <p className="text-xs text-muted">Sin conexión: puedes registrar sesiones, pero no editar.</p>}
@@ -298,7 +329,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <p className="text-xs text-muted">Espera a que se sincronicen las sesiones para editar.</p>
       )}
       <div>
-        <div className="relative flex gap-7 border-b border-rule" role="tablist" aria-label="Detalle del libro">
+        <div className="no-scrollbar relative flex gap-6 overflow-x-auto border-b border-rule" role="tablist" aria-label="Detalle del libro">
           {tabs.map((item) => (
             <button
               key={item.value}
@@ -400,6 +431,11 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               )}
             </div>
           )}
+          {tab === 'progress' && (
+            <div className="pt-3">
+              <ProgressChart reading={reading} sessions={sessions} today={today} finish={finish} />
+            </div>
+          )}
           {tab === 'notes' && own && <Notes readingId={reading.id} />}
           {tab === 'joint' && <BookTogether reading={reading} />}
         </div>
@@ -407,7 +443,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       {own &&
         reading.status !== 'abandoned' &&
         createPortal(
-          <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-xl gap-2 border-t border-rule bg-bg px-[26px] py-3">
+          <div className="fixed inset-x-3 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-xl gap-2 rounded-[18px] bg-surface p-2.5 shadow-[0_10px_28px_-12px_rgb(0_0_0/0.35)]">
             {reading.status === 'finished' ? (
               <button className="btn btn-primary w-full" disabled={disabled} onClick={() => void reread()}>
                 Volver a leer
