@@ -45,17 +45,17 @@ export function LibraryPage() {
   )
   const sharedRooms = rooms.filter((room) => matches(room.book))
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
       <header className="flex min-h-11 items-center justify-between">
-        <h1>Biblioteca</h1>
+        <h1 className="display">Biblioteca</h1>
         <Link to="/biblioteca/buscar" className="icon-btn" aria-label="Buscar y añadir un libro">
           <Plus size={23} />
         </Link>
       </header>
       <label className="relative block">
-        <Search className="pointer-events-none absolute top-3 left-3 text-muted" size={19} />
+        <Search className="pointer-events-none absolute top-3 left-0 text-muted" size={19} />
         <input
-          className="input pl-10"
+          className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent pl-7"
           type="search"
           name="library-search"
           autoComplete="off"
@@ -67,6 +67,7 @@ export function LibraryPage() {
         />
       </label>
       <Segmented
+        variant="underline"
         options={(view === 'abandoned'
           ? [...segments, { value: 'abandoned' as const, label: 'Dejados' }]
           : [...segments]
@@ -85,7 +86,12 @@ export function LibraryPage() {
       <div className="flex flex-wrap items-center gap-2">
         {view !== 'together' &&
           (['recent', 'title', ...(view === 'finished' ? (['rating'] as const) : [])] as const).map((value) => (
-            <button key={value} className="chip min-h-11" aria-pressed={sort === value} onClick={() => setSort(value)}>
+            <button
+              key={value}
+              className={`min-h-11 px-1 text-xs underline-offset-4 ${sort === value ? 'text-ink underline' : 'text-muted'}`}
+              aria-pressed={sort === value}
+              onClick={() => setSort(value)}
+            >
               {value === 'recent' ? 'Recientes' : value === 'title' ? 'Título' : 'Nota'}
             </button>
           ))}
@@ -107,7 +113,7 @@ export function LibraryPage() {
               {sharedRooms.map((room) => (
                 <Link
                   key={room.book.id}
-                  className="card pressable flex items-center gap-3"
+                  className="pressable flex items-center gap-4 border-b border-rule py-4"
                   to={`/sala/${room.book.id}`}
                 >
                   <Cover book={room.book} width={48} />
@@ -140,9 +146,9 @@ export function LibraryPage() {
           </section>
         </div>
       ) : readings.isPending ? (
-        <div className="grid animate-pulse grid-cols-3 gap-3" role="status" aria-label="Cargando biblioteca">
+        <div className="grid animate-pulse grid-cols-3 gap-5" role="status" aria-label="Cargando biblioteca">
           {[0, 1, 2].map((index) => (
-            <div key={index} className="aspect-[2/3] rounded-lg bg-border" />
+            <div key={index} className="aspect-[2/3] rounded-sm bg-border" />
           ))}
         </div>
       ) : readings.isError ? (
@@ -160,23 +166,24 @@ export function LibraryPage() {
           </Link>
         </EmptyState>
       ) : (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-5">
+        <div className="grid grid-cols-3 gap-x-5 gap-y-7">
           {visible.map((reading) => (
-            <Link key={reading.id} to={`/libro/${reading.id}`} className="pressable flex min-w-0 flex-col gap-2">
-              <Cover book={reading.book}>
-                {reading.status === 'reading' && (
-                  <span className="absolute right-1 bottom-1 rounded-full bg-surface px-2 py-1 text-xs">
-                    {Math.round(progressFraction(reading) * 100)} %
-                  </span>
-                )}
-                {reading.status === 'finished' && reading.rating !== null && (
-                  <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-surface py-1 text-xs">
-                    <Star size={13} />
-                    {reading.rating.toLocaleString('es')}
-                  </span>
-                )}
-              </Cover>
-              <span className="line-clamp-2 text-[13px] leading-snug">{reading.book.title}</span>
+            <Link
+              key={reading.id}
+              to={`/libro/${reading.id}`}
+              className="pressable flex min-w-0 flex-col items-start gap-3"
+            >
+              <Cover book={reading.book} />
+              <span className="line-clamp-2 font-serif text-base leading-snug">{reading.book.title}</span>
+              {reading.status === 'reading' && (
+                <span className="folio text-sm text-muted">{Math.round(progressFraction(reading) * 100)} %</span>
+              )}
+              {reading.status === 'finished' && reading.rating !== null && (
+                <span className="flex items-center gap-1 text-xs text-muted">
+                  <Star size={13} />
+                  {reading.rating.toLocaleString('es')}
+                </span>
+              )}
             </Link>
           ))}
         </div>
@@ -201,7 +208,7 @@ function TogetherBook({ item }: { item: TogetherItemWithBook }) {
     }
   }
   return (
-    <article className="card space-y-3">
+    <article className="space-y-3 border-b border-rule py-4">
       <div className="flex gap-3">
         <Cover book={item.book} width={52} />
         <div className="min-w-0">
@@ -216,7 +223,7 @@ function TogetherBook({ item }: { item: TogetherItemWithBook }) {
           <p className="text-sm">¿Empezamos?</p>
           <div className="flex flex-wrap gap-2">
             <button
-              className="btn btn-primary"
+              className="btn btn-outline"
               disabled={busy}
               onClick={() => void act(() => startTogether(item.id, todayISO()))}
             >

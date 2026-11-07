@@ -86,12 +86,13 @@ export function StatsPage() {
   const failed = readingsQuery.isError || sessionsQuery.isError
 
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <header className="flex items-baseline justify-between gap-2">
-        <h1 className="font-serif text-[26px] font-semibold">Estadísticas</h1>
+    <div className="flex flex-col gap-6 py-5">
+      <header className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="display">Estadísticas</h1>
         <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
       </header>
       <Segmented
+        variant="underline"
         options={PERIODS}
         value={period}
         onChange={(value) => {
@@ -101,7 +102,7 @@ export function StatsPage() {
         aria-label="Periodo de estadísticas"
       />
       {failed ? (
-        <div className="card text-sm text-ink" role="alert">
+        <div className="rule py-5 text-sm text-ink" role="alert">
           <p>No se han podido cargar tus estadísticas.</p>
           <button
             className="btn btn-secondary mt-2"
@@ -114,24 +115,24 @@ export function StatsPage() {
           </button>
         </div>
       ) : pending ? (
-        <div className="grid grid-cols-2 gap-2.5" role="status" aria-label="Cargando estadísticas">
+        <div className="grid grid-cols-2" role="status" aria-label="Cargando estadísticas">
           {metrics.map((metric) => (
-            <div key={metric.label} className="card h-28 animate-pulse bg-track" />
+            <div key={metric.label} className="rule h-28 animate-pulse bg-track" />
           ))}
         </div>
       ) : (
         <>
-          <p className="font-serif text-xl">
+          <p className="font-serif text-2xl leading-snug">
             Has leído {formatNumber(summary.pages)} {summary.pages === 1 ? 'página' : 'páginas'} {PERIOD_LABELS[period]}
             .
           </p>
-          <section className="grid grid-cols-2 gap-2.5" aria-label="Resumen del periodo">
+          <section className="grid grid-cols-2 border-b border-rule" aria-label="Resumen del periodo">
             {metrics.map((metric) => {
               const change = pctChange(metric.value, metric.previous)
               return (
-                <article key={metric.label} className="card min-h-[104px]">
-                  <h2 className="text-xs text-muted">{metric.label}</h2>
-                  <p className="stat-number mt-1 text-[29px] leading-none">
+                <article key={metric.label} className="rule min-h-32 py-4 pr-3 even:pl-4">
+                  <h2 className="eyebrow text-muted">{metric.label}</h2>
+                  <p className="folio mt-2 text-[32px] leading-none">
                     <CountUp value={metric.value} format={metric.format ?? formatNumber} />
                   </p>
                   {change !== null && change >= 0 ? (
@@ -147,13 +148,14 @@ export function StatsPage() {
               )
             })}
           </section>
-          <section className="card" aria-labelledby="pages-chart-heading">
-            <header className="mb-2 flex items-center justify-between gap-2">
-              <h2 id="pages-chart-heading" className="text-sm font-semibold">
+          <section className="space-y-4" aria-labelledby="pages-chart-heading">
+            <header className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="pages-chart-heading" className="title">
                 {view === 'map' ? 'Calendario' : period === 'year' ? 'Páginas por mes' : 'Páginas por día'}
               </h2>
               <div className="w-36 shrink-0">
                 <Segmented
+                  variant="underline"
                   options={[
                     { value: 'bars', label: 'Barras' },
                     { value: 'map', label: 'Mapa' },
@@ -174,10 +176,14 @@ export function StatsPage() {
                   onDayClick={setSelectedDay}
                   renderDay={(date) => (
                     <span
-                      className={`grid h-full place-items-center rounded-xl text-sm ${date === today ? 'ring-2 ring-inset ring-accent' : ''}`}
-                      style={{ background: levelColor(level(activity.get(date)?.score ?? 0)) }}
+                      className={`folio relative grid h-full place-items-center rounded-sm text-sm ${date === today ? 'ring-1 ring-inset ring-amber' : ''}`}
                     >
                       {Number(date.slice(8))}
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-x-1 bottom-1 h-1 rounded-sm"
+                        style={{ background: levelColor(level(activity.get(date)?.score ?? 0)) }}
+                      />
                     </span>
                   )}
                 />

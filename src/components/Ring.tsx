@@ -12,7 +12,7 @@ interface Props {
 }
 
 /** Progress ring that fills from zero on mount. */
-export function Ring({ value, size = 76, stroke = 8, color = 'var(--accent)', children, label }: Props) {
+export function Ring({ value, size = 76, stroke = 3, color = 'var(--accent)', children, label }: Props) {
   const entered = useEntered()
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
@@ -36,7 +36,7 @@ export function Ring({ value, size = 76, stroke = 8, color = 'var(--accent)', ch
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={entered ? c * (1 - v) : c}
-          style={{ transition: 'stroke-dashoffset 1.2s var(--ease)' }}
+          style={{ transition: 'stroke-dashoffset 140ms var(--ease)' }}
         />
       </svg>
       {children && <div className="relative text-center">{children}</div>}

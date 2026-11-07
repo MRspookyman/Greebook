@@ -108,15 +108,18 @@ export function Timer({ reading }: { reading: ReadingWithBook }) {
   return (
     <>
       {running ? (
-        <button className="btn btn-soft flex-1 whitespace-nowrap px-2 text-xs" onClick={() => setMinutes(stopTimer())}>
+        <button
+          className="btn btn-outline flex-1 whitespace-nowrap px-3 text-xs"
+          onClick={() => setMinutes(stopTimer())}
+        >
           <Square size={12} aria-hidden />
-          <span role="timer" className="tabular-nums">
+          <span role="timer" className="folio text-base">
             {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}
           </span>
           Parar
         </button>
       ) : (
-        <button className="btn btn-soft flex-1" onClick={start}>
+        <button className="btn btn-outline flex-1" onClick={start}>
           <Play size={14} fill="currentColor" aria-hidden />
           {reading.format === 'audio' ? 'Escuchar' : 'Leer'}
         </button>

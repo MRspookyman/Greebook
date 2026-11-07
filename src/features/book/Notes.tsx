@@ -98,7 +98,7 @@ export function Notes({ readingId }: { readingId: string }) {
     }
   }
   return (
-    <section className="space-y-2">
+    <section className="space-y-4">
       {query.isPending && (
         <p role="status" className="py-3 text-sm text-muted">
           Cargando notas…
@@ -113,10 +113,10 @@ export function Notes({ readingId }: { readingId: string }) {
         <p className="py-3 text-sm text-muted">Guarda una idea o una cita para recordar.</p>
       )}
       {notes.map((note) => (
-        <article key={note.id} className="card flex items-start gap-2">
+        <article key={note.id} className="flex items-start gap-3 border-b border-rule py-4">
           <div className="min-w-0 flex-1">
             <p
-              className={`whitespace-pre-wrap break-words ${note.kind === 'quote' ? 'font-serif text-base' : 'text-sm'}`}
+              className={`whitespace-pre-wrap break-words ${note.kind === 'quote' ? 'font-serif text-[22px] italic leading-relaxed' : 'text-base leading-relaxed'}`}
             >
               {note.kind === 'quote' ? `«${note.body}»` : note.body}
             </p>
@@ -147,7 +147,7 @@ export function Notes({ readingId }: { readingId: string }) {
           </button>
         </article>
       ))}
-      <button className="btn btn-soft w-full" disabled={!online || busy} onClick={create}>
+      <button className="btn btn-outline w-full" disabled={!online || busy} onClick={create}>
         <Plus size={17} aria-hidden /> {online ? 'Añadir nota/cita' : 'Sin conexión'}
       </button>
       <button
@@ -186,6 +186,7 @@ export function Notes({ readingId }: { readingId: string }) {
         >
           <fieldset disabled={!online || busy} className="space-y-4">
             <Segmented
+              variant="underline"
               aria-label="Tipo de anotación"
               options={[
                 { value: 'note', label: 'Nota' },

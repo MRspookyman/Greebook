@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Heart } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router'
 import type { Surprise } from '@/config/surprises'
@@ -29,22 +30,20 @@ function SurpriseModal({ surprise, onClose, busy }: { surprise: Surprise; onClos
         event.preventDefault()
         if (!busy) onClose()
       }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-bg p-6 text-ink pt-safe pb-safe"
+      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-bg px-[26px] py-8 text-ink pt-safe pb-safe"
     >
       <div
-        className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-8 text-center"
+        className="mx-auto flex min-h-full max-w-md flex-col items-start justify-center gap-8 py-10"
         style={{ animation: 'gb-fade-up 400ms ease-out' }}
       >
-        <span className="font-serif text-5xl text-green" aria-hidden="true">
-          ♡
-        </span>
-        <h1 id="surprise-title" tabIndex={-1} className="[overflow-wrap:anywhere]">
+        <Heart size={28} strokeWidth={1} className="text-green" aria-hidden="true" />
+        <h1 id="surprise-title" tabIndex={-1} className="display display-italic [overflow-wrap:anywhere]">
           {surprise.title}
         </h1>
-        <p className="whitespace-pre-line font-serif text-xl leading-relaxed [overflow-wrap:anywhere]">
+        <p className="whitespace-pre-line font-serif text-2xl italic leading-relaxed [overflow-wrap:anywhere]">
           {surprise.message}
         </p>
-        <button type="button" className="btn btn-primary" onClick={onClose} disabled={busy}>
+        <button type="button" className="btn btn-primary mt-4 w-full" onClick={onClose} disabled={busy}>
           {busy ? 'Guardando…' : 'Cerrar'}
         </button>
       </div>

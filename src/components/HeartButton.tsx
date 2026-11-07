@@ -8,9 +8,9 @@ interface Props {
   label?: string
 }
 
-/** ❤️ reaction pill: pops when switched on. */
+/** Quiet reaction control with a full-size touch target. */
 export function HeartButton({ on, count, onToggle, label = 'Me gusta' }: Props) {
-  const cls = `flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2.5 text-xs transition-transform duration-300 [transition-timing-function:var(--spring)] ${
+  const cls = `pressable flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-[6px] border px-2.5 text-xs ${
     on
       ? 'border-transparent bg-[color-mix(in_oklab,var(--danger)_14%,var(--surface))] text-ink'
       : 'border-border text-muted'
@@ -21,7 +21,7 @@ export function HeartButton({ on, count, onToggle, label = 'Me gusta' }: Props) 
       className={on ? 'text-danger' : undefined}
       size={14}
       fill={on ? 'currentColor' : 'none'}
-      style={on ? { animation: 'gb-pop 0.5s var(--spring)' } : undefined}
+      style={{ transition: 'fill 140ms var(--ease)' }}
     />
   )
   if (!onToggle) {
@@ -33,7 +33,7 @@ export function HeartButton({ on, count, onToggle, label = 'Me gusta' }: Props) 
     )
   }
   return (
-    <button type="button" className={`${cls} active:scale-90`} aria-pressed={on} aria-label={label} onClick={onToggle}>
+    <button type="button" className={cls} aria-pressed={on} aria-label={label} onClick={onToggle}>
       {icon}
       {count !== undefined && <span className="num">{count}</span>}
     </button>

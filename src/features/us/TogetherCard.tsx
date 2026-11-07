@@ -26,16 +26,16 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
   return (
     <article className="space-y-2 [overflow-wrap:anywhere]">
       <div className="flex items-center gap-3">
-        <Cover book={item.book} width={34} />
+        <Cover book={item.book} width={48} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">
+          <p className="font-serif text-lg leading-tight">
             {item.partner_answer === 'yes'
               ? `Los dos queréis leer «${item.book.title}»`
               : mine
                 ? `Quieres leer «${item.book.title}» con ${partner?.display_name ?? 'tu pareja'}`
                 : `${partner?.display_name ?? 'Tu pareja'} quiere leer contigo «${item.book.title}»`}
           </p>
-          {item.reason && <p className="text-sm text-muted">{item.reason}</p>}
+          {item.reason && <p className="hand mt-2">{item.reason}</p>}
           <p className="text-xs text-muted">
             Añadido por {mine ? 'ti' : (partner?.display_name ?? 'tu pareja')} ·{' '}
             {item.partner_answer === 'yes'
@@ -53,7 +53,7 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
       {!mine && item.partner_answer !== 'yes' && !item.start_on && (
         <div className="flex gap-2">
           <button
-            className="btn btn-soft"
+            className="btn btn-outline"
             disabled={busy}
             onClick={() => void run(() => answerTogether(item.id, 'yes'))}
           >
@@ -61,7 +61,7 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
           </button>
           {item.partner_answer !== 'later' && (
             <button
-              className="btn btn-ghost"
+              className="btn btn-link"
               disabled={busy}
               onClick={() => void run(() => answerTogether(item.id, 'later'))}
             >
@@ -75,13 +75,13 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
           <p className="text-sm">¿Empezamos?</p>
           <div className="flex flex-wrap gap-2">
             <button
-              className="btn btn-soft"
+              className="btn btn-outline"
               disabled={busy}
               onClick={() => void run(() => startTogether(item.id, todayISO()))}
             >
               Hoy
             </button>
-            <button className="btn btn-ghost" onClick={() => setChoosing(!choosing)}>
+            <button className="btn btn-link" onClick={() => setChoosing(!choosing)}>
               Elige fecha
             </button>
           </div>
@@ -98,7 +98,7 @@ export function TogetherCard({ item }: { item: TogetherItemWithBook }) {
                 onChange={(event) => setDate(event.target.value)}
               />
               <button
-                className="btn btn-soft"
+                className="btn btn-outline"
                 disabled={busy || !date}
                 onClick={() => void run(() => startTogether(item.id, date))}
               >

@@ -24,8 +24,10 @@ export function NotificationsSection() {
   }
 
   return (
-    <section className="card space-y-4 p-5" aria-labelledby="notifications-title">
-      <h2 id="notifications-title">Avisos</h2>
+    <section className="rule space-y-4 pt-5" aria-labelledby="notifications-title">
+      <h2 id="notifications-title" className="eyebrow text-muted">
+        Avisos
+      </h2>
       <PushEnableButton />
       <p className="text-sm text-muted">
         Preferencias de tu cuenta. Solo recibirás estos avisos en los dispositivos donde los hayas activado.
@@ -63,7 +65,7 @@ export function NotificationsSection() {
       >
         <span className="block">Recibir avisos de {partner?.display_name ?? 'tu pareja'}</span>
         <span className="block text-xs text-muted">
-          Toques, mensajes de la sala, recomendaciones, reacciones y cuando se pone a leer
+          Huellas, invitaciones, mensajes de la sala, corazones y cuando se pone a leer
         </span>
       </Switch>
     </section>

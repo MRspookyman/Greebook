@@ -9,7 +9,7 @@ function BookIllustration() {
       viewBox="0 0 96 72"
       fill="none"
       stroke="var(--muted)"
-      strokeWidth="2"
+      strokeWidth="1.25"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
@@ -26,7 +26,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   return (
     <div className="flex flex-col items-center text-center gap-3 py-10 px-6">
       <BookIllustration />
-      <p className="font-serif font-semibold text-lg">{title}</p>
+      <p className="title">{title}</p>
       {children}
     </div>
   )

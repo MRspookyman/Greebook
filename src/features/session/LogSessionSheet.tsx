@@ -165,10 +165,14 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
         }
       >
         {saved ? (
-          <div className="space-y-4 py-2">
-            <div role="status">
-              <h2 className="font-serif text-2xl font-semibold text-accent">✓ Sesión guardada</h2>
-              <p className="mt-2 text-sm text-muted">{saved.label}</p>
+          <div className="space-y-5 py-4">
+            <div role="status" className="border-b border-rule pb-5">
+              <h2 className="display text-accent">
+                Sesión
+                <br />
+                <span className="display-italic">guardada</span>
+              </h2>
+              <p className="folio mt-4 text-muted">{saved.label}</p>
             </div>
             <button
               className="btn btn-primary w-full"
@@ -181,7 +185,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
             {partner && online && (
               <button
                 type="button"
-                className="btn btn-ghost w-full"
+                className="btn btn-link w-full"
                 aria-expanded={showTrace}
                 onClick={() => {
                   if (!traceDirty || window.confirm('¿Descartar la huella que has escrito?')) setShowTrace(!showTrace)
@@ -220,7 +224,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
           <form
             ref={formRef}
             noValidate
-            className="space-y-4 pt-2"
+            className="space-y-5 pt-2"
             aria-label="Registrar sesión"
             onSubmit={(event) => {
               event.preventDefault()
@@ -233,7 +237,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                   <button
                     key={choice.id}
                     type="button"
-                    className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border p-2 text-left text-xs ${
+                    className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md border p-2 text-left text-xs ${
                       reading.id === choice.id ? 'border-accent bg-soft' : 'border-border'
                     }`}
                     aria-pressed={reading.id === choice.id}
@@ -252,14 +256,14 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
             )}
             {!compactPicker && (
               <div className="flex items-center gap-3">
-                <Cover book={reading.book} width={44} />
+                <Cover book={reading.book} width={48} />
                 <div className="min-w-0 flex-1">
-                  <h2 className="line-clamp-2 font-serif text-xl font-semibold leading-tight">{reading.book.title}</h2>
+                  <h2 className="title line-clamp-2">{reading.book.title}</h2>
                   <p className="mt-1 text-xs text-muted">
                     Vas por {formatUnitValue(reading.unit, reading.current_position)}
                   </p>
                 </div>
-                <button type="button" className="btn btn-secondary px-3 text-sm" onClick={() => setPicker(!picker)}>
+                <button type="button" className="btn btn-link px-3 text-sm" onClick={() => setPicker(!picker)}>
                   {picker ? 'Cerrar' : 'Cambiar'}
                 </button>
               </div>
@@ -270,7 +274,7 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                   <button
                     type="button"
                     key={choice.id}
-                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-2 text-left text-sm hover:bg-soft"
+                    className="flex min-h-11 w-full items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-soft"
                     onClick={() => {
                       setSelected(choice.id)
                       setPosition(null)
@@ -284,8 +288,8 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                 ))}
               </div>
             )}
-            <section className="space-y-3" aria-label="Posición alcanzada">
-              <h3 className="lbl">He llegado a</h3>
+            <section className="rule space-y-3 pt-4" aria-label="Posición alcanzada">
+              <h3 className="eyebrow">He llegado a</h3>
               {compactPicker && (
                 <p className="text-xs text-muted">Vas por {formatUnitValue(reading.unit, reading.current_position)}</p>
               )}
@@ -348,8 +352,8 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                 </button>
               </div>
             </section>
-            <section className="space-y-2" aria-label="Tiempo leyendo">
-              <h3 className="lbl">Tiempo leyendo</h3>
+            <section className="rule space-y-3 pt-4" aria-label="Tiempo leyendo">
+              <h3 className="eyebrow">Tiempo leyendo</h3>
               <div className="flex flex-wrap gap-1.5">
                 {timeOptions.map((value) => (
                   <button
@@ -371,8 +375,8 @@ function SessionFlow({ open, onClose, reading: initial, initialDate, initialMinu
                 </p>
               )}
             </section>
-            <section className="space-y-2" aria-label="Fecha de lectura">
-              <h3 className="lbl">Cuándo</h3>
+            <section className="rule space-y-3 pt-4" aria-label="Fecha de lectura">
+              <h3 className="eyebrow">Cuándo</h3>
               <Segmented<DateChoice>
                 options={[
                   { value: 'today', label: 'Hoy' },

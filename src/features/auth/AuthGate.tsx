@@ -50,15 +50,15 @@ function MeProvider({ userId, children }: { userId: string; children: ReactNode 
   if (profile.isPending) return <Splash />
   if (profile.isError) {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 p-6 text-center">
-        <h2>No se ha podido cargar tu perfil</h2>
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-start justify-center gap-6 px-[26px] py-10">
+        <h2 className="display">No se ha podido cargar tu perfil</h2>
         <p className="text-muted">
           Comprueba la conexión. Si persiste, falta tu fila en «profiles» (ver supabase/seed.sql).
         </p>
-        <button className="btn btn-secondary" onClick={() => profile.refetch()}>
+        <button className="btn btn-outline" onClick={() => profile.refetch()}>
           Reintentar
         </button>
-        <button className="btn btn-ghost" onClick={() => supabase.auth.signOut()}>
+        <button className="btn btn-link" onClick={() => supabase.auth.signOut()}>
           Cerrar sesión
         </button>
       </div>

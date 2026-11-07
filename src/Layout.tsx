@@ -53,9 +53,9 @@ export function Layout() {
         ref={mainRef}
         id="main-content"
         tabIndex={-1}
-        className="mx-auto max-w-xl px-[18px]"
+        className="mx-auto max-w-xl px-[26px]"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
+          paddingTop: 'calc(env(safe-area-inset-top) + 24px)',
           paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
         }}
       >

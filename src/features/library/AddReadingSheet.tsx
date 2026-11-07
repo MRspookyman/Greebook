@@ -110,11 +110,11 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4" autoComplete="off" noValidate>
-      <div className="flex items-start gap-3">
-        <Cover book={candidate} width={66} />
+    <form onSubmit={submit} className="space-y-6" autoComplete="off" noValidate>
+      <div className="flex items-start gap-4 border-b border-rule pb-5">
+        <Cover book={candidate} width={72} />
         <div className="min-w-0 pt-0.5">
-          <h2 className="line-clamp-3 text-xl leading-tight [overflow-wrap:anywhere]">{candidate.title}</h2>
+          <h2 className="title line-clamp-3 [overflow-wrap:anywhere]">{candidate.title}</h2>
           <p className="mt-1 text-sm text-muted">
             {[candidate.authors.join(', ') || 'Autor desconocido', candidate.published_year]
               .filter(Boolean)
@@ -137,8 +137,8 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
               type="button"
               aria-pressed={format === value}
               onClick={() => setFormat(value)}
-              className={`flex min-h-[108px] flex-col items-start gap-2 rounded-[18px] border p-3.5 text-left transition-[transform,background-color,border-color] duration-300 [transition-timing-function:var(--spring)] active:scale-95 ${
-                format === value ? 'scale-[1.015] border-accent bg-soft' : 'border-border bg-surface'
+              className={`flex min-h-24 flex-col items-start gap-2 rounded-md border p-3 text-left transition-colors duration-150 ${
+                format === value ? 'border-accent bg-soft' : 'border-rule bg-transparent'
               }`}
             >
               <Icon size={24} className={format === value ? 'text-accent' : 'text-muted'} />

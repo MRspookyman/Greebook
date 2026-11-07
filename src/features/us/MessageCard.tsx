@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar } from '@/components/Avatar'
+import { Heart, LockKeyhole } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { useMessages, useReactions, useReadings } from '@/lib/data'
 import type { Message } from '@/lib/types'
@@ -82,26 +82,25 @@ function MessageContent({
       id={`m-${message.id}`}
       className={
         bubble
-          ? `w-fit max-w-[92%] space-y-1 rounded-2xl border border-border scroll-mt-5 target:ring-2 target:ring-accent [overflow-wrap:anywhere] ${mine ? 'ml-auto bg-soft' : 'mr-auto bg-surface'}`
-          : 'card space-y-1 scroll-mt-5 target:ring-2 target:ring-accent [overflow-wrap:anywhere]'
+          ? `w-fit max-w-[92%] space-y-2 border-l bg-surface/40 px-4 py-3 scroll-mt-5 target:ring-2 target:ring-accent [overflow-wrap:anywhere] ${author?.accent === 'green' ? 'border-green' : 'border-blue'} ${mine ? 'ml-auto' : 'mr-auto'}`
+          : 'rule space-y-3 py-4 scroll-mt-5 target:ring-2 target:ring-accent [overflow-wrap:anywhere]'
       }
-      style={{ padding: bubble ? '10px 12px' : 12 }}
     >
       {!bubble && (
-        <div className="flex items-center gap-2">
-          {author && <Avatar person={author} size={28} />}
-          <span className="min-w-0 flex-1 text-xs font-medium [overflow-wrap:anywhere]">
-            {author?.display_name ?? 'Tu pareja'}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className={`eyebrow min-w-0 flex-1 ${author?.accent === 'green' ? 'text-green' : 'text-blue'}`}>
+            Una huella de {author?.display_name ?? 'tu pareja'}
+            {message.page !== null ? ` · p. ${message.page}` : ''}
           </span>
-          {emotion && (
-            <span className="min-w-0 rounded-full bg-soft px-2 py-1 text-xs leading-tight">
-              {emotion.emoji} {emotion.label}
-            </span>
-          )}
           <time className="ml-auto shrink-0 text-xs text-muted" dateTime={message.created_at}>
             {time}
           </time>
         </div>
+      )}
+      {!bubble && emotion && (
+        <p className="text-xs">
+          {emotion.emoji} {emotion.label}
+        </p>
       )}
       {bubble && emotion && (
         <p className="text-xs text-muted">
@@ -111,7 +110,8 @@ function MessageContent({
       {message.locked ? (
         <>
           <p className="text-sm">
-            🔒 Te dejó algo{!bubble && book ? ` en «${book.title}»` : ''}
+            <LockKeyhole className="mr-1 inline" size={15} aria-hidden /> Te dejó algo
+            {!bubble && book ? ` en «${book.title}»` : ''}
             {bubble ? ' en la p. ' : ' · p. '}
             {message.page}
             {remaining !== null && remaining > 0 ? ` · te faltan ${remaining}` : ' · te espera cuando llegues'}
@@ -131,7 +131,7 @@ function MessageContent({
       ) : (
         <>
           {!bubble && parent && (
-            <p className="truncate border-l-2 border-border pl-2 text-xs text-muted">
+            <p className="truncate border-l border-rule pl-3 text-xs text-muted">
               En respuesta a: «
               {parent.locked
                 ? 'Un mensaje por abrir'
@@ -141,14 +141,14 @@ function MessageContent({
           )}
           {message.body && (
             <p
-              className={`whitespace-pre-wrap text-sm leading-5 [overflow-wrap:anywhere] ${preview && !expanded ? 'line-clamp-3' : ''}`}
+              className={`hand whitespace-pre-wrap [overflow-wrap:anywhere] ${preview && !expanded ? 'line-clamp-3' : ''}`}
             >
               {message.body}
             </p>
           )}
           {preview && (message.body || replies.length > 0) && (
             <button
-              className="btn btn-ghost min-h-11 text-xs"
+              className="btn btn-link min-h-11 text-xs"
               aria-expanded={expanded}
               onClick={() => setExpanded(!expanded)}
             >
@@ -168,18 +168,19 @@ function MessageContent({
             </p>
           )}
           {!mine ? (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <button
-                className="icon-btn min-h-11 min-w-11 text-sm"
+                className={`btn btn-link min-h-11 shrink-0 gap-2 whitespace-nowrap text-xs ${hearted ? 'text-accent' : 'text-muted'}`}
                 aria-label="Me ha gustado"
                 aria-pressed={hearted}
                 disabled={busy}
                 onClick={() => void run(() => toggleHeart(message.id))}
               >
-                {hearted ? '❤️' : '♡'}
+                <Heart size={16} fill={hearted ? 'currentColor' : 'none'} aria-hidden />
+                {hearted ? 'Te ha gustado' : 'Me gusta'}
               </button>
               <button
-                className="btn btn-ghost min-h-11 text-xs"
+                className="btn btn-link min-h-11 shrink-0 whitespace-nowrap text-xs"
                 aria-expanded={replying}
                 onClick={() => setReplying(!replying)}
               >
@@ -187,7 +188,7 @@ function MessageContent({
               </button>
               {!message.read_at && (
                 <button
-                  className="btn btn-ghost min-h-11 text-xs"
+                  className="btn btn-link min-h-11 shrink-0 whitespace-nowrap text-xs"
                   aria-label="Quitar de Para ti"
                   disabled={busy}
                   onClick={() => void run(() => markRead([message.id]))}
@@ -199,7 +200,7 @@ function MessageContent({
           ) : (
             hearts.length > 0 && (
               <p className="text-xs" aria-label="Tu pareja le ha dado un corazón">
-                ❤️
+                <Heart size={16} fill="currentColor" aria-hidden />
               </p>
             )
           )}
@@ -220,7 +221,7 @@ function MessageContent({
                 autoFocus={window.matchMedia('(pointer: fine)').matches}
                 name="reply"
                 autoComplete="off"
-                className="min-h-11 min-w-0 flex-1"
+                className="hand min-h-11 min-w-0 flex-1 placeholder:font-sans placeholder:text-sm"
                 aria-label="Responder al mensaje"
                 placeholder="Responder…"
                 maxLength={1000}
@@ -233,7 +234,7 @@ function MessageContent({
                   }
                 }}
               />
-              <button className="btn btn-soft" disabled={busy || !body.trim()}>
+              <button className="btn btn-outline" disabled={busy || !body.trim()}>
                 Enviar
               </button>
             </form>
@@ -246,7 +247,7 @@ function MessageContent({
         </p>
       )}
       {!message.locked && replies.length > 0 && (!preview || expanded) && (
-        <div className="space-y-2 border-l border-border pl-3">
+        <div className="space-y-3 border-l border-rule pl-3">
           {(expanded ? replies : replies.slice(0, 2)).map((reply) => (
             <MessageContent
               key={reply.id}
@@ -257,7 +258,7 @@ function MessageContent({
             />
           ))}
           {replies.length > 2 && (
-            <button className="btn btn-ghost min-h-11 text-xs" onClick={() => setExpanded(!expanded)}>
+            <button className="btn btn-link min-h-11 text-xs" onClick={() => setExpanded(!expanded)}>
               {expanded ? 'Ver menos' : `Ver ${replies.length - 2} más`}
             </button>
           )}

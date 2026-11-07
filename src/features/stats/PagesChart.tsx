@@ -26,21 +26,21 @@ export function PagesChart({ points }: { points: ChartPoint[] }) {
       </p>
       <div className="overflow-x-auto pb-1">
         <div
-          className="flex h-36 min-w-full items-end gap-1"
+          className="flex h-36 min-w-full items-end"
           role="group"
           aria-label="Páginas leídas. Desliza para ver todo el periodo"
         >
           {points.map((point) => (
             <button
               key={point.key}
-              className="flex h-full min-w-11 flex-1 flex-col justify-end rounded-md focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex h-full min-w-11 flex-1 flex-col justify-end rounded-sm focus-visible:outline-2 focus-visible:outline-accent"
               aria-label={`${point.fullLabel}: ${point.pages} ${point.pages === 1 ? 'página' : 'páginas'}`}
               aria-pressed={selected === point.key}
               onClick={() => setSelected(point.key)}
             >
-              <span className="flex min-h-11 w-full flex-1 items-end">
+              <span className="flex min-h-11 w-full flex-1 items-end justify-center border-b border-rule">
                 <span
-                  className={`block w-full origin-bottom rounded-t-[5px] ${point.pages === 0 ? 'bg-border' : point.key === peak ? 'bg-amber' : 'bg-accent'}`}
+                  className={`block w-2 origin-bottom rounded-t-sm ${point.pages === 0 ? 'bg-border' : point.key === peak ? 'bg-amber' : 'bg-accent'}`}
                   style={{
                     height: `${Math.max(3, (point.pages / maximum) * 100)}%`,
                     transform: `scaleY(${entered ? 1 : 0})`,

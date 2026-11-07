@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { BookCheck } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { Stars } from '@/components/Stars'
@@ -63,20 +62,19 @@ export function FinishSheet({
   }
   return (
     <BottomSheet open={!closing} onClose={close} title="¿Lo has terminado?">
-      <div className="space-y-4 pt-2">
-        <div className="flex items-center gap-3">
-          <Cover book={reading.book} width={48} />
+      <div className="space-y-5 pt-2">
+        <div className="flex items-center gap-4">
+          <Cover book={reading.book} width={64} />
           <div className="min-w-0">
-            <BookCheck size={22} className="mb-1 text-accent" aria-hidden />
-            <h2 className="font-serif text-xl font-semibold leading-tight">{reading.book.title}</h2>
+            <h2 className="title">{reading.book.title}</h2>
           </div>
         </div>
-        <section className="space-y-2" aria-label="Valoración del libro">
-          <h3 className="lbl">¿Qué te ha parecido? · opcional</h3>
+        <section className="rule space-y-3 pt-4" aria-label="Valoración del libro">
+          <h3 className="eyebrow">¿Qué te ha parecido? · opcional</h3>
           <Stars value={rating} onChange={setRating} />
         </section>
-        <section className="space-y-2" aria-label="Ánimos de la lectura">
-          <h3 className="lbl">Cómo te hizo sentir · hasta 3 · opcional</h3>
+        <section className="rule space-y-3 pt-4" aria-label="Ánimos de la lectura">
+          <h3 className="eyebrow">Cómo te hizo sentir · hasta 3 · opcional</h3>
           <MoodChips value={moods} onChange={setMoods} />
         </section>
         {!online && (
@@ -85,7 +83,7 @@ export function FinishSheet({
         <button className="btn btn-primary w-full" disabled={!online || busy} onClick={() => void finish(true)}>
           {busy ? 'Terminando…' : 'Sí, lo he terminado'}
         </button>
-        <button className="btn btn-ghost w-full" disabled={!online || busy} onClick={() => void finish(false)}>
+        <button className="btn btn-link w-full" disabled={!online || busy} onClick={() => void finish(false)}>
           Terminar sin valorar
         </button>
         <p className="text-muted text-sm">

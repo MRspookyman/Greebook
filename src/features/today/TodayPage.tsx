@@ -1,5 +1,5 @@
-import { useRef, useState, type CSSProperties } from 'react'
-import { Check, CloudUpload, Flame, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronRight, CloudUpload, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Link } from 'react-router'
@@ -13,7 +13,6 @@ import type { ReadingWithBook, Session } from '@/lib/types'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
-import { Ring } from '@/components/Ring'
 import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
 import { LogSessionSheet } from '@/features/session/LogSessionSheet'
@@ -34,8 +33,6 @@ export function TodayPage() {
   const invites = useInvites()
   const pending = usePendingSessionCount()
   const [logging, setLogging] = useState<ReadingWithBook | null>(null)
-  const [cardIndex, setCardIndex] = useState(0)
-  const carousel = useRef<HTMLDivElement>(null)
   const today = todayISO()
   const dateLabel = fmt(today, "EEEE, d 'de' MMMM")
   const active = recentReadings(
@@ -57,7 +54,6 @@ export function TodayPage() {
   const week = weekDays(today)
   const series = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] })
   const weeklyPages = series.reduce((sum, day) => sum + day.pages, 0)
-  const maxPages = Math.max(1, ...series.map((day) => day.pages))
   const finished = (readings.data ?? []).filter(
     (r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4)),
   ).length
@@ -81,93 +77,34 @@ export function TodayPage() {
     : null
 
   return (
-    <div className="space-y-3.5">
-      <header className="rise flex items-center justify-between gap-2" style={{ '--k': 0 } as CSSProperties}>
-        <div className="min-w-0">
-          <p className="text-xs text-muted">{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</p>
-          <h1 className="mt-0.5 font-serif text-[25px] font-semibold leading-tight">
-            {greeting()}, {profile.display_name}
-          </h1>
+    <div className="space-y-5">
+      <header>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <Link to="/" className="flex min-h-11 items-center font-serif text-lg text-green" aria-label="Greenbook, Hoy">
+            Greenbook
+          </Link>
+          <Link to="/perfil" className="flex min-h-11 min-w-11 items-center justify-center" aria-label="Tu perfil">
+            <Avatar person={profile} size={32} />
+          </Link>
         </div>
-        <Link
-          to="/perfil"
-          className="pressable flex min-h-11 min-w-11 items-center justify-center"
-          aria-label="Tu perfil"
-        >
-          <Avatar person={profile} size={40} />
-        </Link>
+        <p className="text-xs text-muted">{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</p>
+        <h1 className="display mt-3">
+          {greeting()},
+          <br />
+          <span className="display-italic">{profile.display_name}</span>
+        </h1>
       </header>
 
-      {readings.isPending ? (
-        <div className="card h-[218px] animate-pulse" role="status" aria-label="Cargando lecturas" />
-      ) : readings.isError && !readings.data ? (
-        <p className="text-sm text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
-      ) : active.length === 0 ? (
-        <div className="card">
-          <EmptyState title="Aún no estás leyendo nada">
-            <Link className="btn btn-primary mt-3" to="/biblioteca/buscar">
-              Buscar un libro
-            </Link>
-          </EmptyState>
-        </div>
-      ) : (
-        <section className="rise" style={{ '--k': 2 } as CSSProperties} aria-label="Tus lecturas actuales">
-          <div
-            ref={carousel}
-            className="no-scrollbar -mx-[18px] flex snap-x snap-mandatory scroll-px-[18px] gap-3 overflow-x-auto px-[18px] pb-1"
-            onScroll={(event) => {
-              const element = event.currentTarget
-              const stride = (element.firstElementChild as HTMLElement | null)?.offsetWidth ?? element.clientWidth
-              setCardIndex(Math.round(element.scrollLeft / (stride + 12)))
-            }}
-          >
-            {active.map((reading, index) => (
-              <ReadingCard
-                key={reading.id}
-                reading={reading}
-                priority={index === 0}
-                sessions={sessions.data ?? []}
-                today={today}
-                onLog={() => setLogging(reading)}
-              />
-            ))}
-          </div>
-          {active.length > 1 && (
-            <div className="flex h-11 items-center justify-center" aria-label="Elegir lectura">
-              {active.map((reading, index) => (
-                <button
-                  key={reading.id}
-                  className="flex h-11 min-w-11 items-center justify-center"
-                  aria-label={`Ver ${reading.book.title}`}
-                  aria-pressed={index === cardIndex}
-                  onClick={() => {
-                    const element = carousel.current?.children[index] as HTMLElement | undefined
-                    element?.scrollIntoView({
-                      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-                      block: 'nearest',
-                      inline: 'start',
-                    })
-                  }}
-                >
-                  <span
-                    className={`h-1.5 rounded-full transition-colors duration-300 ${
-                      index === cardIndex ? 'w-5 bg-accent' : 'w-1.5 bg-border'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
       {partner && inlineInvite ? (
-        <InviteCard invite={inlineInvite} compact />
+        <div className="rule pt-3">
+          <InviteCard invite={inlineInvite} compact />
+        </div>
       ) : (
         partner &&
         (priority || (live && liveReading) || (latest && latestReading)) && (
           <Link
             to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
-            className="flex min-h-11 items-center gap-2 text-xs"
+            className="rule flex min-h-11 items-center gap-2 pt-3 text-xs"
           >
             <Avatar person={partner} size={28} />
             <span className="line-clamp-2">
@@ -186,59 +123,84 @@ export function TodayPage() {
                     ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
                     : ''}
             </span>
+            <ChevronRight size={16} className="ml-auto shrink-0" aria-hidden />
           </Link>
         )
       )}
-      <section className="card rise space-y-3" style={{ '--k': 1 } as CSSProperties} aria-label="Tu racha de lectura">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {streak > 0 && (
-            <span
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--amber-ink)]"
-              style={{ background: 'color-mix(in oklab, var(--amber) 14%, var(--surface))' }}
+
+      {readings.isPending ? (
+        <div className="rule h-56 animate-pulse bg-soft" role="status" aria-label="Cargando lecturas" />
+      ) : readings.isError && !readings.data ? (
+        <p className="text-sm text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
+      ) : active.length === 0 ? (
+        <section className="rule pt-5">
+          <EmptyState title="Aún no estás leyendo nada">
+            <Link className="btn btn-primary mt-3" to="/biblioteca/buscar">
+              Buscar un libro
+            </Link>
+          </EmptyState>
+        </section>
+      ) : (
+        <section className="rule pt-4" aria-label="Tus lecturas actuales">
+          <CurrentReading
+            reading={active[0]}
+            accent={profile.accent}
+            sessions={sessions.data ?? []}
+            today={today}
+            onLog={() => setLogging(active[0])}
+          />
+          {active.slice(1).map((reading) => (
+            <Link
+              key={reading.id}
+              to={`/libro/${reading.id}`}
+              className="rule mt-3 flex min-h-14 items-center gap-3 pt-3"
             >
-              <Flame size={14} fill="currentColor" aria-hidden />
-              {formatDays(streak)}
-            </span>
-          )}
-          {partner && duo > 0 && (
-            <span
-              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[var(--amber-ink)]"
-              aria-label={`${formatDays(duo)} leyendo los dos`}
-            >
-              <span className="flex -space-x-1" aria-hidden>
-                <span
-                  className="h-3 w-3 rounded-full ring-2 ring-surface"
-                  style={{ background: `var(--${profile.accent})` }}
-                />
-                <span
-                  className="h-3 w-3 rounded-full ring-2 ring-surface"
-                  style={{ background: `var(--${partner.accent})` }}
-                />
+              <Cover book={reading.book} width={28} />
+              <span className="min-w-0 flex-1">
+                <span className="font-serif text-lg">{reading.book.title}</span>{' '}
+                <span className="text-xs text-muted">Otra lectura en curso</span>
               </span>
-              {formatDays(duo)} leyendo los dos este mes
-            </span>
-          )}
-          <p className="text-xs text-muted">
+              <ChevronRight size={20} className="shrink-0" aria-hidden />
+            </Link>
+          ))}
+        </section>
+      )}
+
+      <section className="rule space-y-3 pt-4" aria-label="Tu racha de lectura">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-xs">
             {dates.has(today)
               ? 'Hoy ya has leído'
               : streak === 0
                 ? 'Cuando te apetezca, un ratito'
                 : 'Un ratito para ti, cuando quieras'}
           </p>
+          {streak > 0 && <span className="folio shrink-0 text-amber-ink">{formatDays(streak)}</span>}
         </div>
-        <div className="grid grid-cols-7 gap-1.5">
+        {partner && duo > 0 && (
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${profile.accent === 'blue' ? 'bg-blue' : 'bg-green'}`}
+              aria-hidden
+            />
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${partner.accent === 'blue' ? 'bg-blue' : 'bg-green'}`}
+              aria-hidden
+            />
+            {formatDays(duo)} leyendo los dos este mes
+          </p>
+        )}
+        <div className="grid grid-cols-7 gap-2">
           {week.map((date, index) => {
             const done = dates.has(date)
             const theirs = partnerDates.has(date)
-            const both = done && theirs
-            const isToday = date === today
             return (
               <div
-                key={`${date}-${done}-${theirs}`}
-                className="flex flex-col items-center gap-1 text-xs text-muted"
+                key={date}
+                className="flex flex-col items-center gap-2 text-xs text-muted"
                 aria-label={`${fmt(date, 'EEEE')}: ${
                   partner
-                    ? both
+                    ? done && theirs
                       ? 'leísteis los dos'
                       : done
                         ? 'leíste tú'
@@ -250,86 +212,51 @@ export function TodayPage() {
                       : 'sin sesión'
                 }`}
               >
-                {partner ? (
+                <span className="flex h-3 items-center gap-1" aria-hidden>
                   <span
-                    className={`relative grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-border ${
-                      isToday && !both ? 'outline-2 outline-offset-2 outline-dashed outline-muted' : ''
+                    className={`h-3 w-1.5 rounded-sm ${
+                      done ? (profile.accent === 'blue' ? 'bg-blue' : 'bg-green') : 'bg-border'
                     }`}
-                    style={{
-                      boxShadow: both ? '0 0 0 2px var(--surface), 0 0 0 3.5px var(--amber)' : undefined,
-                      animation: isToday ? (both ? 'gb-pop .45s var(--spring)' : undefined) : undefined,
-                    }}
-                  >
+                  />
+                  {partner && (
                     <span
-                      className="absolute inset-y-0 left-0 w-1/2 transition-colors duration-500"
-                      style={{ background: done ? `var(--${profile.accent})` : 'transparent' }}
+                      className={`h-3 w-1.5 rounded-sm ${
+                        theirs ? (partner.accent === 'blue' ? 'bg-blue' : 'bg-green') : 'bg-border'
+                      }`}
                     />
-                    <span
-                      className="absolute inset-y-0 right-0 w-1/2 transition-colors duration-500"
-                      style={{ background: theirs ? `var(--${partner.accent})` : 'transparent' }}
-                    />
-                  </span>
-                ) : (
-                  <span
-                    className={`grid h-8 w-8 place-items-center rounded-full ${
-                      done
-                        ? 'bg-accent text-surface'
-                        : isToday
-                          ? 'border-2 border-dashed border-accent bg-surface'
-                          : 'bg-border'
-                    }`}
-                    style={{
-                      animation: isToday && done ? 'gb-pop .45s var(--spring)' : undefined,
-                    }}
-                  >
-                    {done && <Check size={17} strokeWidth={3} aria-hidden />}
-                  </span>
-                )}
-                {DAYS[index]}
+                  )}
+                </span>
+                <span className={date === today ? 'text-ink underline underline-offset-4' : undefined}>
+                  {DAYS[index]}
+                </span>
               </div>
             )
           })}
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3" aria-label="Resumen de lectura">
+      <section className="rule grid grid-cols-2 pt-3" aria-label="Resumen de lectura">
         <Link
           to="/perfil"
-          className="card pressable flex items-center gap-2 py-3"
+          className="min-h-14 pr-4"
           aria-label={`${finished} de ${goal} libros en ${today.slice(0, 4)}. Editar objetivo`}
         >
-          <Ring value={finished / goal} size={48} stroke={6} />
-          <div className="min-w-0">
-            <p className="font-serif text-2xl font-semibold leading-none">
-              {finished}
-              <span className="text-sm">/{goal}</span>
-            </p>
-            <p className="mt-1 text-xs leading-tight text-muted">
-              {finished === 1 ? 'libro' : 'libros'} en {today.slice(0, 4)}
-            </p>
-          </div>
+          <p className="folio text-[28px]">
+            {finished} <span className="text-muted">/ {goal}</span>
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {finished === 1 ? 'libro' : 'libros'} en {today.slice(0, 4)}
+          </p>
         </Link>
         <Link
           to="/stats"
-          className="card pressable space-y-2 py-3"
+          className="min-h-14 border-l border-rule pl-5"
           aria-label={`Esta semana ${weeklyPages} páginas. Ver estadísticas`}
         >
-          <div className="flex items-baseline justify-between gap-1">
-            <span className="text-xs text-muted">Esta semana</span>
-            <span className="whitespace-nowrap text-xs font-semibold">
-              {weeklyPages}
-              {'\u00a0'}pág
-            </span>
-          </div>
-          <div className="flex h-8 items-end gap-1.5" aria-hidden>
-            {series.map((day) => (
-              <span
-                key={day.date}
-                className={`flex-1 rounded-t bg-accent ${day.date > today ? 'opacity-25' : ''}`}
-                style={{ height: `${Math.max(4, (day.pages / maxPages) * 100)}%` }}
-              />
-            ))}
-          </div>
+          <p className="folio text-[28px]">
+            {weeklyPages} <span className="text-base">pág</span>
+          </p>
+          <p className="mt-1 text-xs text-muted">Esta semana</p>
         </Link>
       </section>
       {pending > 0 && (
@@ -343,15 +270,15 @@ export function TodayPage() {
   )
 }
 
-function ReadingCard({
+function CurrentReading({
   reading,
-  priority,
+  accent,
   sessions,
   today,
   onLog,
 }: {
   reading: ReadingWithBook
-  priority: boolean
+  accent: 'blue' | 'green'
   sessions: Session[]
   today: string
   onLog: () => void
@@ -360,35 +287,46 @@ function ReadingCard({
   const finish = estimatedFinish(reading, sessions, today)
   const fraction = progressFraction(reading)
   return (
-    <article className="card w-[calc(100%_-_22px)] flex-none snap-start space-y-3">
-      <Link to={`/libro/${reading.id}`} className="flex gap-3">
-        <Cover book={reading.book} width={58} priority={priority} />
-        <div className="min-w-0 flex-1 space-y-1">
-          <h2 className="line-clamp-2 font-serif text-lg font-semibold leading-tight">{reading.book.title}</h2>
-          <p className="truncate text-xs text-muted">
-            {reading.book.authors.join(', ')} · {reading.format === 'audio' ? 'Audiolibro' : 'Papel'}
+    <article className="space-y-3">
+      <div className="flex items-start gap-4">
+        <Link to={`/libro/${reading.id}`} aria-label={`Abrir ${reading.book.title}`}>
+          <Cover book={reading.book} width={80} priority ribbon={accent} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <Link to={`/libro/${reading.id}`}>
+            <h2 className="title">{reading.book.title}</h2>
+          </Link>
+          <p className="mt-2 text-xs text-muted">{reading.book.authors.join(', ')}</p>
+          <p className="folio mt-4">
+            {reading.unit === 'pages' ? (
+              <>
+                p. {reading.current_position} <span className="text-muted">— {reading.total_units}</span>
+              </>
+            ) : (
+              formatPosition(reading)
+            )}
           </p>
-          <p className="text-xs leading-snug text-muted">
-            <strong className="text-ink">{Math.round(fraction * 100)} %</strong> ·{' '}
-            {reading.unit === 'minutes'
-              ? `te quedan ${formatMinutes(reading.total_units - reading.current_position)}`
-              : finish
-                ? `lo acabas hacia el ${fmt(finish, 'd MMM')}`
-                : 'registra para conocer tu ritmo'}
-          </p>
-        </div>
-      </Link>
-      <div className="space-y-1.5">
-        <ProgressBar value={fraction} />
-        <div className="flex justify-between gap-2 text-xs text-muted">
-          <span>{formatPosition(reading)}</span>
-          <span className="shrink-0">
+          <div className="mt-4">
+            <ProgressBar value={fraction} />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            <span className="text-accent">{Math.round(fraction * 100)} %</span> ·{' '}
             {pace === null ? 'Sin ritmo aún' : `${Math.round(pace)} ${reading.unit === 'minutes' ? 'min' : 'pág'}/día`}
-          </span>
+          </p>
         </div>
       </div>
-      <div className="flex gap-2.5">
-        <button className="btn btn-primary flex-[1.6]" onClick={onLog}>
+      <div className="flex justify-between gap-3 text-xs text-muted">
+        <span>
+          {reading.unit === 'minutes'
+            ? `te quedan ${formatMinutes(reading.total_units - reading.current_position)}`
+            : finish
+              ? `lo acabas hacia el ${fmt(finish, 'd MMM')}`
+              : 'registra para conocer tu ritmo'}
+        </span>
+        <span>{reading.format === 'audio' ? 'Audiolibro' : 'Papel'}</span>
+      </div>
+      <div className="flex gap-3">
+        <button className="btn btn-primary" onClick={onLog}>
           <Plus size={16} aria-hidden />
           Registrar
         </button>

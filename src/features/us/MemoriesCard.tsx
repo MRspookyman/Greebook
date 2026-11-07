@@ -33,10 +33,10 @@ export function GoalProposal({ goal }: { goal: CoupleGoal }) {
         ?
       </p>
       <div className="flex gap-2">
-        <button className="btn btn-soft" disabled={busy} onClick={() => void answer(true)}>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void answer(true)}>
           Aceptar
         </button>
-        <button className="btn btn-ghost" disabled={busy} onClick={() => void answer(false)}>
+        <button className="btn btn-link" disabled={busy} onClick={() => void answer(false)}>
           Ahora no
         </button>
       </div>
@@ -69,22 +69,24 @@ export function MemoriesCard({
   const current = summary.month === todayISO().slice(0, 7)
   const amount = goal?.kind === 'days' ? summary.daysTogether : summary.ratitos
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {summary.books.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-3 overflow-x-auto py-1">
           {summary.books.map((book) => (
-            <Cover key={book.id} book={book} width={35} />
+            <Cover key={book.id} book={book} width={48} />
           ))}
         </div>
       )}
-      <p className="text-sm">
-        {formatDays(summary.daysTogether)} leyendo los dos · {summary.ratitos}{' '}
-        {summary.ratitos === 1 ? 'ratito compartido' : 'ratitos compartidos'}
+      <p className="max-w-[22ch] font-serif text-[28px] leading-[1.12]">
+        {formatDays(summary.daysTogether)} leyendo los dos.
+        <span className="mt-2 block font-sans text-xs leading-normal text-muted">
+          {summary.ratitos} {summary.ratitos === 1 ? 'ratito compartido' : 'ratitos compartidos'}
+        </span>
       </p>
       {quote && (
-        <div className="flex items-center gap-2 rounded-xl bg-soft px-3">
-          <blockquote className="min-w-0 flex-1 py-3 text-sm italic [overflow-wrap:anywhere]">
-            ❤️ {quote.body ?? (quote.emotion ? EMOTIONS[quote.emotion].label : 'Un recuerdo vuestro')}
+        <div className="flex items-center gap-3">
+          <blockquote className="min-w-0 flex-1 py-1 font-serif text-xl italic text-accent [overflow-wrap:anywhere]">
+            «{quote.body ?? (quote.emotion ? EMOTIONS[quote.emotion].label : 'Un recuerdo vuestro')}»
           </blockquote>
           {summary.quotes.length > 1 && (
             <button
@@ -106,7 +108,7 @@ export function MemoriesCard({
               {goal.kind === 'days' ? (goal.target === 1 ? 'día' : 'días') : goal.target === 1 ? 'ratito' : 'ratitos'}
             </p>
             <div
-              className="h-2 overflow-hidden rounded-full bg-soft"
+              className="h-[3px] overflow-hidden bg-soft"
               role="progressbar"
               aria-label="Propósito de los dos"
               aria-valuemin={0}
@@ -114,10 +116,10 @@ export function MemoriesCard({
               aria-valuenow={Math.min(amount, goal.target)}
             >
               <div
-                className="h-full origin-left rounded-full bg-accent"
+                className="h-full origin-left bg-accent"
                 style={{
                   transform: `scaleX(${Math.min(1, amount / goal.target)})`,
-                  transition: 'transform 400ms var(--ease)',
+                  transition: 'transform 140ms var(--ease)',
                 }}
               />
             </div>
@@ -185,10 +187,10 @@ export function MemoriesCard({
               editLabel="Escribir el objetivo"
             />
             <div className="flex gap-2">
-              <button className="btn btn-soft" disabled={busy}>
+              <button className="btn btn-outline" disabled={busy}>
                 Proponer
               </button>
-              <button className="btn btn-ghost" type="button" onClick={() => setProposing(false)}>
+              <button className="btn btn-link" type="button" onClick={() => setProposing(false)}>
                 Ahora no
               </button>
             </div>
@@ -199,7 +201,7 @@ export function MemoriesCard({
             )}
           </form>
         ) : (
-          <button className="btn btn-ghost min-h-11" onClick={() => setProposing(true)}>
+          <button className="btn btn-link min-h-11" onClick={() => setProposing(true)}>
             Un pequeño propósito juntos
           </button>
         ))}

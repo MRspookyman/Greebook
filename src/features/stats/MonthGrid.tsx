@@ -30,7 +30,7 @@ export function MonthGrid({ month, onMonthChange, renderDay, onDayClick }: Props
         <button className="btn btn-ghost min-h-11 min-w-11" onClick={() => move(-1)} aria-label="Mes anterior">
           <ChevronLeft size={22} />
         </button>
-        <h2 id={headingId} className="text-center" aria-live="polite">
+        <h2 id={headingId} className="title text-center" aria-live="polite">
           {fmt(start, 'MMMM yyyy')}
         </h2>
         <button className="btn btn-ghost min-h-11 min-w-11" onClick={() => move(1)} aria-label="Mes siguiente">
@@ -74,7 +74,7 @@ export function MonthGrid({ month, onMonthChange, renderDay, onDayClick }: Props
             </span>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-y-1">
           {Array.from({ length: blanks }, (_, i) => (
             <div key={`blank-${i}`} aria-hidden="true" />
           ))}
@@ -83,7 +83,7 @@ export function MonthGrid({ month, onMonthChange, renderDay, onDayClick }: Props
             return (
               <button
                 key={iso}
-                className="h-11 min-w-11 overflow-hidden rounded-xl text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="h-11 min-w-11 overflow-hidden rounded-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 aria-label={fmt(day, "EEEE d 'de' MMMM 'de' yyyy")}
                 aria-current={iso === today ? 'date' : undefined}
                 onClick={() => onDayClick(iso)}

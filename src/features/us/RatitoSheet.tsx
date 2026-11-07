@@ -66,7 +66,7 @@ export function RatitoSheet({ open, onClose }: { open: boolean; onClose: () => v
               <button
                 key={value}
                 type="button"
-                className="btn btn-soft w-full justify-start"
+                className="btn btn-outline w-full justify-start"
                 aria-pressed={choice === value}
                 onClick={() => setChoice(value)}
               >

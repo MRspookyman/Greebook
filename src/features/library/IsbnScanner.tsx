@@ -70,7 +70,7 @@ function Camera({ onScan, onClose }: { onScan: (isbn: string) => void; onClose: 
           <p role="alert" className="text-danger">
             {error}
           </p>
-          <button className="btn btn-secondary w-full" onClick={onClose}>
+          <button className="btn btn-outline w-full" onClick={onClose}>
             Volver al buscador
           </button>
         </>
@@ -81,7 +81,7 @@ function Camera({ onScan, onClose }: { onScan: (isbn: string) => void; onClose: 
             autoPlay
             muted
             playsInline
-            className="w-full rounded-xl bg-bg aspect-[4/3] object-cover"
+            className="aspect-[4/3] w-full rounded-md border border-rule bg-bg object-cover"
             aria-label="Vista de la cámara"
           />
           <p className="text-muted text-sm">Apunta al código de barras ISBN del libro (978 o 979).</p>

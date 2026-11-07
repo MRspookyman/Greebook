@@ -39,11 +39,11 @@ export function Toaster() {
       {list.map((t) => (
         <div
           key={t.id}
-          className="wrap-anywhere w-full max-w-sm rounded-2xl bg-ink px-3.5 py-3 text-[13.5px] text-surface shadow-lg"
-          style={{ animation: 'gb-fade-up 0.5s var(--spring)' }}
+          className="wrap-anywhere w-full max-w-sm rounded-[8px] border border-rule bg-surface px-4 py-3 text-sm text-ink shadow-[var(--paper-shadow)]"
+          style={{ animation: 'gb-fade-up 150ms var(--ease)' }}
         >
           <p className="font-semibold">{t.message}</p>
-          {t.detail && <p className="mt-0.5 break-words opacity-80">{t.detail}</p>}
+          {t.detail && <p className="mt-0.5 break-words text-muted">{t.detail}</p>}
         </div>
       ))}
     </div>

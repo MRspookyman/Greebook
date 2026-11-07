@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { Coffee } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { useReadings } from '@/lib/data'
 import type { Invite } from '@/lib/types'
@@ -36,10 +37,10 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
   return (
     <article
       id={`m-${invite.id}`}
-      className={compact ? 'flex flex-wrap items-center gap-2 scroll-mt-5' : 'card space-y-3 scroll-mt-5'}
+      className={compact ? 'flex flex-wrap items-center gap-2 scroll-mt-5' : 'rule space-y-3 py-4 scroll-mt-5'}
     >
       <p className={compact ? 'min-w-40 flex-1 text-xs' : 'text-sm'}>
-        ☕{' '}
+        <Coffee className="mr-1 inline text-muted" size={16} aria-hidden />{' '}
         {mine
           ? invite.status === 'accepted'
             ? `${partner?.display_name ?? 'Tu pareja'} se apunta`
@@ -58,7 +59,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
                 <button className="btn btn-ghost" disabled={busy} onClick={() => void act('cancel')}>
                   Sí, cancelar
                 </button>
-                <button className="btn btn-soft" disabled={busy} onClick={() => setConfirmCancel(false)}>
+                <button className="btn btn-outline" disabled={busy} onClick={() => setConfirmCancel(false)}>
                   No, mantener
                 </button>
               </div>
@@ -71,7 +72,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
         ) : (
           <div className="flex gap-2">
             <button
-              className={`btn btn-primary flex-1 whitespace-nowrap ${compact ? 'px-3 text-xs' : ''}`}
+              className={`btn ${compact ? 'btn-link px-3 text-xs' : 'btn-outline'} flex-1 whitespace-nowrap`}
               disabled={busy}
               onClick={() => void act('accepted')}
             >
@@ -88,7 +89,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
         )
       ) : reading ? (
         <button
-          className={`btn btn-primary ${compact ? 'px-3 text-xs' : 'w-full'}`}
+          className={`btn ${compact ? 'btn-link px-3 text-xs' : 'btn-outline w-full'}`}
           onClick={() => {
             if (startTimer(reading)) toast('Tu ratito ha empezado', reading.book.title)
           }}

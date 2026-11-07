@@ -1,4 +1,3 @@
-import { Flame, Heart, Sparkles, Sun } from 'lucide-react'
 import { fmt } from '@/lib/dates'
 import { goalProjection, bestWeekday, topMood, periodRange, type Period } from '@/lib/stats/insights'
 import { currentStreak, bestStreak } from '@/lib/stats/streak'
@@ -38,7 +37,6 @@ export function Insights({ readings, sessions, period, today, goal }: Props) {
   const cards = [
     {
       title: 'Tu camino lector',
-      icon: Sparkles,
       value:
         finished.length >= goal
           ? '¡Objetivo alcanzado!'
@@ -54,7 +52,6 @@ export function Insights({ readings, sessions, period, today, goal }: Props) {
     },
     {
       title: 'Tu mejor día',
-      icon: Sun,
       value: best ? best.name.charAt(0).toUpperCase() + best.name.slice(1) : 'Por descubrir',
       detail:
         best?.morePct != null && best.morePct > 0
@@ -65,36 +62,23 @@ export function Insights({ readings, sessions, period, today, goal }: Props) {
     },
     {
       title: 'Ánimo más leído',
-      icon: Heart,
       value: mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Por descubrir',
       detail: average ? `Nota media del año: ${average} / 5` : 'Sin valoraciones este año todavía.',
     },
     {
       title: 'Racha',
-      icon: Flame,
       value: currentStreak(dates, today) > 0 ? `${formatDays(currentStreak(dates, today))} de lectura` : 'A tu ritmo',
       detail: `Tu mejor racha: ${formatDays(bestStreak(dates))}. Cada ratito cuenta.`,
     },
   ]
 
   return (
-    <section
-      aria-label="Hallazgos. Usa Tab para recorrer los recuerdos de lectura"
-      className="no-scrollbar -mx-[18px] flex snap-x snap-mandatory gap-3 overflow-x-auto px-[18px] pb-1"
-    >
-      {cards.map(({ title, icon: Icon, value, detail }) => (
-        <article
-          key={title}
-          className="card w-[88%] shrink-0 snap-center"
-          tabIndex={0}
-          aria-label={`${title}: ${value}`}
-        >
-          <h2 className="flex items-center gap-1.5 text-xs font-medium text-muted">
-            <Icon size={14} className="text-accent" aria-hidden />
-            {title}
-          </h2>
-          <p className="mt-1 font-serif text-xl font-semibold">{value}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">{detail}</p>
+    <section aria-label="Hallazgos. Usa Tab para recorrer los recuerdos de lectura" className="rule flex flex-col">
+      {cards.map(({ title, value, detail }) => (
+        <article key={title} className="border-b border-rule py-5" tabIndex={0} aria-label={`${title}: ${value}`}>
+          <h2 className="eyebrow text-muted">{title}</h2>
+          <p className="mt-2 font-serif text-2xl leading-snug">{value}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{detail}</p>
         </article>
       ))}
     </section>

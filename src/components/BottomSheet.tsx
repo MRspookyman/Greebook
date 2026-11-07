@@ -21,7 +21,7 @@ interface Props {
   children: ReactNode
 }
 
-const EXIT_MS = 320
+const EXIT_MS = 150
 const layers: HTMLElement[] = []
 const originalInert = new Map<HTMLElement, boolean>()
 let originalOverflow = ''
@@ -178,7 +178,7 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
         tabIndex={-1}
         aria-label="Cerrar ventana"
         className="absolute inset-0 bg-[var(--scrim)]"
-        style={{ opacity: shown ? 1 : 0, transition: 'opacity 0.3s' }}
+        style={{ opacity: shown ? 1 : 0, transition: 'opacity 150ms var(--ease)' }}
         onClick={requestClose}
       />
       <div
@@ -188,14 +188,16 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : (label ?? 'Opciones')}
         tabIndex={-1}
-        className="relative mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-surface pb-safe"
+        className="relative mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-[8px] bg-surface pb-safe shadow-xl"
         style={{
           transform: translate,
-          transition:
-            drag !== null ? 'none' : `transform ${shown ? '0.55s var(--spring)' : `${EXIT_MS}ms var(--ease)`}`,
+          transition: drag !== null ? 'none' : `transform ${EXIT_MS}ms var(--ease)`,
         }}
       >
-        <div className="flex flex-none items-start gap-3 px-[18px] pt-2.5 pb-2" inert={confirming}>
+        <div
+          className="mb-4 flex flex-none items-start gap-3 border-b border-rule px-[18px] pt-2.5 pb-3"
+          inert={confirming}
+        >
           <div
             className="min-w-0 flex-1 cursor-grab touch-none select-none"
             onPointerDown={onPointerDown}
@@ -205,9 +207,9 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
             onLostPointerCapture={cancelDrag}
             style={{ WebkitUserSelect: 'none' }}
           >
-            <div className="mx-auto mb-2 h-[5px] w-10 rounded bg-border" aria-hidden />
+            <div className="mx-auto mb-2 h-[3px] w-10 rounded bg-rule" aria-hidden />
             {title && (
-              <div id={titleId} className="wrap-anywhere pt-1 font-serif text-xl font-semibold">
+              <div id={titleId} className="title wrap-anywhere pt-1">
                 {title}
               </div>
             )}

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Camera, ChevronRight, Search } from 'lucide-react'
@@ -32,19 +32,19 @@ export function SearchPage() {
   const waiting = query.trim().length >= 3 && (!ready || results.isPending)
   const emptySearch = ready && (results.isError || (results.isSuccess && results.data.length === 0))
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
       <header className="flex items-center gap-3">
         <Link to="/biblioteca" className="icon-btn" aria-label="Volver a Biblioteca">
           <ArrowLeft size={22} />
         </Link>
-        <h1>Añadir libro</h1>
+        <h1 className="display">Añadir libro</h1>
       </header>
       <div className="flex items-center gap-2">
         <label className="relative min-w-0 flex-1">
-          <Search size={20} className="pointer-events-none absolute top-3 left-3 text-muted" />
+          <Search size={20} className="pointer-events-none absolute top-3 left-0 text-muted" />
           <span className="sr-only">Título, autor o ISBN</span>
           <input
-            className="input pl-10"
+            className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent pl-7"
             type="search"
             name="book-search"
             autoComplete="off"
@@ -67,7 +67,7 @@ export function SearchPage() {
           <div className="space-y-3" role="status">
             <span className="sr-only">Buscando libros…</span>
             {[0, 1, 2].map((n) => (
-              <div key={n} className="card flex gap-4 animate-pulse">
+              <div key={n} className="flex animate-pulse gap-4 border-b border-rule py-4">
                 <div className="bg-border w-16 h-24 rounded" />
                 <div className="flex-1 space-y-3 py-2">
                   <div className="bg-border h-5 w-3/4 rounded" />
@@ -96,20 +96,19 @@ export function SearchPage() {
           </EmptyState>
         )}
         {ready && results.isSuccess && results.data.length > 0 && (
-          <ul className="space-y-3">
+          <ul>
             {results.data.map((book, index) => (
               <li
                 key={`${book.google_id ?? book.openlibrary_key ?? book.title}:${index}`}
-                className="rise"
-                style={{ '--k': index } as CSSProperties}
+                className="border-b border-rule"
               >
                 <button
-                  className="card pressable flex w-full items-center gap-3 text-left"
+                  className="pressable flex w-full items-center gap-4 py-5 text-left"
                   onClick={() => setSelected(book)}
                 >
-                  <Cover book={book} width={52} />
+                  <Cover book={book} width={60} />
                   <div className="min-w-0 flex-1">
-                    <h2 className="line-clamp-2 text-[17px] leading-tight">{book.title}</h2>
+                    <h2 className="line-clamp-2 font-serif text-xl leading-tight">{book.title}</h2>
                     <p className="mt-1 line-clamp-2 text-xs text-muted">
                       {book.authors.join(', ') || 'Autor desconocido'}
                     </p>
@@ -132,7 +131,7 @@ export function SearchPage() {
         )}
       </div>
       {!emptySearch && (
-        <button className="btn btn-ghost w-full" onClick={() => setManual(true)}>
+        <button className="btn btn-link w-full" onClick={() => setManual(true)}>
           Añadir un libro a mano
         </button>
       )}

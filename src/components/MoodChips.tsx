@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function MoodChips({ value, onChange }: Props) {
-  const chip = 'px-3 min-h-9 rounded-full text-sm border inline-flex items-center'
+  const chip = 'chip'
   if (!onChange) {
     return (
       <div className="flex flex-wrap gap-2">
@@ -32,7 +32,7 @@ export function MoodChips({ value, onChange }: Props) {
             aria-pressed={on}
             onClick={() => toggle(m)}
             disabled={!on && value.length >= MAX_MOODS}
-            className={`${chip} min-h-11 ${on ? 'bg-accent text-surface border-accent' : 'border-border text-ink disabled:opacity-40'}`}
+            className={chip}
           >
             {m}
           </button>

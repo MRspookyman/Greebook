@@ -7,7 +7,7 @@ interface Props {
   disabled?: boolean
 }
 
-/** Full-width row with a label and an iOS-style switch (spring knob). */
+/** Full-width setting row; the label remains the touch target. */
 export function Switch({ checked, onChange, children, disabled }: Props) {
   return (
     <button
@@ -21,11 +21,11 @@ export function Switch({ checked, onChange, children, disabled }: Props) {
       <span className="min-w-0 wrap-anywhere">{children}</span>
       <span
         aria-hidden
-        className={`relative h-[30px] w-[50px] flex-none rounded-full transition-colors duration-200 ${checked ? 'bg-accent' : 'bg-track'}`}
+        className={`relative h-[26px] w-[44px] flex-none rounded-full border border-rule transition-colors duration-150 ${checked ? 'bg-accent' : 'bg-track'}`}
       >
         <span
-          className="absolute top-[3px] left-[3px] h-6 w-6 rounded-full bg-surface shadow-[0_1px_3px_rgb(0_0_0/0.2)]"
-          style={{ transform: checked ? 'translateX(20px)' : 'none', transition: 'transform 0.35s var(--spring)' }}
+          className="absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-bg shadow-[0_1px_2px_rgb(0_0_0/0.15)]"
+          style={{ transform: checked ? 'translateX(18px)' : 'none', transition: 'transform 140ms var(--ease)' }}
         />
       </span>
     </button>

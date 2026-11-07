@@ -13,7 +13,6 @@ import { formatDays, formatMinutes, formatUnitValue, parseHMM, progressFraction,
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
-import { Ring } from '@/components/Ring'
 import { Segmented } from '@/components/Segmented'
 import { Stars } from '@/components/Stars'
 import { MoodChips } from '@/components/MoodChips'
@@ -62,7 +61,7 @@ export function BookPage() {
 }
 
 function BookDetail({ reading }: { reading: ReadingWithBook }) {
-  const { userId } = useMe()
+  const { userId, profile, partner } = useMe()
   const navigate = useNavigate()
   const own = reading.user_id === userId
   const sessionsQuery = useSessions(reading.user_id)
@@ -74,7 +73,6 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
     (latest, session) => (!latest || session.created_at > latest.created_at ? session : latest),
     undefined,
   )
-  const largest = Math.max(1, ...sessions.map((s) => s.end_pos - s.start_pos))
   const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0)
   const today = todayISO()
   const pace = pacePerDay(reading, sessions, today)
@@ -147,7 +145,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
     }
   }
   return (
-    <div className="space-y-4 pb-20">
+    <div className="space-y-5 pb-20">
       <div className="flex items-center gap-2">
         <button
           className="icon-btn"
@@ -175,11 +173,15 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </button>
         )}
       </div>
-      <header className="flex gap-4">
-        <Cover book={reading.book} width={90} />
-        <div className="min-w-0 pt-0.5">
-          <h1 className="font-serif text-[23px] leading-tight [overflow-wrap:anywhere]">{reading.book.title}</h1>
-          <p className="mt-1 text-[13px] text-muted [overflow-wrap:anywhere]">
+      <header className="flex items-start gap-5">
+        <Cover
+          book={reading.book}
+          width={90}
+          ribbon={reading.status === 'reading' ? (own ? profile.accent : partner?.accent) : undefined}
+        />
+        <div className="min-w-0">
+          <h1 className="display text-[30px] [overflow-wrap:anywhere]">{reading.book.title}</h1>
+          <p className="mt-2 text-xs text-muted [overflow-wrap:anywhere]">
             {reading.book.authors.join(', ')}
             {reading.book.published_year ? ` · ${reading.book.published_year}` : ''}
           </p>
@@ -195,6 +197,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       {own ? (
         <fieldset disabled={disabled}>
           <Segmented
+            variant="underline"
             aria-label="Estado de la lectura"
             options={(Object.keys(statuses) as Reading['status'][]).map((value) => ({ value, label: statuses[value] }))}
             value={reading.status}
@@ -212,7 +215,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <p className="text-sm text-muted">{statuses[reading.status]}</p>
       )}
       <div
-        className="grid"
+        className={reading.status === 'finished' ? 'grid' : 'hidden !my-0'}
         style={{ gridTemplateRows: reading.status === 'finished' ? '1fr' : '0fr' }}
         aria-hidden={reading.status !== 'finished'}
         inert={reading.status !== 'finished'}
@@ -248,7 +251,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       {reading.status === 'finished' ? (
         // The finish date is already in the header; summarize how long it took.
         (reading.started_on && reading.finished_on) || minutes > 0 ? (
-          <section className="card text-sm text-muted" aria-label="Resumen de lectura">
+          <section className="rule pt-4 text-sm text-muted" aria-label="Resumen de lectura">
             {[
               reading.started_on && reading.finished_on
                 ? `Leído en ${formatDays(differenceInCalendarDays(fromISODate(reading.finished_on), fromISODate(reading.started_on)) + 1)}`
@@ -260,11 +263,19 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </section>
         ) : null
       ) : (
-        <section className="card flex items-center gap-4" aria-label="Progreso de lectura">
-          <Ring value={progressFraction(reading)} size={84}>
-            <span className="font-serif text-lg font-semibold">{Math.round(progressFraction(reading) * 100)} %</span>
-          </Ring>
-          <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-2 gap-y-3 text-xs">
+        <section className="space-y-4" aria-label="Progreso de lectura">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="folio text-[38px] leading-none text-accent">
+              {Math.round(progressFraction(reading) * 100)} <span className="text-2xl">%</span>
+            </p>
+            <p className="folio text-[22px] text-muted">
+              {reading.unit === 'pages'
+                ? `p. ${reading.current_position} — ${reading.total_units}`
+                : `${formatUnitValue(reading.unit, reading.current_position)} — ${formatUnitValue(reading.unit, reading.total_units)}`}
+            </p>
+          </div>
+          <ProgressBar value={progressFraction(reading)} />
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
             {[
               ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : 'min'}/día`],
               ['Tiempo', formatMinutes(minutes)],
@@ -272,8 +283,11 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               ['Fin estimado', finish ? fmt(finish, 'd MMM') : '—'],
             ].map(([label, value]) => (
               <div key={label}>
-                <dt className="text-muted">{label}</dt>
-                <dd className="mt-0.5 font-semibold">{value}</dd>
+                <dt className="text-xs text-muted">{label}</dt>
+                <dd className="mt-1 leading-tight">
+                  <span className="folio text-[25px]">{value.split(' ')[0]}</span>
+                  {value.includes(' ') && <span className="ml-1 text-xs">{value.slice(value.indexOf(' ') + 1)}</span>}
+                </dd>
               </div>
             ))}
           </dl>
@@ -284,12 +298,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <p className="text-xs text-muted">Espera a que se sincronicen las sesiones para editar.</p>
       )}
       <div>
-        <div
-          className="relative grid border-b border-border"
-          role="tablist"
-          aria-label="Detalle del libro"
-          style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}
-        >
+        <div className="relative flex gap-7 border-b border-rule" role="tablist" aria-label="Detalle del libro">
           {tabs.map((item) => (
             <button
               key={item.value}
@@ -315,29 +324,14 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 setTab(tabs[next].value)
                 document.getElementById(`book-tab-${tabs[next].value}`)?.focus()
               }}
-              className={`min-h-11 text-sm ${tab === item.value ? 'font-semibold text-ink' : 'text-muted'}`}
+              className={`min-h-11 border-b text-sm ${tab === item.value ? 'border-ink text-ink' : 'border-transparent text-muted'}`}
               onClick={() => setTab(item.value)}
             >
               {item.label}
             </button>
           ))}
-          <span
-            className="absolute bottom-0 left-0 h-[3px] rounded-full bg-accent"
-            style={{
-              width: `${100 / tabs.length}%`,
-              transform: `translateX(${tabs.findIndex((item) => item.value === tab) * 100}%)`,
-              transition: 'transform .45s var(--spring)',
-            }}
-          />
         </div>
-        <div
-          key={tab}
-          id="book-panel"
-          role="tabpanel"
-          aria-labelledby={`book-tab-${tab}`}
-          className="pt-2"
-          style={{ animation: 'gb-fade-up .25s var(--ease) both' }}
-        >
+        <div key={tab} id="book-panel" role="tabpanel" aria-labelledby={`book-tab-${tab}`} className="pt-1">
           {tab === 'sessions' && (
             <div>
               {sessionsQuery.isPending && (
@@ -357,19 +351,35 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 <p className="py-3 text-sm text-muted">Todavía no hay sesiones registradas.</p>
               )}
               {(allSessions ? sessions : sessions.slice(0, 10)).map((session) => {
-                const daysAgo = differenceInCalendarDays(fromISODate(today), fromISODate(session.read_on))
-                const label = daysAgo === 0 ? 'Hoy' : daysAgo === 1 ? 'Ayer' : fmt(session.read_on, 'EEE d')
+                const dateLabel = fmt(session.read_on, 'd MMM')
                 const editable = own && session.id === newest?.id
                 const content = (
                   <>
-                    <span className="w-14 shrink-0 capitalize text-muted">{label}</span>
-                    <ProgressBar value={(session.end_pos - session.start_pos) / largest} className="h-[6px] flex-1" />
-                    <span className="num min-w-9 text-right font-semibold">+{session.end_pos - session.start_pos}</span>
+                    <time dateTime={session.read_on} aria-label={dateLabel} className="w-10 shrink-0 text-center">
+                      <span className="folio block text-[28px] leading-none">{fmt(session.read_on, 'd')}</span>
+                      <span className="mt-1 block text-xs text-muted">{fmt(session.read_on, 'MMM')}</span>
+                    </time>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm">
+                        + {session.end_pos - session.start_pos} {reading.unit === 'pages' ? 'págs.' : 'min'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        {reading.unit === 'pages'
+                          ? `p. ${session.start_pos} — ${session.end_pos}`
+                          : `${formatMinutes(session.start_pos)} — ${formatMinutes(session.end_pos)}`}
+                      </p>
+                    </div>
+                    {session.minutes !== null && (
+                      <p className="shrink-0 text-right">
+                        <span className="folio text-[25px]">{session.minutes}</span>{' '}
+                        <span className="text-xs text-muted">min</span>
+                      </p>
+                    )}
                   </>
                 )
                 return (
-                  <div key={session.id} className="flex items-center gap-2 border-b border-dashed border-border">
-                    <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-xs">{content}</div>
+                  <div key={session.id} className="flex items-center gap-1 border-b border-rule py-3">
+                    <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3">{content}</div>
                     {editable && (
                       <button
                         className="icon-btn h-11 w-11 shrink-0"
@@ -397,7 +407,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       {own &&
         reading.status !== 'abandoned' &&
         createPortal(
-          <div className="fixed inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-xl gap-2 bg-bg px-[18px] py-3">
+          <div className="fixed inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-xl gap-2 border-t border-rule bg-bg px-[26px] py-3">
             {reading.status === 'finished' ? (
               <button className="btn btn-primary w-full" disabled={disabled} onClick={() => void reread()}>
                 Volver a leer
@@ -414,7 +424,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                   <Plus size={19} /> Registrar sesión
                 </button>
                 <button
-                  className="icon-btn bg-soft text-accent"
+                  className="icon-btn"
                   aria-label={
                     timing ? 'Parar cronómetro y registrar' : reading.format === 'audio' ? 'Escuchar' : 'Leer'
                   }
@@ -514,7 +524,7 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
               caption: formatUnitValue(room.theirs.unit, room.theirs.current_position),
             }}
           />
-          <Link className="btn btn-primary w-full" to={`/sala/${reading.book_id}`}>
+          <Link className="btn btn-outline w-full" to={`/sala/${reading.book_id}`}>
             Abrir la sala
           </Link>
           {recent.map((message) => (
@@ -529,7 +539,7 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
               En «Queremos leer juntos»
             </Link>
           ) : (
-            <button className="btn btn-primary w-full" disabled={adding || !partner} onClick={() => void add()}>
+            <button className="btn btn-outline w-full" disabled={adding || !partner} onClick={() => void add()}>
               {adding ? 'Añadiendo…' : 'Leerlo juntos'}
             </button>
           )}

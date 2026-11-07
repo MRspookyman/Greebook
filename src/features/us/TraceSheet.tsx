@@ -74,7 +74,7 @@ export function TraceComposer({
   }
   return (
     <form
-      className="space-y-4 pt-2"
+      className="space-y-5 pt-2"
       noValidate
       onSubmit={(event) => {
         event.preventDefault()
@@ -91,7 +91,7 @@ export function TraceComposer({
           No se pudieron cargar los libros. Vuelve a abrir la huella cuando tengas conexión.
         </p>
       )}
-      <h2 className="font-serif text-xl">¿Le dejas algo a {partner?.display_name ?? 'tu pareja'}?</h2>
+      <h2 className="title">¿Le dejas algo a {partner?.display_name ?? 'tu pareja'}?</h2>
       <label className="block space-y-1">
         <span className="lbl">Libro</span>
         <select
@@ -130,7 +130,7 @@ export function TraceComposer({
         ))}
       </div>
       <textarea
-        className="input min-h-24"
+        className="input hand min-h-28 bg-transparent placeholder:font-sans placeholder:text-sm"
         name="trace-body"
         autoComplete="off"
         aria-label="Frase o cita opcional"

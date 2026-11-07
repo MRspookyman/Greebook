@@ -50,30 +50,34 @@ export function WelcomePage() {
   }
 
   return (
-    <main className="min-h-dvh bg-bg px-6 text-ink pt-safe pb-safe">
+    <main className="min-h-dvh bg-bg px-[26px] text-ink pt-safe pb-safe">
       <div
         ref={container}
-        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 py-10"
+        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 py-12"
         style={{ animation: 'gb-fade-up 300ms ease-out' }}
       >
-        <p className="font-serif text-xl text-green">Greenbook</p>
+        <p className="font-serif text-2xl text-green">Greenbook</p>
         {step === 1 ? (
           <>
-            <h1 tabIndex={-1}>{WELCOME.title}</h1>
-            <p className="whitespace-pre-line font-serif text-xl leading-relaxed">{WELCOME.message}</p>
-            <p className="text-muted">{WELCOME.signature}</p>
-            <button type="button" className="btn btn-primary" onClick={() => setStep(2)}>
+            <h1 tabIndex={-1} className="display display-italic">
+              {WELCOME.title}
+            </h1>
+            <p className="whitespace-pre-line font-serif text-2xl italic leading-relaxed">{WELCOME.message}</p>
+            <p className="rule pt-5 font-serif text-lg italic text-muted">{WELCOME.signature}</p>
+            <button type="button" className="btn btn-primary mt-4" onClick={() => setStep(2)}>
               Continuar
             </button>
           </>
         ) : (
           <form onSubmit={submit} className="flex flex-col gap-6">
-            <p className="text-sm text-muted">
+            <p className="folio text-muted">
               Paso {profile.is_gift_recipient ? step : step - 1} de {profile.is_gift_recipient ? 3 : 2}
             </p>
             {step === 2 ? (
               <>
-                <h1 tabIndex={-1}>Tu rincón de lectura</h1>
+                <h1 tabIndex={-1} className="display display-italic">
+                  Tu rincón de lectura
+                </h1>
                 <label className="label">
                   Tu nombre
                   <input
@@ -105,7 +109,9 @@ export function WelcomePage() {
               </>
             ) : (
               <>
-                <h1 tabIndex={-1}>Un ratito para leer</h1>
+                <h1 tabIndex={-1} className="display display-italic">
+                  Un ratito para leer
+                </h1>
                 <label className="label">
                   Hora del recordatorio
                   <input
@@ -130,7 +136,7 @@ export function WelcomePage() {
               {(step === 3 || profile.is_gift_recipient) && (
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-outline"
                   disabled={update.isPending}
                   onClick={() => setStep(step - 1)}
                 >

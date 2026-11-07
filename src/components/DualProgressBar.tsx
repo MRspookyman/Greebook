@@ -31,17 +31,17 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
       <div
         key={m.label + below}
         className={`pointer-events-none absolute inset-x-0 text-xs font-semibold ${below ? 'top-[34px]' : 'bottom-[50px]'}`}
-        style={{ transform: `translateX(${entered ? pct : 0}%)`, transition: 'transform 1.2s var(--ease)' }}
+        style={{ transform: `translateX(${entered ? pct : 0}%)`, transition: 'transform 140ms var(--ease)' }}
         title={`${m.label}: ${Math.round(pct)} %`}
       >
         <div
           className={`flex w-fit max-w-[90%] items-center ${below ? 'flex-col' : 'flex-col-reverse'}`}
-          style={{ transform: `translateX(-${entered ? pct : 0}%)`, transition: 'transform 1.2s var(--ease)' }}
+          style={{ transform: `translateX(-${entered ? pct : 0}%)`, transition: 'transform 140ms var(--ease)' }}
         >
-          <span className="h-2 w-0.5" style={{ background: `var(--${m.accent})` }} />
+          <span className="h-2 w-px" style={{ background: `var(--${m.accent})` }} />
           <span
-            className="num wrap-anywhere rounded-[7px] px-1.5 py-px text-center text-ink"
-            style={{ background: `color-mix(in oklab, var(--${m.accent}) 14%, var(--surface))` }}
+            className="wrap-anywhere px-1.5 py-px text-center text-xs font-normal text-ink"
+            style={{ background: 'var(--bg)' }}
           >
             {m.label}
             {m.caption ? ` · ${m.caption}` : ''}
@@ -56,19 +56,19 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
       role="img"
       aria-label={`${a.label}: ${Math.round(clamp(a.value))} %. ${b.label}: ${Math.round(clamp(b.value))} %`}
     >
-      <div className="absolute inset-x-0 top-[28px] h-1.5 rounded-full bg-border" />
+      <div className="absolute inset-x-0 top-[28px] h-px bg-rule" />
       <div
-        className="absolute inset-x-0 top-[28px] h-1.5 origin-left rounded-full opacity-50"
+        className="absolute inset-x-0 top-[28px] h-px origin-left"
         style={{
           transform: `scaleX(${entered ? clamp(Math.min(a.value, b.value)) / 100 : 0})`,
           background: 'var(--amber)',
-          transition: 'transform 1.2s var(--ease)',
+          transition: 'transform 140ms var(--ease)',
         }}
       />
       {stops.map((stop) => (
         <span
           key={stop.label}
-          className={`absolute top-[23px] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-amber ${stop.done ? 'bg-amber' : 'bg-surface'}`}
+          className={`absolute top-[25px] h-[7px] w-[7px] -translate-x-1/2 rounded-full border border-amber ${stop.done ? 'bg-amber' : 'bg-surface'}`}
           style={{ left: `${clamp(stop.value)}%` }}
           title={stop.label}
         />

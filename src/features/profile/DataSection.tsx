@@ -22,13 +22,15 @@ export function DataSection() {
     }
   }
   return (
-    <section className="card space-y-3 p-5" aria-labelledby="data-title">
-      <h2 id="data-title">Datos</h2>
-      <p className="text-muted">
+    <section className="rule space-y-4 pt-5" aria-labelledby="data-title">
+      <h2 id="data-title" className="eyebrow text-muted">
+        Datos
+      </h2>
+      <p className="text-sm leading-relaxed text-muted">
         Guarda tu diario completo en JSON y tus lecturas en CSV, compatible con Excel. Solo se incluyen tus datos y tus
         notas.
       </p>
-      <button type="button" className="btn btn-secondary" disabled={busy} onClick={exportData}>
+      <button type="button" className="btn btn-outline" disabled={busy} onClick={exportData}>
         {busy ? 'Preparando archivos…' : 'Exportar'}
       </button>
     </section>

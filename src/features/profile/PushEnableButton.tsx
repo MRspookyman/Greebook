@@ -59,7 +59,7 @@ export function PushEnableButton() {
       {state === 'default' && (
         <button
           type="button"
-          className="btn btn-secondary w-full"
+          className="btn btn-outline w-full"
           disabled={busy}
           onClick={() => {
             void activate()

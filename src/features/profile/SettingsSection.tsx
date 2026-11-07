@@ -60,8 +60,10 @@ export function SettingsSection() {
   }
 
   return (
-    <section className="card space-y-6 p-5" aria-labelledby="settings-title">
-      <h2 id="settings-title">Ajustes</h2>
+    <section className="rule space-y-5 pt-5" aria-labelledby="settings-title">
+      <h2 id="settings-title" className="eyebrow text-muted">
+        Ajustes
+      </h2>
       <fieldset>
         <legend className="label mb-2">Tema</legend>
         <div className="flex flex-wrap gap-2">
@@ -71,7 +73,7 @@ export function SettingsSection() {
               type="button"
               aria-pressed={profile.theme === theme.value}
               disabled={update.isPending}
-              className={`btn ${profile.theme === theme.value ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-outline ${profile.theme === theme.value ? 'border-accent text-accent' : ''}`}
               onClick={() =>
                 update.mutate({ theme: theme.value }, { onError: () => toast('No se pudo guardar el tema') })
               }
@@ -83,7 +85,7 @@ export function SettingsSection() {
       </fieldset>
       <button
         type="button"
-        className="flex min-h-11 w-full items-center justify-between text-left font-medium"
+        className="rule flex min-h-14 w-full items-center justify-between pt-3 text-left font-medium"
         aria-expanded={passwordOpen}
         aria-controls="password-form"
         onClick={() => setPasswordOpen(!passwordOpen)}
@@ -123,12 +125,12 @@ export function SettingsSection() {
               {error}
             </p>
           )}
-          <button type="submit" className="btn btn-secondary" disabled={busy}>
+          <button type="submit" className="btn btn-outline" disabled={busy}>
             {busy ? 'Guardando…' : 'Cambiar contraseña'}
           </button>
         </form>
       )}
-      <button type="button" className="btn btn-ghost text-danger" disabled={signingOut} onClick={signOut}>
+      <button type="button" className="btn btn-link text-danger" disabled={signingOut} onClick={signOut}>
         {signingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
       </button>
     </section>

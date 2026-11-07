@@ -64,7 +64,7 @@ export function Stepper({
   }
 
   const btn =
-    'grid h-[52px] w-[52px] flex-none place-items-center rounded-2xl bg-soft text-accent transition-transform duration-200 [transition-timing-function:var(--spring)] active:scale-[0.88] disabled:opacity-40'
+    'pressable grid h-[48px] w-[48px] flex-none place-items-center rounded-[6px] border border-accent bg-transparent text-accent disabled:opacity-40'
   return (
     <div className="flex items-center justify-between gap-2.5" role="group" aria-label={label}>
       <button

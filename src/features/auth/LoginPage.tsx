@@ -20,15 +20,19 @@ export function LoginPage() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center px-6 pt-safe pb-safe">
-      <div className="w-full max-w-sm" style={{ animation: 'gb-fade-up 300ms ease-out' }}>
-        <div className="flex flex-col items-center gap-2 mb-8">
-          <Logo size={56} />
-          <p className="text-muted">Nuestro diario de lectura</p>
-        </div>
-        <form onSubmit={submit} className="card p-5 flex flex-col gap-4">
+    <main className="flex min-h-dvh flex-col justify-center px-[26px] pt-safe pb-safe">
+      <div className="mx-auto w-full max-w-sm">
+        <header className="mb-8">
+          <Logo size={48} />
+          <h1 className="display mt-6">
+            Nuestro diario
+            <br />
+            <span className="display-italic">de lectura</span>
+          </h1>
+        </header>
+        <form onSubmit={submit} className="rule flex flex-col gap-5 pt-6">
           <div>
-            <label className="label" htmlFor="email">
+            <label className="eyebrow mb-2 block" htmlFor="email">
               Email
             </label>
             <input
@@ -43,7 +47,7 @@ export function LoginPage() {
             />
           </div>
           <div>
-            <label className="label" htmlFor="password">
+            <label className="eyebrow mb-2 block" htmlFor="password">
               Contraseña
             </label>
             <input

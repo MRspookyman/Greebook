@@ -24,12 +24,12 @@ export function DaySheet({ date, onClose, sessions, readings, onRegister }: Prop
         {daySessions.map((session) => {
           const reading = byId.get(session.reading_id)
           return (
-            <article key={session.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
-              {reading && <Cover book={reading.book} width={40} />}
+            <article key={session.id} className="rule flex items-center gap-4 py-4">
+              {reading && <Cover book={reading.book} width={48} />}
               <div className="min-w-0">
                 {reading ? (
                   <Link
-                    className="inline-flex min-h-11 items-center font-medium [overflow-wrap:anywhere]"
+                    className="inline-flex min-h-11 items-center font-serif text-xl [overflow-wrap:anywhere]"
                     to={`/libro/${reading.id}`}
                     onClick={onClose}
                   >

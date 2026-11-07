@@ -1,11 +1,26 @@
 import type { Profile } from '@/lib/types'
 
-/** Initial in a circle of the person's color. */
-export function Avatar({ person, size = 38 }: { person: Pick<Profile, 'display_name' | 'accent'>; size?: number }) {
+/** Outlined initial, with an optional filled treatment for selected identities. */
+export function Avatar({
+  person,
+  size = 38,
+  filled = false,
+}: {
+  person: Pick<Profile, 'display_name' | 'accent'>
+  size?: number
+  filled?: boolean
+}) {
   return (
     <span
-      className="grid flex-none place-items-center rounded-full font-semibold text-surface"
-      style={{ width: size, height: size, fontSize: size * 0.37, background: `var(--${person.accent})` }}
+      className="grid flex-none place-items-center rounded-full border font-serif font-normal"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.max(12, size * 0.46),
+        borderColor: `var(--${person.accent})`,
+        color: filled ? 'var(--accent-contrast)' : `var(--${person.accent})`,
+        background: filled ? `var(--${person.accent})` : 'transparent',
+      }}
       aria-hidden
     >
       {person.display_name.charAt(0).toUpperCase()}

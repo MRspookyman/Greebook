@@ -29,14 +29,14 @@ function ReadingNow({ person, readings }: { person: Profile; readings: ReadingWi
   const since = person.reading_now_since ? new Date(person.reading_now_since).getTime() : 0
   const live = Date.now() - since >= 0 && Date.now() - since < 2 * 60 * 60 * 1000
   return (
-    <div className="min-w-0 flex-1 space-y-2">
-      <p className="text-xs font-medium text-muted">{person.display_name}</p>
+    <div className="min-w-0 space-y-2">
+      <p className={`eyebrow ${person.accent === 'green' ? 'text-green' : 'text-blue'}`}>{person.display_name}</p>
       {current.length ? (
         current.slice(0, 1).map((reading) => (
           <Link key={reading.id} to={`/libro/${reading.id}`} className="flex min-h-11 items-center gap-2">
-            <Cover book={reading.book} width={28} />
+            <Cover book={reading.book} width={36} />
             <div className="min-w-0">
-              <p className="line-clamp-2 text-sm">{reading.book.title}</p>
+              <p className="font-serif text-base leading-tight [overflow-wrap:anywhere]">{reading.book.title}</p>
               {live && person.reading_now_id === reading.id && <p className="text-xs text-accent">leyendo ahora</p>}
             </div>
           </Link>
@@ -46,7 +46,9 @@ function ReadingNow({ person, readings }: { person: Profile; readings: ReadingWi
       )}
       {current.length > 1 && (
         <details>
-          <summary className="min-h-11 cursor-pointer py-3 text-xs text-muted">Ver {current.length - 1} más</summary>
+          <summary className="min-h-11 cursor-pointer py-3 text-xs text-accent underline underline-offset-4">
+            Ver {current.length - 1} más
+          </summary>
           {current.slice(1).map((reading) => (
             <Link
               key={reading.id}
@@ -138,21 +140,25 @@ export function UsPage() {
 
   if (!partner)
     return (
-      <section className="card">
-        <h1>Rincón de los dos</h1>
+      <section className="space-y-4">
+        <h1 className="display">
+          Rincón <span className="display-italic block">de los dos</span>
+        </h1>
         <p>Vuestro rincón estará aquí al vincular las dos cuentas.</p>
       </section>
     )
 
   return (
-    <div className="space-y-5 pb-4 rise">
-      <header className="flex items-center gap-3">
-        <div className="flex -space-x-3">
-          <Avatar person={profile} size={42} />
-          <Avatar person={partner} size={42} />
-        </div>
-        <div>
-          <h1 className="text-2xl">Rincón de los dos</h1>
+    <div className="space-y-6 pb-4 rise">
+      <header className="space-y-4">
+        <h1 className="display">
+          Rincón <span className="display-italic block">de los dos</span>
+        </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <Avatar person={profile} size={28} />
+            <Avatar person={partner} size={28} />
+          </div>
           <p className="text-xs text-muted">{formatDays(summary.daysTogether)} leyendo los dos este mes</p>
         </div>
       </header>
@@ -168,7 +174,7 @@ export function UsPage() {
       )}
       {(items.length > 0 || linkedMessage) && (
         <section className="space-y-3" aria-label="Para ti">
-          <h2 className="text-lg">Para ti</h2>
+          <h2 className="title">Para ti</h2>
           {visibleItems.map((item) => {
             switch (item.type) {
               case 'message':
@@ -177,13 +183,13 @@ export function UsPage() {
                 return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} compact />
               case 'together':
                 return (
-                  <div className="card" key={`t-${item.item.id}`}>
+                  <div className="rule py-4" key={`t-${item.item.id}`}>
                     <TogetherCard item={item.item} />
                   </div>
                 )
               case 'goal':
                 return (
-                  <div className="card" key={`g-${item.goal.month}`}>
+                  <div className="rule py-4" key={`g-${item.goal.month}`}>
                     <GoalProposal goal={item.goal} />
                   </div>
                 )
@@ -192,7 +198,7 @@ export function UsPage() {
           {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} preview={!showAllPending} />}
           {items.length > previewCount && (
             <button
-              className="btn btn-ghost min-h-11"
+              className="btn btn-link min-h-11"
               aria-expanded={showAllPending}
               onClick={() => setShowAllPending(!showAllPending)}
             >
@@ -201,8 +207,8 @@ export function UsPage() {
           )}
         </section>
       )}
-      <section className="card space-y-3" aria-label="Ahora mismo">
-        <h2 className="text-lg">Ahora mismo</h2>
+      <section className="space-y-4" aria-label="Ahora mismo">
+        <h2 className="title">Ahora mismo</h2>
         {rooms.length > 0 && (
           <div>
             {rooms.map((room) => {
@@ -214,16 +220,22 @@ export function UsPage() {
                 <Link
                   key={room.book.id}
                   to={`/sala/${room.book.id}`}
-                  className="flex min-h-11 items-center justify-between gap-2 text-sm"
+                  className="rule flex min-h-11 items-center gap-4 py-3 text-sm"
                 >
-                  <span className="min-w-0 flex-1 truncate">Vuestra sala · {room.book.title}</span>
-                  <span className="shrink-0 text-accent">{unread ? `${unread} por abrir` : 'Entrar →'}</span>
+                  <Cover book={room.book} width={44} />
+                  <span className="min-w-0 flex-1">
+                    <span className="mb-1 block text-xs text-muted">Vuestra sala</span>
+                    <span className="block font-serif text-xl leading-tight">{room.book.title}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-accent underline underline-offset-4">
+                    {unread ? `${unread} por abrir` : 'Entrar'}
+                  </span>
                 </Link>
               )
             })}
           </div>
         )}
-        <div className="flex gap-4">
+        <div className="rule grid grid-cols-2 gap-4 pt-4">
           <ReadingNow person={profile} readings={mine} />
           <ReadingNow person={partner} readings={theirs} />
         </div>
@@ -237,14 +249,14 @@ export function UsPage() {
             <InviteCard key={invite.id} invite={invite} />
           ))}
       </section>
-      <section className="space-y-3" aria-label="Vuestros recuerdos">
-        <h2 className="text-lg">Vuestros recuerdos</h2>
-        <div className="card space-y-3">
-          <h3 className="font-serif">{monthLabel(month)}</h3>
+      <section className="rule space-y-4 pt-5" aria-label="Vuestros recuerdos">
+        <h2 className="title">Vuestros recuerdos</h2>
+        <div className="space-y-3">
+          <h3 className="text-xs text-muted">{monthLabel(month)}</h3>
           <MemoriesCard summary={summary} goalPendingAbove={goalPendingAbove} />
         </div>
         {previousMonths.length > 0 && (
-          <details className="card">
+          <details className="rule">
             <summary className="min-h-11 cursor-pointer py-3 text-sm">
               Meses anteriores ({previousMonths.length})
             </summary>
@@ -265,10 +277,10 @@ export function UsPage() {
           </details>
         )}
       </section>
-      <section className="card space-y-3" aria-label="Queremos leer juntos">
+      <section className="rule space-y-4 pt-5" aria-label="Queremos leer juntos">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg">Queremos leer juntos</h2>
-          <button className="btn btn-ghost" onClick={() => setAdding(true)}>
+          <h2 className="title">Queremos leer juntos</h2>
+          <button className="btn btn-link shrink-0" onClick={() => setAdding(true)}>
             + Añadir
           </button>
         </div>

@@ -85,12 +85,12 @@ function ManualFields({ onSelect }: { onSelect: (book: BookCandidate) => void })
     })
   }
   return (
-    <form onSubmit={submit} className="space-y-4" autoComplete="off" noValidate>
+    <form onSubmit={submit} className="space-y-5" autoComplete="off" noValidate>
       <p className="text-sm text-muted">Los libros que no encuentras también tienen sitio aquí.</p>
       <label className="label">
         <span className="lbl mb-2 block">Título</span>
         <input
-          className="input"
+          className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent px-0 font-serif text-xl"
           name="title"
           placeholder="p. ej. Patria…"
           required
@@ -106,7 +106,11 @@ function ManualFields({ onSelect }: { onSelect: (book: BookCandidate) => void })
       </label>
       <label className="label">
         <span className="lbl mb-2 block">Autoría</span>
-        <input className="input" name="authors" placeholder="p. ej. Fernando Aramburu…" />
+        <input
+          className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent px-0"
+          name="authors"
+          placeholder="p. ej. Fernando Aramburu…"
+        />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="label">

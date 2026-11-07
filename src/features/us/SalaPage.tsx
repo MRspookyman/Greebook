@@ -69,7 +69,7 @@ export function SalaPage() {
     const loading = readings.isPending || (!!partner && partnerReadings.isPending)
     return (
       <section className="space-y-4">
-        <Link to="/nosotros" className="btn btn-ghost">
+        <Link to="/nosotros" className="btn btn-link">
           <ArrowLeft size={18} /> Volver al rincón
         </Link>
         <h1>La sala de los dos</h1>
@@ -103,18 +103,18 @@ export function SalaPage() {
     }
   }
   return (
-    <section className="space-y-4">
-      <Link to="/nosotros" className="btn btn-ghost">
+    <section className="space-y-5">
+      <Link to="/nosotros" className="btn btn-link">
         <ArrowLeft size={18} /> Rincón de los dos
       </Link>
       <header className="flex items-center gap-4">
-        <Cover book={room.book} width={60} />
+        <Cover book={room.book} width={64} />
         <div className="min-w-0">
-          <h1 className="text-2xl [overflow-wrap:anywhere]">{room.book.title}</h1>
-          <p className="mt-1 text-xs text-muted">Vuestra sala</p>
+          <h1 className="display [overflow-wrap:anywhere]">{room.book.title}</h1>
+          <p className="mt-2 text-xs text-muted">Vuestra sala</p>
         </div>
       </header>
-      <div className="card space-y-2">
+      <div className="rule space-y-3 pt-4">
         <DualProgressBar
           a={{
             value: progressFraction(room.mine),
@@ -131,7 +131,7 @@ export function SalaPage() {
         />
       </div>
       <div
-        className="space-y-3 pb-4"
+        className="rule space-y-4 pt-5 pb-4"
         role="log"
         aria-live="polite"
         aria-relevant="additions"
@@ -155,14 +155,14 @@ export function SalaPage() {
         ))}
       </div>
       <form
-        className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex scroll-mb-[calc(96px+env(safe-area-inset-bottom))] items-end gap-1 rounded-2xl border border-border bg-surface p-2 shadow-sm"
+        className="rule sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex scroll-mb-[calc(96px+env(safe-area-inset-bottom))] items-end gap-1 bg-bg py-3"
         onSubmit={(event) => {
           event.preventDefault()
           void send()
         }}
       >
         {emotionsOpen && (
-          <div className="absolute bottom-full left-0 mb-2 flex gap-1 rounded-2xl border border-border bg-surface p-1 shadow-sm">
+          <div className="card absolute bottom-full left-0 mb-2 flex max-w-full flex-wrap gap-1 p-2">
             {(Object.entries(EMOTIONS) as [Emotion, { emoji: string; label: string }][]).map(([value, item]) => (
               <button
                 key={value}
@@ -194,7 +194,7 @@ export function SalaPage() {
           name="message"
           autoComplete="off"
           rows={1}
-          className="min-h-11 max-h-28 min-w-0 flex-1 resize-y scroll-mb-[calc(96px+env(safe-area-inset-bottom))] rounded-xl bg-bg px-2 py-3 text-sm leading-[22px] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="hand min-h-11 max-h-28 min-w-0 flex-1 resize-y scroll-mb-[calc(96px+env(safe-area-inset-bottom))] border-0 border-b border-rule bg-transparent px-2 py-2 outline-none placeholder:font-sans placeholder:text-sm focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Mensaje para tu pareja"
           placeholder="Déjale algo…"
           maxLength={5000}
@@ -234,7 +234,7 @@ export function SalaPage() {
           </button>
         )}
         <button
-          className="icon-btn shrink-0 bg-accent text-surface"
+          className="btn btn-primary min-h-11 min-w-11 shrink-0 px-3"
           aria-label={busy ? 'Dejando mensaje' : 'Dejar mensaje'}
           disabled={busy || (!body.trim() && !emotion)}
         >
