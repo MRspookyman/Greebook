@@ -43,7 +43,7 @@ Objetivo: que Greenbook sea más sencilla de usar (menos toques), que se vea igu
 - **Biblioteca**: marca con la inicial de la pareja en los libros que también tiene.
 
 **Visual**
-- Lenguaje de movimiento con tokens (`--dur-tap`, `--dur-move`, `--dur-fill`), entradas escalonadas, números que ruedan, barras que se llenan y un único momento de celebración (el sello al guardar). Detalle en `docs/estilo.md`.
+- Lenguaje de movimiento con tokens (`--dur-tap`, `--dur-move`, `--dur-fill`), entradas escalonadas, números que ruedan, barras que se llenan y un único momento de celebración (el sello al guardar).
 - Portadas de tela cuando no hay imagen, Hoy compacta y barra inferior con indicador deslizante.
 
 ## 4. Ideas para después (necesitan migración o más datos)
