@@ -32,7 +32,7 @@ export function ProgressBar({
         style={{
           transform: `scaleX(${entered ? pct / 100 : 0})`,
           background: color,
-          transition: 'transform 140ms var(--ease)',
+          transition: 'transform var(--dur-fill) var(--ease)',
         }}
       />
     </div>

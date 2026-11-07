@@ -1,14 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { TabBar } from '@/components/TabBar'
 import { useMe } from '@/features/auth/me'
 import { useRealtimeSync } from '@/features/us/useRealtimeSync'
 import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { SurpriseHost } from '@/features/surprises/SurpriseHost'
-import { LogSessionSheet } from '@/features/session/LogSessionSheet'
-import { BottomSheet } from '@/components/BottomSheet'
-import { TraceSheet } from '@/features/us/TraceSheet'
-import { RatitoSheet } from '@/features/us/RatitoSheet'
 import { useRatitoTimer } from '@/features/session/Timer'
 
 const TAB_ORDER = ['/', '/biblioteca', '/stats', '/nosotros']
@@ -22,7 +18,6 @@ function depthOf(path: string): number {
 export function Layout() {
   const { profile } = useMe()
   const location = useLocation()
-  const [action, setAction] = useState<'menu' | 'log' | 'trace' | 'ratito' | null>(null)
   const prev = useRef(location.pathname)
   const mainRef = useRef<HTMLElement>(null)
   const focusedRoute = useRef(location.pathname)
@@ -36,6 +31,9 @@ export function Layout() {
   useOfflineSync()
   useRatitoTimer()
 
+  // The reading screen is a focus mode: it rises like a sheet and hides the tab bar.
+  const focus = location.pathname.startsWith('/leer')
+  const fromFocus = prev.current.startsWith('/leer') && !focus
   const from = depthOf(location.pathname) >= depthOf(prev.current) ? '16px' : '-16px'
   prev.current = location.pathname
 
@@ -61,28 +59,19 @@ export function Layout() {
       >
         <div
           key={location.pathname}
-          style={{ animation: 'gb-page-in 0.4s var(--ease) both', ['--page-from' as string]: from }}
+          style={{
+            animation: focus
+              ? 'gb-sheet-up 0.42s var(--ease) both'
+              : fromFocus
+                ? 'gb-fade-in 0.3s var(--ease) both'
+                : 'gb-page-in 0.4s var(--ease) both',
+            ['--page-from' as string]: from,
+          }}
         >
           <Outlet />
         </div>
       </main>
-      <TabBar onAdd={() => setAction('menu')} />
-      <BottomSheet open={action === 'menu'} onClose={() => setAction(null)} title="¿Qué te apetece?">
-        <div className="space-y-2 pt-2">
-          <button className="btn btn-soft min-h-16 w-full justify-start text-base" onClick={() => setAction('log')}>
-            📖 Registrar lectura
-          </button>
-          <button className="btn btn-soft min-h-16 w-full justify-start text-base" onClick={() => setAction('trace')}>
-            💌 Dejarle algo
-          </button>
-          <button className="btn btn-soft min-h-16 w-full justify-start text-base" onClick={() => setAction('ratito')}>
-            ☕ Invitar a un ratito
-          </button>
-        </div>
-      </BottomSheet>
-      <LogSessionSheet open={action === 'log'} onClose={() => setAction(null)} />
-      <TraceSheet open={action === 'trace'} onClose={() => setAction(null)} />
-      <RatitoSheet open={action === 'ratito'} onClose={() => setAction(null)} />
+      {!focus && <TabBar />}
       <SurpriseHost />
     </>
   )

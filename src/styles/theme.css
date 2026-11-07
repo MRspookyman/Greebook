@@ -23,6 +23,12 @@
   --paper-shadow: 0 4px 13px -5px rgb(117 96 60 / 0.22), 0 1px 2px rgb(117 96 60 / 0.05);
   --spring: cubic-bezier(0.32, 1.28, 0.5, 1);
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Motion: taps answer at once, things that move travel, things that fill take their time. */
+  --dur-tap: 140ms;
+  --dur-move: 280ms;
+  --dur-fill: 760ms;
+  /* Tab bar height above the safe area (58px row + hairline); bars that sit on it use this. */
+  --tabbar-h: 59px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -426,6 +432,113 @@
   }
   .bump {
     animation: gb-bump 140ms var(--ease);
+  }
+  /* Staggered entrance for the few blocks of a screen; set --i (0, 1, 2…) on each. */
+  .enter {
+    animation: gb-enter 520ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+  /* Only for something that is happening right now (a running timer, someone reading). */
+  .live-dot {
+    display: inline-block;
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: currentColor;
+    animation: gb-live 1.8s ease-in-out infinite;
+  }
+  .timer-digits {
+    font-family: var(--font-serif);
+    font-weight: 300;
+    font-variant-numeric: lining-nums tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .grow-y {
+    transform-origin: bottom;
+    animation: gb-grow-y 620ms var(--ease) both;
+  }
+}
+@keyframes gb-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes gb-roll-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.42em);
+  }
+}
+@keyframes gb-roll-down {
+  from {
+    opacity: 0;
+    transform: translateY(-0.42em);
+  }
+}
+@keyframes gb-live {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+@keyframes gb-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes gb-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+@keyframes gb-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+/* A library date stamp landing on the page. */
+@keyframes gb-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.65) rotate(-18deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.93) rotate(-7deg);
+  }
+  78% {
+    transform: scale(1.03) rotate(-8.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+@keyframes gb-ink {
+  from {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+@keyframes gb-draw {
+  from {
+    stroke-dashoffset: var(--len, 100);
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }
 @keyframes gb-rise {

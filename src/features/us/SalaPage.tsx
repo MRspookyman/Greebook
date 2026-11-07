@@ -155,7 +155,7 @@ export function SalaPage() {
         ))}
       </div>
       <form
-        className="rule sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex scroll-mb-[calc(96px+env(safe-area-inset-bottom))] items-end gap-1 bg-bg py-3"
+        className="rule sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-20 flex scroll-mb-[calc(96px+env(safe-area-inset-bottom))] items-end gap-1 bg-bg py-3"
         onSubmit={(event) => {
           event.preventDefault()
           void send()

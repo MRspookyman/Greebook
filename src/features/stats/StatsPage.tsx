@@ -1,9 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
 import { CountUp } from '@/components/CountUp'
 import { Segmented } from '@/components/Segmented'
 import { useMe } from '@/features/auth/me'
-import { LogSessionSheet } from '@/features/session/LogSessionSheet'
 import { useReadings, useSessions } from '@/lib/data'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
 import { activityByDay, summarize, timeSpent } from '@/lib/stats/aggregate'
@@ -39,7 +39,7 @@ export function StatsPage() {
   const today = todayISO()
   const [month, setMonth] = useState(() => fromISODate(today))
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
-  const [registerDate, setRegisterDate] = useState<string | null>(null)
+  const navigate = useNavigate()
   const readings = readingsQuery.data ?? []
   const sessions = sessionsQuery.data ?? []
   const range = periodRange(period, today)
@@ -214,10 +214,9 @@ export function StatsPage() {
         readings={readings}
         onRegister={(date) => {
           setSelectedDay(null)
-          setRegisterDate(date)
+          navigate(`/leer?modo=paginas&dia=${date}`)
         }}
       />
-      {registerDate && <LogSessionSheet open onClose={() => setRegisterDate(null)} initialDate={registerDate} />}
     </div>
   )
 }

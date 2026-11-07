@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
-import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus, Square } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useMessages, useNotes, useReadings, useSessions, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
@@ -18,8 +18,7 @@ import { Stars } from '@/components/Stars'
 import { MoodChips } from '@/components/MoodChips'
 import { BottomSheet } from '@/components/BottomSheet'
 import { toast } from '@/components/toast'
-import { LogSessionSheet } from '@/features/session/LogSessionSheet'
-import { startTimer, stopTimer, useActiveTimer } from '@/features/session/Timer'
+import { startTimer, useActiveTimer } from '@/features/session/Timer'
 import { useOnline } from '@/features/session/useOnline'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { DualProgressBar } from '@/components/DualProgressBar'
@@ -83,8 +82,6 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const timer = useActiveTimer()
   const timing = timer?.readingId === reading.id
   const [busy, setBusy] = useState(false)
-  const [logging, setLogging] = useState(false)
-  const [initialMinutes, setInitialMinutes] = useState<number>()
   const [editing, setEditing] = useState<Session | null>(null)
   const [editingReading, setEditingReading] = useState(false)
   const [editingMoods, setEditingMoods] = useState(false)
@@ -407,49 +404,39 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       {own &&
         reading.status !== 'abandoned' &&
         createPortal(
-          <div className="fixed inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-xl gap-2 border-t border-rule bg-bg px-[26px] py-3">
+          <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-xl gap-2 border-t border-rule bg-bg px-[26px] py-3">
             {reading.status === 'finished' ? (
               <button className="btn btn-primary w-full" disabled={disabled} onClick={() => void reread()}>
                 Volver a leer
               </button>
             ) : (
               <>
-                <button
-                  className="btn btn-primary flex-1"
-                  onClick={() => {
-                    setInitialMinutes(undefined)
-                    setLogging(true)
-                  }}
-                >
-                  <Plus size={19} /> Registrar sesión
-                </button>
-                <button
-                  className="icon-btn"
-                  aria-label={
-                    timing ? 'Parar cronómetro y registrar' : reading.format === 'audio' ? 'Escuchar' : 'Leer'
-                  }
-                  onClick={() => {
-                    if (timing) {
-                      setInitialMinutes(stopTimer())
-                      setLogging(true)
-                    } else {
-                      startTimer(reading)
-                    }
-                  }}
-                >
-                  {timing ? <Square size={18} /> : <Play size={18} />}
-                </button>
+                {timing ? (
+                  <Link to={`/leer/${reading.id}`} className="btn btn-primary flex-1">
+                    {timer?.pausedAt == null && <span className="live-dot" aria-hidden />}
+                    Volver a la sesión
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary flex-1"
+                    onClick={() => {
+                      if (startTimer(reading)) navigate(`/leer/${reading.id}`)
+                    }}
+                  >
+                    <Play size={16} fill="currentColor" aria-hidden />
+                    {reading.format === 'audio' ? 'Escuchar' : 'Leer'}
+                  </button>
+                )}
+                <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-outline flex-1 whitespace-nowrap">
+                  <Plus size={17} aria-hidden />
+                  {reading.unit === 'minutes' ? 'Apuntar tiempo' : 'Apuntar páginas'}
+                </Link>
               </>
             )}
           </div>,
           document.body,
         )}
-      <LogSessionSheet
-        open={logging}
-        onClose={() => setLogging(false)}
-        reading={reading}
-        initialMinutes={initialMinutes}
-      />
       {editing && <SessionEditor reading={reading} session={editing} onClose={() => setEditing(null)} />}
       {editingReading && (
         <ReadingEditor reading={reading} disabled={disabled} onSave={patch} onClose={() => setEditingReading(false)} />

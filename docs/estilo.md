@@ -23,14 +23,24 @@ Page margin 26px (`px-[26px]`), sections 20–24px apart. Spacing scale 4/8/12/1
 - `btn btn-link`: secondary action with underline and 44px hit area.
 - `btn btn-soft`: very quiet wash, use sparingly. Existing secondary/ghost APIs still work.
 - `icon-btn`: outlined 44px, 6px corners. `chip`: thin outline and 6px corners, minimum 44px. Inputs 6px corners.
-- Pressure response .98/140ms; no bounce or ambient looping decoration.
+- Pressure response .98/140ms.
+
+## Motion
+Movement explains something; nothing moves just to decorate. Tokens: `--dur-tap` 140ms (pressure, colour), `--dur-move` 280ms (sliding indicators, draft progress), `--dur-fill` 760ms (bars and rings filling from zero), all on `--ease`. Global `prefers-reduced-motion` removes it all.
+- Entrances: `.enter` with `--i` (0, 1, 2…) staggers the few blocks of a screen by 60ms; `.grow-y` grows small bars from their base. The reading screen rises (`gb-sheet-up`).
+- Numbers: `RollingNumber` rolls only the digits that change (up when growing, down when shrinking); `CountUp` for summary figures.
+- Live state only: `.live-dot` breathes while something is happening now (running timer, partner reading). No other looping animation.
+- One celebration: `SessionStamp`, the library date stamp that lands when a session is saved. Reserve it for that moment.
 
 ## Components
 - `Cover`: physical spine/page edge, warm offset shadow, 2px corners. `ribbon="blue" | "green"` optional only for current reading. Suggested widths: hero/current 80–90px, secondary list 48–60px, library 88–104px, detail 90–110px. Calendar thumbnails may be 20px but retain accessible book names outside them. Generated cover type never below 12px.
 - `ProgressBar`: default 3px; do not add chunky height utilities.
 - `DualProgressBar`: hairline with 12px flags. Keep room for both names.
 - `Segmented`: `variant="underline"` for editorial text tabs; default `pill` retained for compact form choices. Sliding indicator is 140ms.
-- `Avatar`: outlined by default; optional `filled` for selection. TabBar has thin icons and outlined central +. Sheets use paper and a ruled header.
+- `Cover` without image: a book-cloth colour chosen from the title (paper text ≥ 5:1), title with a short rule and the author from 80px; under 56px only the initial. The bookmark keeps its own strip.
+- `Avatar`: outlined by default; optional `filled` for selection. Sheets use paper and a ruled header.
+- `TabBar`: Hoy · Biblioteca · **Leer** · Estadísticas · Nosotros. The raised central circle opens the reading screen; while a timer runs it fills with the accent, shows the time and a ring for the current minute. A 2px accent hairline slides to the active tab. Bars that rest on it use `--tabbar-h`.
+- Reading screen (`/leer/:readingId`, `?modo=paginas&dia=yyyy-MM-dd`): focus mode without tab bar. «Cronómetro» or «Solo páginas», big serif timer (`.timer-digits`, lining figures), `Stepper size="lg"` with hold-to-repeat, fixed bottom actions (one primary). Every «Leer» starts the timer and opens it in one tap; «Apuntar páginas» opens it in pages mode.
 
 ## Palette
 Light bg #F7F3EA / surface #FFFDF8 / ink #2B2A26 / muted & placeholder #6D685E / rule #DCD5C8.
@@ -42,4 +52,4 @@ Light accents are slightly ink-deepened for textured-paper contrast: blue #486DA
 Measured WCAG contrast (background / surface): light muted+placeholder 5.00 / 5.45, amber-ink 5.25 / 5.72, blue 4.77 / 5.19, green 4.78 / 5.21. Dark muted+placeholder 6.93 / 6.20, amber-ink 8.79 / 7.86, blue 7.51 / 6.72, green 7.09 / 6.34. Conservative darkest grain light-paper sample #F1EDE4: muted 4.74, amber-ink 4.98, blue 4.52, green 4.53.
 
 ## Avoid
-No nested boxes, dashboard tile grids, decorative kicker above heading, huge progress rings, text under 12px, meaningless emoji controls, handwriting outside huellas, oversized rounded cards, or multiple solid calls-to-action. Keep original accessible labels, focus-visible, reduced motion and all interactions.
+No nested boxes, dashboard tile grids, decorative kicker above heading, huge progress rings, text under 12px, meaningless emoji controls, handwriting outside huellas, oversized rounded cards, multiple solid calls-to-action, glows, gradient washes, particles or ambient loops. Keep original accessible labels, focus-visible, reduced motion and all interactions.

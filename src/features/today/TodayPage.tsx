@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { ChevronRight, CloudUpload, Plus } from 'lucide-react'
+import type { CSSProperties } from 'react'
+import { ChevronRight, CloudUpload, Play, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useMe } from '@/features/auth/me'
 import { useInvites, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
@@ -12,11 +12,12 @@ import { formatDays, formatMinutes, formatPosition, formatUnitDelta, progressFra
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { Avatar } from '@/components/Avatar'
+import { CountUp } from '@/components/CountUp'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
-import { LogSessionSheet } from '@/features/session/LogSessionSheet'
-import { Timer } from '@/features/session/Timer'
+import { startTimer, useActiveTimer, useElapsedSeconds } from '@/features/session/Timer'
+import { formatClock } from '@/lib/timer'
 import { usePendingForMe } from '@/features/us/messages'
 import { InviteCard } from '@/features/us/InviteCard'
 import { isInviteExpired } from '@/features/us/ratito'
@@ -32,7 +33,10 @@ export function TodayPage() {
   const partnerSessions = useSessions(partner?.id)
   const invites = useInvites()
   const pending = usePendingSessionCount()
-  const [logging, setLogging] = useState<ReadingWithBook | null>(null)
+  const navigate = useNavigate()
+  const read = (reading: ReadingWithBook) => {
+    if (startTimer(reading)) navigate(`/leer/${reading.id}`)
+  }
   const today = todayISO()
   const dateLabel = fmt(today, "EEEE, d 'de' MMMM")
   const active = recentReadings(
@@ -78,17 +82,18 @@ export function TodayPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <Link to="/" className="flex min-h-11 items-center font-serif text-lg text-green" aria-label="Greenbook, Hoy">
-            Greenbook
-          </Link>
-          <Link to="/perfil" className="flex min-h-11 min-w-11 items-center justify-center" aria-label="Tu perfil">
+      <header className="enter">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted">{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</p>
+          <Link
+            to="/perfil"
+            className="-mr-1.5 flex min-h-11 min-w-11 items-center justify-center"
+            aria-label="Tu perfil"
+          >
             <Avatar person={profile} size={32} />
           </Link>
         </div>
-        <p className="text-xs text-muted">{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</p>
-        <h1 className="display mt-3">
+        <h1 className="display mt-1">
           {greeting()},
           <br />
           <span className="display-italic">{profile.display_name}</span>
@@ -141,32 +146,43 @@ export function TodayPage() {
           </EmptyState>
         </section>
       ) : (
-        <section className="rule pt-4" aria-label="Tus lecturas actuales">
+        <section className="rule enter pt-4" style={{ '--i': 1 } as CSSProperties} aria-label="Tus lecturas actuales">
           <CurrentReading
             reading={active[0]}
             accent={profile.accent}
             sessions={sessions.data ?? []}
             today={today}
-            onLog={() => setLogging(active[0])}
+            onRead={() => read(active[0])}
           />
           {active.slice(1).map((reading) => (
-            <Link
-              key={reading.id}
-              to={`/libro/${reading.id}`}
-              className="rule mt-3 flex min-h-14 items-center gap-3 pt-3"
-            >
-              <Cover book={reading.book} width={28} />
-              <span className="min-w-0 flex-1">
-                <span className="font-serif text-lg">{reading.book.title}</span>{' '}
-                <span className="text-xs text-muted">Otra lectura en curso</span>
-              </span>
-              <ChevronRight size={20} className="shrink-0" aria-hidden />
-            </Link>
+            <div key={reading.id} className="rule mt-3 flex min-h-14 items-center gap-3 pt-3">
+              <Link to={`/libro/${reading.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                <Cover book={reading.book} width={32} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-serif text-lg leading-tight">{reading.book.title}</span>
+                  <span className="text-xs text-muted">
+                    {formatPosition(reading)} · {Math.round(progressFraction(reading) * 100)} %
+                  </span>
+                </span>
+              </Link>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={`${reading.format === 'audio' ? 'Escuchar' : 'Leer'} «${reading.book.title}»`}
+                onClick={() => read(reading)}
+              >
+                <Play size={16} aria-hidden />
+              </button>
+            </div>
           ))}
         </section>
       )}
 
-      <section className="rule space-y-3 pt-4" aria-label="Tu racha de lectura">
+      <section
+        className="rule enter space-y-3 pt-4"
+        style={{ '--i': 2 } as CSSProperties}
+        aria-label="Tu racha de lectura"
+      >
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-xs">
             {dates.has(today)
@@ -212,17 +228,19 @@ export function TodayPage() {
                       : 'sin sesión'
                 }`}
               >
-                <span className="flex h-3 items-center gap-1" aria-hidden>
+                <span className="flex h-3 items-end gap-1" aria-hidden>
                   <span
-                    className={`h-3 w-1.5 rounded-sm ${
+                    className={`grow-y h-3 w-1.5 rounded-sm ${
                       done ? (profile.accent === 'blue' ? 'bg-blue' : 'bg-green') : 'bg-border'
                     }`}
+                    style={{ animationDelay: `${200 + index * 45}ms` }}
                   />
                   {partner && (
                     <span
-                      className={`h-3 w-1.5 rounded-sm ${
+                      className={`grow-y h-3 w-1.5 rounded-sm ${
                         theirs ? (partner.accent === 'blue' ? 'bg-blue' : 'bg-green') : 'bg-border'
                       }`}
+                      style={{ animationDelay: `${230 + index * 45}ms` }}
                     />
                   )}
                 </span>
@@ -235,14 +253,18 @@ export function TodayPage() {
         </div>
       </section>
 
-      <section className="rule grid grid-cols-2 pt-3" aria-label="Resumen de lectura">
+      <section
+        className="rule enter grid grid-cols-2 pt-3"
+        style={{ '--i': 3 } as CSSProperties}
+        aria-label="Resumen de lectura"
+      >
         <Link
           to="/perfil"
           className="min-h-14 pr-4"
           aria-label={`${finished} de ${goal} libros en ${today.slice(0, 4)}. Editar objetivo`}
         >
           <p className="folio text-[28px]">
-            {finished} <span className="text-muted">/ {goal}</span>
+            <CountUp value={finished} /> <span className="text-muted">/ {goal}</span>
           </p>
           <p className="mt-1 text-xs text-muted">
             {finished === 1 ? 'libro' : 'libros'} en {today.slice(0, 4)}
@@ -254,7 +276,7 @@ export function TodayPage() {
           aria-label={`Esta semana ${weeklyPages} páginas. Ver estadísticas`}
         >
           <p className="folio text-[28px]">
-            {weeklyPages} <span className="text-base">pág</span>
+            <CountUp value={weeklyPages} /> <span className="text-base">pág</span>
           </p>
           <p className="mt-1 text-xs text-muted">Esta semana</p>
         </Link>
@@ -265,7 +287,6 @@ export function TodayPage() {
           {pending} {pending === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de sincronizar
         </p>
       )}
-      <LogSessionSheet open={logging !== null} onClose={() => setLogging(null)} reading={logging ?? undefined} />
     </div>
   )
 }
@@ -275,17 +296,21 @@ function CurrentReading({
   accent,
   sessions,
   today,
-  onLog,
+  onRead,
 }: {
   reading: ReadingWithBook
   accent: 'blue' | 'green'
   sessions: Session[]
   today: string
-  onLog: () => void
+  onRead: () => void
 }) {
   const pace = pacePerDay(reading, sessions, today)
   const finish = estimatedFinish(reading, sessions, today)
   const fraction = progressFraction(reading)
+  const timer = useActiveTimer()
+  const mine = timer?.readingId === reading.id ? timer : null
+  const seconds = useElapsedSeconds(mine)
+  const audio = reading.format === 'audio'
   return (
     <article className="space-y-3">
       <div className="flex items-start gap-4">
@@ -326,11 +351,26 @@ function CurrentReading({
         <span>{reading.format === 'audio' ? 'Audiolibro' : 'Papel'}</span>
       </div>
       <div className="flex gap-3">
-        <button className="btn btn-primary" onClick={onLog}>
+        {mine ? (
+          <Link
+            to={`/leer/${reading.id}`}
+            className="btn btn-primary flex-1"
+            aria-label={`Volver a tu sesión de «${reading.book.title}»`}
+          >
+            {mine.pausedAt == null && <span className="live-dot" aria-hidden />}
+            {mine.pausedAt == null ? (audio ? 'Escuchando' : 'Leyendo') : 'En pausa'} ·{' '}
+            <span className="[font-variant-numeric:lining-nums_tabular-nums]">{formatClock(seconds)}</span>
+          </Link>
+        ) : (
+          <button type="button" className="btn btn-primary flex-1" onClick={onRead}>
+            <Play size={15} fill="currentColor" aria-hidden />
+            {audio ? 'Escuchar' : 'Leer'}
+          </button>
+        )}
+        <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-outline flex-1 whitespace-nowrap px-3">
           <Plus size={16} aria-hidden />
-          Registrar
-        </button>
-        <Timer reading={reading} />
+          {reading.unit === 'minutes' ? 'Apuntar tiempo' : 'Apuntar páginas'}
+        </Link>
       </div>
     </article>
   )

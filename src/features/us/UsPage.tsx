@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router'
+import { Coffee, Feather } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
@@ -10,6 +11,8 @@ import { formatDays } from '@/lib/units'
 import type { Profile, ReadingWithBook } from '@/lib/types'
 import { InviteCard } from './InviteCard'
 import { MessageCard } from './MessageCard'
+import { RatitoSheet } from './RatitoSheet'
+import { TraceSheet } from './TraceSheet'
 import { GoalProposal, MemoriesCard } from './MemoriesCard'
 import { TogetherCard } from './TogetherCard'
 import { localMonth, monthMemories } from './memories'
@@ -84,6 +87,7 @@ export function UsPage() {
   const goalPendingAbove = items.some((item) => item.type === 'goal')
   const rooms = useRooms()
   const [adding, setAdding] = useState(false)
+  const [sheet, setSheet] = useState<'trace' | 'ratito' | null>(null)
   const [showAllPending, setShowAllPending] = useState(false)
   const [bookId, setBookId] = useState('')
   const [reason, setReason] = useState('')
@@ -161,7 +165,19 @@ export function UsPage() {
           </div>
           <p className="text-xs text-muted">{formatDays(summary.daysTogether)} leyendo los dos este mes</p>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="btn btn-outline" onClick={() => setSheet('trace')}>
+            <Feather size={16} aria-hidden />
+            Dejarle algo
+          </button>
+          <button type="button" className="btn btn-outline" onClick={() => setSheet('ratito')}>
+            <Coffee size={16} aria-hidden />
+            Un ratito juntos
+          </button>
+        </div>
       </header>
+      <TraceSheet open={sheet === 'trace'} onClose={() => setSheet(null)} />
+      <RatitoSheet open={sheet === 'ratito'} onClose={() => setSheet(null)} />
       {(mineQuery.isPending || theirsQuery.isPending || messagesQuery.isPending) && (
         <p className="text-sm text-muted" role="status">
           Abriendo vuestro rincón…

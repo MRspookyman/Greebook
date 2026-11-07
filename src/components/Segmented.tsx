@@ -41,7 +41,7 @@ export function Segmented<T extends string>({
         style={{
           width: underline ? `${100 / options.length}%` : `calc((100% - 6px) / ${options.length})`,
           transform: `translateX(${index * 100}%)`,
-          transition: 'transform 140ms var(--ease)',
+          transition: 'transform var(--dur-move) var(--ease)',
         }}
       />
       {options.map((o) => {

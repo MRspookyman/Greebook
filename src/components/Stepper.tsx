@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Minus, Plus } from 'lucide-react'
+import { useHoldRepeat } from './useHoldRepeat'
 
 interface Props {
   value: number
@@ -20,6 +21,8 @@ interface Props {
   inputMode?: 'numeric' | 'text'
   parse?: (value: string) => number | null
   format?: (value: number) => string
+  /** `lg` is the focus counter of the reading screen. */
+  size?: 'md' | 'lg'
 }
 
 /** Large value with quick adjustments and optional exact entry. */
@@ -40,7 +43,9 @@ export function Stepper({
   inputMode = 'numeric',
   parse = (text) => (/^\d+$/.test(text.trim()) ? Number(text) : null),
   format = String,
+  size = 'md',
 }: Props) {
+  const large = size === 'lg'
   const clamp = (v: number) => Math.min(max ?? Infinity, Math.max(min, v))
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -63,17 +68,15 @@ export function Stepper({
     setEditing(false)
   }
 
-  const btn =
-    'pressable grid h-[48px] w-[48px] flex-none place-items-center rounded-[6px] border border-accent bg-transparent text-accent disabled:opacity-40'
+  const atMin = value <= min
+  const atMax = max !== undefined && value >= max
+  const less = useHoldRepeat((times) => onChange(clamp(value - step * times)), atMin)
+  const more = useHoldRepeat((times) => onChange(clamp(value + step * times)), atMax)
+  const btn = `pressable grid flex-none select-none place-items-center rounded-[6px] border border-accent bg-transparent text-accent [-webkit-touch-callout:none] disabled:opacity-40 ${large ? 'h-14 w-14' : 'h-[48px] w-[48px]'}`
+  const number = `stat-number leading-none ${large ? 'text-[60px]' : 'text-[44px]'}`
   return (
     <div className="flex items-center justify-between gap-2.5" role="group" aria-label={label}>
-      <button
-        type="button"
-        className={btn}
-        aria-label="Menos"
-        disabled={value <= min}
-        onClick={() => onChange(clamp(value - step))}
-      >
+      <button type="button" className={btn} aria-label="Menos" disabled={atMin} {...less}>
         <Minus size={24} aria-hidden />
       </button>
       <div className="min-w-0 flex-1 text-center">
@@ -107,7 +110,7 @@ export function Stepper({
             ref={triggerRef}
             id={inputId}
             type="button"
-            className="stat-number min-h-14 text-[44px] leading-none underline decoration-border decoration-dotted underline-offset-8"
+            className={`${number} min-h-14 underline decoration-border decoration-dotted underline-offset-8`}
             aria-label={`${editLabel}: ${format(value)}`}
             aria-invalid={invalid}
             aria-describedby={describedBy}
@@ -120,20 +123,14 @@ export function Stepper({
             {display}
           </button>
         ) : (
-          <div className="stat-number text-[44px] leading-none" aria-live="polite">
+          <div className={number} aria-live="polite">
             {display}
           </div>
         )}
         {editable && !editing && <p className="mt-2 text-xs text-muted">Toca para escribir</p>}
         {caption && <div className="mt-1.5 text-sm font-medium text-muted">{caption}</div>}
       </div>
-      <button
-        type="button"
-        className={btn}
-        aria-label="Más"
-        disabled={max !== undefined && value >= max}
-        onClick={() => onChange(clamp(value + step))}
-      >
+      <button type="button" className={btn} aria-label="Más" disabled={atMax} {...more}>
         <Plus size={24} aria-hidden />
       </button>
     </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Coffee } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { useReadings } from '@/lib/data'
@@ -13,6 +13,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
   const readings = useReadings(userId)
   const [busy, setBusy] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const navigate = useNavigate()
   const mine = invite.from_user === userId
   const reading = readings.data
     ?.filter((item) => item.status === 'reading')
@@ -25,7 +26,9 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
       if (answer === 'cancel') await cancelInvite(invite.id)
       else {
         await respondInvite(invite.id, answer)
-        if (answer === 'accepted' && !invite.starts_at && reading) startTimer(reading)
+        // «Ahora»: accepting goes straight to the reading screen with the timer running.
+        if (answer === 'accepted' && !invite.starts_at && reading && startTimer(reading))
+          navigate(`/leer/${reading.id}`)
       }
     } catch (error) {
       toast('No se pudo actualizar el ratito', error instanceof Error ? error.message : 'Inténtalo de nuevo')
@@ -91,7 +94,7 @@ export function InviteCard({ invite, compact = false }: { invite: Invite; compac
         <button
           className={`btn ${compact ? 'btn-link px-3 text-xs' : 'btn-outline w-full'}`}
           onClick={() => {
-            if (startTimer(reading)) toast('Tu ratito ha empezado', reading.book.title)
+            if (startTimer(reading)) navigate(`/leer/${reading.id}`)
           }}
         >
           Empezar

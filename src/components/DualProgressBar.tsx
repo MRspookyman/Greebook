@@ -31,12 +31,15 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
       <div
         key={m.label + below}
         className={`pointer-events-none absolute inset-x-0 text-xs font-semibold ${below ? 'top-[34px]' : 'bottom-[50px]'}`}
-        style={{ transform: `translateX(${entered ? pct : 0}%)`, transition: 'transform 140ms var(--ease)' }}
+        style={{ transform: `translateX(${entered ? pct : 0}%)`, transition: 'transform var(--dur-fill) var(--ease)' }}
         title={`${m.label}: ${Math.round(pct)} %`}
       >
         <div
           className={`flex w-fit max-w-[90%] items-center ${below ? 'flex-col' : 'flex-col-reverse'}`}
-          style={{ transform: `translateX(-${entered ? pct : 0}%)`, transition: 'transform 140ms var(--ease)' }}
+          style={{
+            transform: `translateX(-${entered ? pct : 0}%)`,
+            transition: 'transform var(--dur-fill) var(--ease)',
+          }}
         >
           <span className="h-2 w-px" style={{ background: `var(--${m.accent})` }} />
           <span
@@ -62,7 +65,7 @@ export function DualProgressBar({ a, b, stops = [] }: { a: Marker; b: Marker; st
         style={{
           transform: `scaleX(${entered ? clamp(Math.min(a.value, b.value)) / 100 : 0})`,
           background: 'var(--amber)',
-          transition: 'transform 140ms var(--ease)',
+          transition: 'transform var(--dur-fill) var(--ease)',
         }}
       />
       {stops.map((stop) => (

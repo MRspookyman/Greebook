@@ -36,7 +36,7 @@ export function Ring({ value, size = 76, stroke = 3, color = 'var(--accent)', ch
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={entered ? c * (1 - v) : c}
-          style={{ transition: 'stroke-dashoffset 140ms var(--ease)' }}
+          style={{ transition: 'stroke-dashoffset var(--dur-fill) var(--ease)' }}
         />
       </svg>
       {children && <div className="relative text-center">{children}</div>}
