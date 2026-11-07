@@ -38,19 +38,19 @@ function Tab({ tab, active, badge = 0 }: { tab: TabItem; active: boolean; badge?
     <Link
       to={tab.to}
       aria-current={active ? 'page' : undefined}
-      className={`flex min-h-[52px] flex-col items-center justify-center gap-[3px] text-xs font-medium transition-colors duration-200 ${active ? 'text-accent' : 'text-muted'}`}
+      className={`flex min-h-[52px] flex-col items-center justify-end gap-[3px] text-xs font-medium transition-colors duration-200 ${active ? 'text-chrome-ink' : 'text-chrome-muted'}`}
     >
       <span className="relative">
         <Icon
           aria-hidden
-          size={23}
-          strokeWidth={1.5}
+          size={22}
+          strokeWidth={1.6}
           className="transition-transform duration-300"
           style={{ transform: active ? 'translateY(-1px)' : undefined }}
         />
         {badge > 0 && (
           <span
-            className="num absolute -top-1.5 -right-2.5 grid h-[20px] min-w-[20px] place-items-center rounded-full border-2 border-surface bg-danger px-1 text-xs font-bold text-surface"
+            className="absolute -top-1.5 -right-3 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-chrome-mark px-1 text-xs leading-none font-semibold text-chrome"
             style={{ animation: 'gb-pop-in 320ms var(--ease) both' }}
             aria-label={`${badge} novedades`}
           >
@@ -68,7 +68,7 @@ function ReadButton() {
   const timer = useActiveTimer()
   const seconds = useElapsedSeconds(timer)
   const paused = timer?.pausedAt != null
-  const r = 18
+  const r = 30
   const circumference = 2 * Math.PI * r
   return (
     <Link
@@ -77,21 +77,26 @@ function ReadButton() {
         timer ? `Volver a tu sesión: ${spokenClock(seconds)}${paused ? ', en pausa' : ''}` : 'Leer o apuntar páginas'
       }
       // Raised: the circle rises above the bar while its label lines up with the other tabs.
-      className="pressable -mt-[17px] flex min-h-[52px] flex-col items-center justify-center gap-[3px] text-xs font-medium text-accent"
+      className="pressable flex min-h-[52px] flex-col items-center justify-end gap-[3px] text-xs font-medium text-chrome-ink"
     >
       <span
-        className={`relative grid h-[40px] w-[40px] place-items-center rounded-full border border-accent transition-colors duration-300 ${timer && !paused ? 'bg-accent text-[var(--accent-contrast)]' : 'bg-bg'}`}
+        className="relative -mt-[30px] grid h-[56px] w-[56px] place-items-center rounded-full transition-colors duration-300"
+        style={{
+          background: timer && !paused ? 'var(--accent)' : 'color-mix(in oklab, var(--chrome) 84%, white)',
+          color: timer && !paused ? 'var(--accent-contrast)' : 'var(--chrome-mark)',
+          boxShadow: '0 0 0 4px var(--bg), inset 0 0 0 1.5px var(--chrome-mark)',
+        }}
       >
-        <BookOpen aria-hidden size={20} strokeWidth={1.5} />
+        <BookOpen aria-hidden size={24} strokeWidth={1.6} />
         {timer && (
-          <svg className="absolute -inset-[5px] -rotate-90" viewBox="0 0 42 42" aria-hidden>
+          <svg className="absolute -inset-[4px] -rotate-90" viewBox="0 0 64 64" aria-hidden>
             <circle
-              cx="21"
-              cy="21"
+              cx="32"
+              cy="32"
               r={r}
               fill="none"
-              stroke="var(--accent)"
-              strokeWidth="1.5"
+              stroke="var(--chrome-mark)"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={circumference * (1 - (seconds % 60) / 60)}
@@ -100,29 +105,35 @@ function ReadButton() {
           </svg>
         )}
       </span>
-      <span className={timer ? 'num' : undefined}>{timer ? formatClock(seconds) : 'Leer'}</span>
+      <span className={timer ? '[font-variant-numeric:tabular-nums]' : undefined}>
+        {timer ? formatClock(seconds) : 'Leer'}
+      </span>
     </Link>
   )
 }
 
-/** Hoy · Biblioteca · Leer · Estadísticas · Nosotros, with a hairline that slides to the active tab. */
+/** Hoy · Biblioteca · Leer · Estadísticas · Nosotros: a floating bar with a mark that slides to the active tab. */
 export function TabBar() {
   const { count: unread } = usePendingForMe()
   const { pathname } = useLocation()
   const current = TABS.find((tab) => tab.match(pathname))
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-bg pb-safe" aria-label="Secciones">
-      <div className="relative mx-auto grid h-[58px] max-w-xl grid-cols-5 items-center px-2.5 pt-1.5">
+    <nav
+      className="fixed inset-x-0 z-30 px-3"
+      style={{ bottom: 'calc(10px + env(safe-area-inset-bottom))' }}
+      aria-label="Secciones"
+    >
+      <div className="relative mx-auto grid h-[64px] max-w-xl grid-cols-5 items-end rounded-[24px] bg-chrome px-1 pb-[7px] shadow-[0_14px_30px_-12px_rgb(15_26_21/0.55)]">
         <span
           aria-hidden
-          className="pointer-events-none absolute top-[-1px] left-2.5 flex h-[2px] w-[calc((100%-20px)/5)] justify-center"
+          className="pointer-events-none absolute top-[7px] left-1 flex h-[2px] w-[calc((100%-8px)/5)] justify-center"
           style={{
             transform: `translateX(${(current?.column ?? 0) * 100}%)`,
             opacity: current ? 1 : 0,
             transition: 'transform var(--dur-move) var(--ease), opacity var(--dur-move) var(--ease)',
           }}
         >
-          <span className="h-full w-7 rounded-full bg-accent" />
+          <span className="h-full w-5 rounded-full bg-chrome-mark" />
         </span>
         {TABS.slice(0, 2).map((tab) => (
           <Tab key={tab.to} tab={tab} active={tab === current} />

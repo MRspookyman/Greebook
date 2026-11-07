@@ -64,3 +64,22 @@ export function progressFraction(r: Pick<Reading, 'current_position' | 'total_un
   if (r.total_units <= 0) return 0
   return Math.min(1, Math.max(0, r.current_position / r.total_units))
 }
+
+/**
+ * Text printed in a cover's corner: progress while reading, the rating once finished,
+ * where it was left when abandoned. Nothing for books still waiting.
+ */
+export function coverBadge(
+  r: Pick<Reading, 'status' | 'unit' | 'current_position' | 'total_units' | 'rating'>,
+): string | undefined {
+  switch (r.status) {
+    case 'reading':
+      return `${Math.round(progressFraction(r) * 100)} %`
+    case 'finished':
+      return r.rating !== null ? `★ ${r.rating.toLocaleString('es')}` : '✓'
+    case 'abandoned':
+      return r.unit === 'pages' ? `p. ${r.current_position}` : formatMinutes(r.current_position)
+    default:
+      return undefined
+  }
+}

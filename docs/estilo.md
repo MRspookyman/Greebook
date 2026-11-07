@@ -1,56 +1,69 @@
-# Greenbook · Diario editorial
+# Greenbook · Estilo
 
-Foundation ready for screen composition. Preserve behavior, focus styles, 44px touch targets and text ≥12px.
+Diario de lectura cálido y legible: papel, portadas protagonistas y una barra flotante verde oscuro.
+La interfaz sirve para registrar rápido; el adorno nunca compite con el dato.
 
-## Type
-- Screen heading: `display` (Fraunces Variable 400, 34px/1.06). Optional second line `display-italic` (350). h1 already matches display; h2 matches `title`.
-- Section/book heading: `title` (450, 23px/1.16).
-- Functional prose/controls: Inter, normally 14–16px; metadata `text-xs` minimum.
-- Functional labels: `eyebrow` (12px uppercase, .08em). Do not put an eyebrow above a heading; reserve it for real labels/metadata.
-- Reading folios and figures: `folio` (20px), `num` (size inherited), `stat-number` (size inherited); Fraunces oldstyle/tabular figures.
-- Couple's actual huella/message words only: `hand` (Caveat 500, 22px/1.15, ink). Never handwriting for names in UI labels, navigation, numbers or actions.
-- Fraunces uses full roman/italic variable files, optical sizing auto, SOFT 20/WONK 1. Do not hardcode the old `Fraunces` family; use `font-serif`.
+## Legibilidad (reglas que no se negocian)
 
-## Page rhythm
-Page margin 26px (`px-[26px]`), sections 20–24px apart. Spacing scale 4/8/12/16/20/24/32px. Group tightly (6–12px), leave more air before headings than after. Continuous paper is the default.
-- `section`: unboxed vertical spacing; adjacent sections get a hairline. Use a semantic section with this class where helpful.
-- `rule`: top hairline in `--rule`. `border-rule` is also available.
-- `card`: rare paper inset, borderless, 8px radius, warm offset shadow. Suitable for a preserved intimate note or a focused sheet inset, not every reading/metric. No nested cards.
+Basadas en Apple HIG, Material 3, WCAG 2.2 y USWDS.
 
-## Actions
-- `btn btn-primary`: solid accent; at most one dominant solid action per screen. Dark mode uses dark ink on the lighter accent automatically.
-- `btn btn-outline`: transparent ink outline for supporting actions such as Leer.
-- `btn btn-link`: secondary action with underline and 44px hit area.
-- `btn btn-soft`: very quiet wash, use sparingly. Existing secondary/ghost APIs still work.
-- `icon-btn`: outlined 44px, 6px corners. `chip`: thin outline and 6px corners, minimum 44px. Inputs 6px corners.
-- Pressure response .98/140ms.
+- **Texto**: Inter 16 px con interlineado 1,5 para leer; 14 px para lo secundario; **mínimo 12 px** y solo
+  en metadatos cortos (insignias, ejes, fechas).
+- **Líneas largas** (notas, reseñas): 45–75 caracteres; nunca texto corrido a todo el ancho en tablet.
+- **Mayúsculas** solo en etiquetas de una o dos palabras (`eyebrow`), con 0,08 em de espaciado.
+- **Contraste**: texto ≥ 4,5:1; iconos, bordes de controles y marcas de gráficos ≥ 3:1.
+- **Zonas táctiles**: ≥ 44 × 44 px aunque el dibujo sea más pequeño.
+- **Una acción principal** (botón relleno) por pantalla; el resto en contorno o enlace.
+- **Movimiento** con sentido y apagado con `prefers-reduced-motion`.
 
-## Motion
-Movement explains something; nothing moves just to decorate. Tokens: `--dur-tap` 140ms (pressure, colour), `--dur-move` 280ms (sliding indicators, draft progress), `--dur-fill` 760ms (bars and rings filling from zero), all on `--ease`. Global `prefers-reduced-motion` removes it all.
-- Entrances: `.enter` with `--i` (0, 1, 2…) staggers the few blocks of a screen by 60ms; `.grow-y` grows small bars from their base. The reading screen rises (`gb-sheet-up`).
-- Numbers: `RollingNumber` rolls only the digits that change (up when growing, down when shrinking); `CountUp` for summary figures.
-- Live state only: `.live-dot` breathes while something is happening now (running timer, partner reading). No other looping animation.
-- One celebration: `SessionStamp`, the library date stamp that lands when a session is saved. Reserve it for that moment.
+## Tipografía
 
-## Components
-- `Cover`: physical spine/page edge, warm offset shadow, 2px corners. `ribbon="blue" | "green"` optional only for current reading. Suggested widths: hero/current 80–90px, secondary list 48–60px, library 88–104px, detail 90–110px. Calendar thumbnails may be 20px but retain accessible book names outside them. Generated cover type never below 12px.
-- `ProgressBar`: default 3px; do not add chunky height utilities.
-- `DualProgressBar`: hairline with 12px flags. Keep room for both names.
-- `Segmented`: `variant="underline"` for editorial text tabs; default `pill` retained for compact form choices. Sliding indicator is 140ms.
-- `Cover` without image: a book-cloth colour chosen from the title (paper text ≥ 5:1), title with a short rule and the author from 80px; under 56px only the initial. The bookmark keeps its own strip.
-- `Avatar`: outlined by default; optional `filled` for selection. Sheets use paper and a ruled header.
-- `TabBar`: Hoy · Biblioteca · **Leer** · Estadísticas · Nosotros. The raised central circle opens the reading screen; while a timer runs it fills with the accent, shows the time and a ring for the current minute. A 2px accent hairline slides to the active tab. Bars that rest on it use `--tabbar-h`.
-- Couple: each person is drawn in their own accent (name as `eyebrow`, bars, dots); amber marks what you share (days read together, huellas on the shared track, a goal reached). `CoupleProgress` («Cómo vamos») pairs both readers and the week; shared books use two 2px hairlines (`PairBars`); the room's `DualProgressBar` carries the huellas as stops (filled = open, hollow = still locked). Compare in positive terms (days together, where each one is), never as a race.
-- Reading screen (`/leer/:readingId`, `?modo=paginas&dia=yyyy-MM-dd`): focus mode without tab bar. «Cronómetro» or «Solo páginas», big serif timer (`.timer-digits`, lining figures), `Stepper size="lg"` with hold-to-repeat, fixed bottom actions (one primary). Every «Leer» starts the timer and opens it in one tap; «Apuntar páginas» opens it in pages mode.
+- `font-sans` (Inter): toda la interfaz, botones, cifras de estadísticas (`.figure`, cifras proporcionales).
+- `font-serif` (Fraunces): títulos de pantalla (`display`, 30 px), títulos de libro (`title`, 22 px) y cifras
+  de lectura (página, cronómetro: `timer-digits`, `folio`).
+- `hand` (Caveat): solo las palabras de la pareja (huellas y mensajes).
+- Cifras alineadas (`tabular-nums`) solo en columnas y en el cronómetro.
 
-## Palette
-Light bg #F7F3EA / surface #FFFDF8 / ink #2B2A26 / muted & placeholder #6D685E / rule #DCD5C8.
-Dark bg #1D231E / surface #252C25 / ink #EEE8DA / muted & placeholder #B0AA9E / rule #41483E.
-Blue/green identity remains per user; amber text always `text-amber-ink`, not `text-amber`. Use `text-muted` and placeholder token; do not lower opacity of metadata. Very subtle background grain does not sit on top of text and is disabled for print/reduced transparency.
+## Color
 
-Light accents are slightly ink-deepened for textured-paper contrast: blue #486DA1, green #4A7555. Dark accents: blue #9BB4D1, green #96B58E. Amber-ink: light #875D18 / dark #E6B96D.
+| Token | Claro | Oscuro | Uso |
+| --- | --- | --- | --- |
+| `--bg` / `--surface` | #F7F3EA / #FFFDF8 | #1D231E / #252C25 | papel / tarjetas y hojas |
+| `--ink` / `--muted` | #2B2A26 / #6D685E | #EEE8DA / #B0AA9E | texto principal / secundario |
+| `--green` / `--blue` | #2E7B47 / #3B62C9 | #56A36B / #6C8FF0 | identidad de cada persona (marcas, barras) |
+| `--chrome` | #1F3B31 | #0F1A15 | barra flotante |
+| `--chrome-mark` | #D8B477 | #D8B477 | indicador activo de la barra |
+| `--heat-1…5` | violeta claro → oscuro | violeta oscuro → claro | minutos leídos por día |
+| `--rate-1…5` | latón claro → oscuro | latón oscuro → claro | nota de 1 a 5 estrellas |
 
-Measured WCAG contrast (background / surface): light muted+placeholder 5.00 / 5.45, amber-ink 5.25 / 5.72, blue 4.77 / 5.19, green 4.78 / 5.21. Dark muted+placeholder 6.93 / 6.20, amber-ink 8.79 / 7.86, blue 7.51 / 6.72, green 7.09 / 6.34. Conservative darkest grain light-paper sample #F1EDE4: muted 4.74, amber-ink 4.98, blue 4.52, green 4.53.
+El verde y el azul de identidad, la escala de minutos y la de notas están validados con el validador de
+dataviz (separación para daltonismo y contraste sobre el fondo). No inventes colores nuevos para series:
+usa estos tokens. El texto nunca lleva el color de una serie; la identidad la marca un punto o una barra.
 
-## Avoid
-No nested boxes, dashboard tile grids, decorative kicker above heading, huge progress rings, text under 12px, meaningless emoji controls, handwriting outside huellas, oversized rounded cards, multiple solid calls-to-action, glows, gradient washes, particles or ambient loops. Keep original accessible labels, focus-visible, reduced motion and all interactions.
+## Componentes
+
+- **Barra inferior** (`TabBar`): Hoy · Biblioteca · **Leer** · Estadísticas · Nosotros, flotante sobre el
+  papel. El botón central abre la lectura; con el cronómetro en marcha se rellena y muestra el tiempo.
+  Lo que se apoya en la barra usa `--tabbar-h`.
+- **Portada** (`Cover`): tela generada si no hay imagen; `ribbon` marca la lectura actual; `badge` imprime
+  en la esquina inferior derecha una pastilla blanca (`coverBadge`: «35 %», «★ 4,5», «✓», «p. 120»).
+  La inicial de la pareja va en la esquina inferior izquierda (`cover-mark`).
+- **Progreso** (`ProgressBar`): 6 px, extremos redondeados, pista del mismo color aclarado. Si se puede tocar,
+  la zona táctil mide al menos 44 px de alto.
+- **Cifras** (`StatFigure`): etiqueta corta + valor en `.figure` + unidad; dentro de un `<dl>`.
+- **Pestañas internas** (`Segmented variant="underline"`): para partir pantallas largas en vistas.
+- **Chips**: píldoras de 44 px; seleccionado = tinta sobre papel invertida.
+- **Botones**: 12 px de radio; `btn-primary` relleno con el color de la persona; `btn-outline` con borde de 1,5 px.
+- **Sello** (`SessionStamp`): la única celebración, al guardar una sesión.
+
+## Movimiento
+
+Tokens: `--dur-tap` 140 ms (presión), `--dur-move` 280 ms (indicadores), `--dur-fill` 760 ms (barras).
+Entradas escalonadas con `.enter` y `--i`; números que ruedan (`RollingNumber`, `CountUp`); la portada se
+agranda hacia la ficha del libro (View Transitions). Solo lo que está pasando ahora late (`live-dot`).
+
+## Evitar
+
+Texto por debajo de 12 px, párrafos en mayúsculas, más de un botón relleno, rejillas de tarjetas tipo
+panel, degradados de fondo, colores de serie inventados, gráficos sin tabla alternativa y adornos que
+obliguen a hacer scroll en Hoy.

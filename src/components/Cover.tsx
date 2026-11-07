@@ -10,6 +10,8 @@ interface Props {
   priority?: boolean
   /** Small bookmark on a current reading; leave other books unmarked. */
   ribbon?: Accent
+  /** Short label printed in the lower-right corner (progress, rating, page). */
+  badge?: string
 }
 
 /** Book-cloth colours for books without a cover image; paper text stays ≥ 5:1 on every one. */
@@ -22,7 +24,7 @@ function clothFor(title: string): string {
   return CLOTH[hash % CLOTH.length]
 }
 
-export function Cover({ book, width, className = '', children, priority = false, ribbon }: Props) {
+export function Cover({ book, width, className = '', children, priority = false, ribbon, badge }: Props) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const fallback = !book.cover_url || failedUrl === book.cover_url
   const size = width ? { width, height: Math.round(width * 1.5) } : { width: '100%', aspectRatio: '2 / 3' }
@@ -82,6 +84,7 @@ export function Cover({ book, width, className = '', children, priority = false,
       {ribbon && (
         <span aria-hidden className="book-ribbon" style={{ '--ribbon': `var(--${ribbon})` } as CSSProperties} />
       )}
+      {badge && <span className="cover-badge">{badge}</span>}
       {children}
     </div>
   )

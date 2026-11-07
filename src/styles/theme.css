@@ -11,8 +11,9 @@
   --placeholder: var(--muted);
   --rule: #dcd5c8;
   --border: var(--rule);
-  --green: #4a7555;
-  --blue: #486da1;
+  /* Identity colours, validated for charts (ΔE ≥ 15 between them, ≥ 4.5:1 on paper). */
+  --green: #2e7b47;
+  --blue: #3b62c9;
   --danger: #b5543c;
   --amber: #c08a2e;
   --amber-ink: #875d18;
@@ -28,7 +29,28 @@
   --dur-move: 280ms;
   --dur-fill: 760ms;
   /* Tab bar height above the safe area (58px row + hairline); bars that sit on it use this. */
-  --tabbar-h: 59px;
+  --tabbar-h: 82px;
+  /* Floating navigation bar and other dark chrome. */
+  --chrome: #1f3b31;
+  --chrome-ink: #f3ede2;
+  --chrome-muted: #a9b5a6;
+  --chrome-mark: #d8b477;
+  /* Small labels printed on covers. */
+  --badge-bg: #ffffff;
+  --badge-ink: #24221e;
+  /* Sequential ramps (validated): reading time per day and star ratings, less → more. */
+  --heat-0: #e7e0d2;
+  --heat-1: #b3a7d7;
+  --heat-2: #9688c6;
+  --heat-3: #7a6bb2;
+  --heat-4: #605299;
+  --heat-5: #473c7e;
+  --rate-1: #c8a15c;
+  --rate-2: #ae8641;
+  --rate-3: #906a2b;
+  --rate-4: #71501a;
+  --rate-5: #52380c;
+  --grid: #e4dccd;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -38,14 +60,29 @@
     --ink: #eee8da;
     --muted: #b0aa9e;
     --rule: #41483e;
-    --green: #96b58e;
-    --blue: #9bb4d1;
+    --green: #56a36b;
+    --blue: #6c8ff0;
     --danger: #e6a08b;
     --amber: #d9a85a;
     --amber-ink: #e6b96d;
     --accent-contrast: #1d231e;
     --grain-opacity: 0.018;
     --paper-shadow: 0 4px 13px -5px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.12);
+    --chrome: #0f1a15;
+    --chrome-ink: #eee8da;
+    --chrome-muted: #a9b5a6;
+    --heat-0: #323a31;
+    --heat-1: #5a4f8f;
+    --heat-2: #6e63a8;
+    --heat-3: #8579bf;
+    --heat-4: #9f95d3;
+    --heat-5: #bcb4e6;
+    --rate-1: #7a5e2c;
+    --rate-2: #94743a;
+    --rate-3: #ae8b4b;
+    --rate-4: #c6a465;
+    --rate-5: #ddbf86;
+    --grid: #3a4238;
     color-scheme: dark;
   }
 }
@@ -55,14 +92,29 @@
   --ink: #eee8da;
   --muted: #b0aa9e;
   --rule: #41483e;
-  --green: #96b58e;
-  --blue: #9bb4d1;
+  --green: #56a36b;
+  --blue: #6c8ff0;
   --danger: #e6a08b;
   --amber: #d9a85a;
   --amber-ink: #e6b96d;
   --accent-contrast: #1d231e;
   --grain-opacity: 0.018;
   --paper-shadow: 0 4px 13px -5px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.12);
+  --chrome: #0f1a15;
+  --chrome-ink: #eee8da;
+  --chrome-muted: #a9b5a6;
+  --heat-0: #323a31;
+  --heat-1: #5a4f8f;
+  --heat-2: #6e63a8;
+  --heat-3: #8579bf;
+  --heat-4: #9f95d3;
+  --heat-5: #bcb4e6;
+  --rate-1: #7a5e2c;
+  --rate-2: #94743a;
+  --rate-3: #ae8b4b;
+  --rate-4: #c6a465;
+  --rate-5: #ddbf86;
+  --grid: #3a4238;
   color-scheme: dark;
 }
 :root[data-accent='blue'] {
@@ -91,11 +143,16 @@
   --color-accent: var(--accent);
   --color-soft: var(--soft);
   --color-track: var(--track);
+  --color-chrome: var(--chrome);
+  --color-chrome-ink: var(--chrome-ink);
+  --color-chrome-muted: var(--chrome-muted);
+  --color-chrome-mark: var(--chrome-mark);
+  --color-grid: var(--grid);
   --font-serif: 'Fraunces Variable', Georgia, serif;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-hand: 'Caveat', cursive;
-  --radius-card: 8px;
-  --radius-btn: 6px;
+  --radius-card: 14px;
+  --radius-btn: 12px;
   --radius-cover: 2px;
   --shadow-cover: 3px 5px 11px -3px rgb(117 96 60 / 0.3);
   --ease-spring: var(--spring);
@@ -146,16 +203,16 @@
   h1 {
     font-family: var(--font-serif);
     font-weight: 400;
-    font-size: 34px;
-    line-height: 1.06;
-    letter-spacing: -0.025em;
+    font-size: 30px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
   }
   h2 {
     font-family: var(--font-serif);
     font-weight: 450;
-    font-size: 23px;
-    line-height: 1.16;
-    letter-spacing: -0.015em;
+    font-size: 22px;
+    line-height: 1.18;
+    letter-spacing: -0.012em;
   }
   button,
   a,
@@ -195,27 +252,35 @@
 @layer components {
   .display {
     font-family: var(--font-serif);
-    font-size: 34px;
+    font-size: 30px;
     font-weight: 400;
-    line-height: 1.06;
-    letter-spacing: -0.025em;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
   .display-italic {
     font-family: var(--font-serif);
-    font-size: 34px;
+    font-size: 30px;
     font-weight: 350;
     font-style: italic;
-    line-height: 1.06;
-    letter-spacing: -0.025em;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
   .title {
     font-family: var(--font-serif);
-    font-size: 23px;
+    font-size: 22px;
     font-weight: 450;
-    line-height: 1.16;
-    letter-spacing: -0.015em;
+    line-height: 1.18;
+    letter-spacing: -0.012em;
+  }
+  /* Data values (stats, tiles): same sans as the interface, proportional figures. */
+  .figure {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    font-variant-numeric: proportional-nums lining-nums;
   }
   .eyebrow,
   .lbl {
@@ -271,7 +336,7 @@
     padding: 0 16px;
     border-radius: var(--radius-btn);
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     transition:
       transform 140ms var(--ease),
       background-color 140ms var(--ease),
@@ -300,7 +365,7 @@
   .btn-secondary {
     background: transparent;
     color: var(--ink);
-    border: 1px solid var(--ink);
+    border: 1.5px solid var(--ink);
   }
   .btn-link {
     display: inline-flex;
@@ -320,7 +385,7 @@
     width: 44px;
     height: 44px;
     flex: none;
-    border-radius: 6px;
+    border-radius: 12px;
     display: grid;
     place-items: center;
     background: transparent;
@@ -332,11 +397,11 @@
   }
   .chip {
     min-height: 44px;
-    padding: 0 13px;
-    border-radius: 6px;
+    padding: 0 14px;
+    border-radius: 999px;
     border: 1px solid var(--rule);
     background: transparent;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     display: inline-flex;
     align-items: center;
@@ -348,15 +413,15 @@
       border-color 140ms var(--ease);
   }
   .chip[aria-pressed='true'] {
-    background: var(--soft);
-    border-color: var(--accent);
-    color: var(--ink);
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
   }
   .input {
     width: 100%;
     min-height: 44px;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-btn);
     border: 1px solid var(--rule);
     background: var(--surface);
     color: var(--ink);
@@ -399,6 +464,43 @@
     background: repeating-linear-gradient(0deg, #e5ddcc 0 1px, #fff9ec 1px 2px);
     opacity: 0.7;
     z-index: 2;
+    pointer-events: none;
+  }
+  /* White label printed inside a cover's corner: progress, rating or page. */
+  .cover-badge {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    z-index: 4;
+    padding: 3px 7px 3px;
+    border-radius: 999px;
+    background: var(--badge-bg);
+    color: var(--badge-ink);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0;
+    font-variant-numeric: lining-nums;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+    pointer-events: none;
+  }
+  .cover-mark {
+    position: absolute;
+    left: 5px;
+    bottom: 5px;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--badge-bg);
+    font-family: var(--font-serif);
+    font-size: 12px;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
     pointer-events: none;
   }
   .book-ribbon {
