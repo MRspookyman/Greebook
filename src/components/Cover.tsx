@@ -12,6 +12,8 @@ interface Props {
   ribbon?: Accent
   /** Short label printed in the lower-right corner (progress, rating, page). */
   badge?: string
+  /** Shared-element name so the cover morphs between screens (View Transitions). Must be unique on a page. */
+  transitionName?: string
 }
 
 /** Book-cloth colours for books without a cover image; paper text stays ≥ 5:1 on every one. */
@@ -24,7 +26,16 @@ function clothFor(title: string): string {
   return CLOTH[hash % CLOTH.length]
 }
 
-export function Cover({ book, width, className = '', children, priority = false, ribbon, badge }: Props) {
+export function Cover({
+  book,
+  width,
+  className = '',
+  children,
+  priority = false,
+  ribbon,
+  badge,
+  transitionName,
+}: Props) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const fallback = !book.cover_url || failedUrl === book.cover_url
   const size = width ? { width, height: Math.round(width * 1.5) } : { width: '100%', aspectRatio: '2 / 3' }
@@ -34,7 +45,11 @@ export function Cover({ book, width, className = '', children, priority = false,
   // Leave the bookmark its own strip so it never sits on the title.
   const inset = width ? Math.max(6, width * 0.11) : 0
   return (
-    <div className={`book-cover bg-border ${className}`} style={size} aria-label={fallback ? book.title : undefined}>
+    <div
+      className={`book-cover bg-border ${className}`}
+      style={{ ...size, viewTransitionName: transitionName }}
+      aria-label={fallback ? book.title : undefined}
+    >
       {fallback ? (
         <div
           className="flex h-full flex-col font-serif leading-[1.1]"
@@ -42,11 +57,12 @@ export function Cover({ book, width, className = '', children, priority = false,
             background: clothFor(book.title),
             color: INK,
             fontSize: tiny ? Math.max(12, (width ?? 0) * 0.46) : width ? Math.max(12, width * 0.15) : 16,
+            // A corner badge needs its own strip at the bottom so it never covers the author.
             padding: tiny
               ? 0
               : width
-                ? `${Math.max(6, width * 0.13)}px ${ribbon ? width * 0.3 : inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
-                : `13% ${ribbon ? '30%' : '11%'} 13% 11%`,
+                ? `${Math.max(6, width * 0.13)}px ${ribbon ? width * 0.3 : inset}px ${Math.max(6, width * 0.13) + (badge ? 24 : 0)}px ${inset}px`
+                : `13% ${ribbon ? '30%' : '11%'} ${badge ? 'calc(13% + 24px)' : '13%'} 11%`,
             justifyContent: tiny ? 'center' : 'space-between',
             alignItems: tiny ? 'center' : 'stretch',
           }}

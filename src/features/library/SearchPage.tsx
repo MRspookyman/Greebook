@@ -1,13 +1,19 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Link } from 'react-router'
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Camera, ChevronRight, Search } from 'lucide-react'
+import { Link, useNavigate } from 'react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Camera, Check, Play, Plus, Search } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
+import { toast } from '@/components/toast'
+import { useMe } from '@/features/auth/me'
 import { lookupIsbn, searchBooks } from '@/lib/books/search'
+import { qk } from '@/lib/data'
 import type { BookCandidate } from '@/lib/types'
 import { AddReadingSheet } from './AddReadingSheet'
+import { addReading, AlreadyInLibrary, removeReading } from './addReading'
 import { ManualBookForm } from './ManualBookForm'
+
+const keyOf = (book: BookCandidate) => book.google_id ?? book.openlibrary_key ?? `${book.title}:${book.authors.join()}`
 
 // zxing is large; load it only when the camera is opened.
 const IsbnScanner = lazy(() => import('./IsbnScanner').then((m) => ({ default: m.IsbnScanner })))
@@ -18,6 +24,11 @@ export function SearchPage() {
   const [scanner, setScanner] = useState(false)
   const [manual, setManual] = useState(false)
   const [selected, setSelected] = useState<BookCandidate | null>(null)
+  const [added, setAdded] = useState<Record<string, string>>({})
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+  const { userId } = useMe()
+  const qc = useQueryClient()
+  const navigate = useNavigate()
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebounced(query.trim()), 400)
     return () => window.clearTimeout(timeout)
@@ -30,6 +41,50 @@ export function SearchPage() {
     retry: false,
   })
   const waiting = query.trim().length >= 3 && (!ready || results.isPending)
+
+  /** One tap: paper, with the page count the catalogue gave us. */
+  async function quickAdd(book: BookCandidate, status: 'want' | 'reading') {
+    const key = keyOf(book)
+    if (busyKey || !book.page_count) return
+    setBusyKey(key)
+    try {
+      const id = await addReading({ userId, candidate: book, format: 'paper', total: book.page_count, status })
+      await qc.invalidateQueries({ queryKey: qk.readings(userId) })
+      if (status === 'reading') {
+        toast('Empiezas hoy', book.title)
+        navigate(`/libro/${id}`)
+        return
+      }
+      setAdded((current) => ({ ...current, [key]: id }))
+      toast('Añadido a Pendientes', book.title, {
+        label: 'Deshacer',
+        run: () => void undo(book, id),
+      })
+    } catch (cause) {
+      if (cause instanceof AlreadyInLibrary) {
+        toast(cause.message)
+        navigate(`/libro/${cause.readingId}`)
+        return
+      }
+      toast('No se pudo añadir el libro', 'Comprueba tu conexión e inténtalo de nuevo.')
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  async function undo(book: BookCandidate, id: string) {
+    try {
+      await removeReading(id)
+      setAdded((current) => {
+        const next = { ...current }
+        delete next[keyOf(book)]
+        return next
+      })
+      await qc.invalidateQueries({ queryKey: qk.readings(userId) })
+    } catch {
+      toast('No se pudo deshacer', 'Puedes quitarlo desde su ficha.')
+    }
+  }
   const emptySearch = ready && (results.isError || (results.isSuccess && results.data.length === 0))
   return (
     <section className="space-y-6">
@@ -41,10 +96,10 @@ export function SearchPage() {
       </header>
       <div className="flex items-center gap-2">
         <label className="relative min-w-0 flex-1">
-          <Search size={20} className="pointer-events-none absolute top-3 left-0 text-muted" />
+          <Search size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
           <span className="sr-only">Título, autor o ISBN</span>
           <input
-            className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent pl-7"
+            className="input pl-10"
             type="search"
             name="book-search"
             autoComplete="off"
@@ -97,36 +152,82 @@ export function SearchPage() {
         )}
         {ready && results.isSuccess && results.data.length > 0 && (
           <ul>
-            {results.data.map((book, index) => (
-              <li
-                key={`${book.google_id ?? book.openlibrary_key ?? book.title}:${index}`}
-                className="border-b border-rule"
-              >
-                <button
-                  className="pressable flex w-full items-center gap-4 py-5 text-left"
-                  onClick={() => setSelected(book)}
-                >
-                  <Cover book={book} width={60} />
-                  <div className="min-w-0 flex-1">
-                    <h2 className="line-clamp-2 font-serif text-xl leading-tight">{book.title}</h2>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted">
-                      {book.authors.join(', ') || 'Autor desconocido'}
-                    </p>
-                    <p className="text-muted text-sm">
-                      {[
-                        book.published_year,
-                        book.page_count
-                          ? `${new Intl.NumberFormat('es').format(book.page_count)} ${book.page_count === 1 ? 'página' : 'páginas'}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
+            {results.data.map((book, index) => {
+              const key = keyOf(book)
+              const addedId = added[key]
+              const pages = book.page_count
+              return (
+                <li key={`${key}:${index}`} className="border-b border-rule py-4">
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      className="pressable flex-none self-start"
+                      onClick={() => setSelected(book)}
+                      aria-label={`Más opciones para «${book.title}»`}
+                    >
+                      <Cover book={book} width={64} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="line-clamp-2 font-serif text-[19px] leading-tight">{book.title}</h2>
+                      <p className="mt-1 line-clamp-1 text-[13px] text-muted">
+                        {book.authors.join(', ') || 'Autor desconocido'}
+                      </p>
+                      <p className="text-[13px] text-muted">
+                        {[
+                          book.published_year,
+                          pages
+                            ? `${new Intl.NumberFormat('es').format(pages)} ${pages === 1 ? 'página' : 'páginas'}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                      {addedId ? (
+                        <p className="mt-2 flex min-h-11 items-center gap-2 text-[14px]" role="status">
+                          <Check size={16} className="text-accent" aria-hidden />
+                          En Pendientes
+                          <button
+                            type="button"
+                            className="btn btn-link ml-1 px-1"
+                            onClick={() => void undo(book, addedId)}
+                          >
+                            Deshacer
+                          </button>
+                        </p>
+                      ) : (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {pages ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-outline gap-1 px-2.5 text-[14px]"
+                                disabled={busyKey !== null}
+                                onClick={() => void quickAdd(book, 'reading')}
+                              >
+                                <Play size={14} aria-hidden />
+                                Empezar ya
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline gap-1 px-2.5 text-[14px]"
+                                disabled={busyKey !== null}
+                                onClick={() => void quickAdd(book, 'want')}
+                              >
+                                <Plus size={16} aria-hidden />
+                                A pendientes
+                              </button>
+                            </>
+                          ) : null}
+                          <button type="button" className="btn btn-link px-1" onClick={() => setSelected(book)}>
+                            {pages ? 'Más opciones' : 'Añadir…'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
-                </button>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

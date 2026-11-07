@@ -8,12 +8,10 @@ import { Segmented } from '@/components/Segmented'
 import { Stepper } from '@/components/Stepper'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
-import { upsertBook } from '@/lib/books/search'
 import { qk } from '@/lib/data'
-import { todayISO } from '@/lib/dates'
-import { supabase } from '@/lib/supabase'
-import type { BookCandidate, Format, Unit } from '@/lib/types'
+import type { BookCandidate, Format } from '@/lib/types'
 import { parseHMM, toHMM } from '@/lib/units'
+import { addReading, AlreadyInLibrary } from './addReading'
 
 export function AddReadingSheet({ candidate, onClose }: { candidate: BookCandidate | null; onClose: () => void }) {
   return (
@@ -41,7 +39,6 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [totalError, setTotalError] = useState('')
-  const unit: Unit = format === 'paper' ? 'pages' : 'minutes'
   const source = candidate.google_id ? 'Google Books' : candidate.openlibrary_key ? 'Open Library' : null
   const audioDuration = customDuration ? parseHMM(durationInput) : duration
 
@@ -66,38 +63,16 @@ function ReadingForm({ candidate }: { candidate: BookCandidate }) {
     setError('')
     setTotalError('')
     try {
-      const book = await upsertBook(candidate)
-      const { data: active, error: activeError } = await supabase
-        .from('readings')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('book_id', book.id)
-        .in('status', ['want', 'reading'])
-        .limit(1)
-      if (activeError) throw activeError
-      if (active?.[0]) {
-        toast('Ya lo tienes en tu biblioteca')
-        navigate(`/libro/${active[0].id}`)
-        return
-      }
-      const { data, error: insertError } = await supabase
-        .from('readings')
-        .insert({
-          user_id: userId,
-          book_id: book.id,
-          format,
-          unit,
-          total_units: total,
-          status,
-          started_on: status === 'reading' ? todayISO() : null,
-        })
-        .select('id')
-        .single()
-      if (insertError) throw insertError
+      const id = await addReading({ userId, candidate, format, total, status })
       await qc.invalidateQueries({ queryKey: qk.readings(userId) })
       toast('Añadido a tu biblioteca')
-      navigate(`/libro/${data.id}`)
-    } catch {
+      navigate(`/libro/${id}`)
+    } catch (cause) {
+      if (cause instanceof AlreadyInLibrary) {
+        toast(cause.message)
+        navigate(`/libro/${cause.readingId}`)
+        return
+      }
       setError('No se pudo añadir el libro. Comprueba tu conexión e inténtalo de nuevo.')
     } finally {
       setBusy(false)
