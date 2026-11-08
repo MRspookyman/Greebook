@@ -81,7 +81,10 @@ export async function toggleQuoteHeart(quoteId: string): Promise<void> {
     emoji: '❤️',
     created_at: new Date().toISOString(),
   }
-  queryClient.setQueryData(qk.reactions(), existing ? before.filter((r) => r.id !== existing.id) : [...before, reaction])
+  queryClient.setQueryData(
+    qk.reactions(),
+    existing ? before.filter((r) => r.id !== existing.id) : [...before, reaction],
+  )
   try {
     const { error } = existing
       ? await supabase.from('reactions').delete().eq('id', existing.id)
@@ -99,7 +102,10 @@ export async function toggleQuoteHeart(quoteId: string): Promise<void> {
 export function myReadingOf(readings: ReadingWithBook[] | undefined, bookId: string): ReadingWithBook | undefined {
   return (readings ?? [])
     .filter((r) => r.book_id === bookId)
-    .sort((a, b) => Number(b.status === 'reading') - Number(a.status === 'reading') || b.updated_at.localeCompare(a.updated_at))[0]
+    .sort(
+      (a, b) =>
+        Number(b.status === 'reading') - Number(a.status === 'reading') || b.updated_at.localeCompare(a.updated_at),
+    )[0]
 }
 
 /** Pages left until a locked quote opens, when the reading is counted in pages. */

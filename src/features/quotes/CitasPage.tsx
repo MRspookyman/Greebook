@@ -50,7 +50,13 @@ export function CitasPage() {
   }, [location.hash, quotes.length])
 
   const chip = (value: Filter, label: string) => (
-    <button key={value} type="button" className="chip flex-none" aria-pressed={filter === value} onClick={() => setFilter(value)}>
+    <button
+      key={value}
+      type="button"
+      className="chip flex-none"
+      aria-pressed={filter === value}
+      onClick={() => setFilter(value)}
+    >
       {label}
     </button>
   )
@@ -85,7 +91,9 @@ export function CitasPage() {
         </div>
       ) : visible.length === 0 ? (
         <EmptyState title={quotes.length ? 'Nada con este filtro' : 'Aún no hay ninguna cita'}>
-          <p className="text-muted">Cuando una frase te guste, guárdala con su página{partner ? ` y ${partner.display_name} la verá` : ''}.</p>
+          <p className="text-muted">
+            Cuando una frase te guste, guárdala con su página{partner ? ` y ${partner.display_name} la verá` : ''}.
+          </p>
           <button className="btn btn-primary mt-2" onClick={() => setComposing(true)}>
             Guardar la primera
           </button>

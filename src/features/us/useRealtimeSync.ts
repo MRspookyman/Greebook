@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const TABLES = [
   'message_pings',
+  'read_together',
   'quote_replies',
   'invites',
   'together_items',
@@ -38,6 +39,9 @@ export function useRealtimeSync(): void {
         switch (table) {
           case 'message_pings':
           case 'quote_replies':
+            return
+          case 'read_together':
+            void qc.invalidateQueries({ queryKey: qk.readTogether() })
             return
           case 'invites':
             void qc.invalidateQueries({ queryKey: qk.invites() })

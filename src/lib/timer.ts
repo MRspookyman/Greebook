@@ -11,6 +11,8 @@ export interface TimerState {
   pausedMs?: number
   /** Position set on the reading screen before saving, so leaving and coming back keeps it. */
   draft?: number | null
+  /** The «lectura a la vez» this timer belongs to, once one of you joined the other. */
+  togetherId?: string | null
 }
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
@@ -28,6 +30,7 @@ export function parseTimer(value: unknown): TimerState | null {
     pausedAt: (t.pausedAt as number | null | undefined) ?? null,
     pausedMs: (t.pausedMs as number | undefined) ?? 0,
     draft: Number.isSafeInteger(t.draft) ? (t.draft as number) : null,
+    togetherId: typeof t.togetherId === 'string' ? t.togetherId : null,
   }
 }
 

@@ -7,6 +7,7 @@ import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { SurpriseHost } from '@/features/surprises/SurpriseHost'
 import { useRatitoTimer } from '@/features/session/Timer'
 import { NightContext } from '@/components/night'
+import { useAttachTogether } from '@/features/together/live'
 
 const TAB_ORDER = ['/', '/biblioteca', '/stats', '/nosotros']
 
@@ -31,6 +32,7 @@ export function Layout() {
   useRealtimeSync()
   useOfflineSync()
   useRatitoTimer()
+  useAttachTogether()
 
   // The reading screen is a focus mode: lamp-lit, it rises like a sheet and hides the tab bar.
   const focus = location.pathname.startsWith('/leer')

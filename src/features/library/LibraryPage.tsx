@@ -63,15 +63,22 @@ export function LibraryPage() {
         if (entry) entry.readers.push(person.accent)
         else shelf.set(reading.book_id, { reading, readers: [person.accent] })
       }
-  const shelfBooks = [...shelf.values()].sort((a, b) => (a.reading.finished_on ?? '').localeCompare(b.reading.finished_on ?? ''))
+  const shelfBooks = [...shelf.values()].sort((a, b) =>
+    (a.reading.finished_on ?? '').localeCompare(b.reading.finished_on ?? ''),
+  )
   const earlier = people.flatMap((person) =>
-    person.readings.filter((r) => r.status === 'finished' && !r.finished_on?.startsWith(year)).map((reading) => ({ reading, accent: person.accent })),
+    person.readings
+      .filter((r) => r.status === 'finished' && !r.finished_on?.startsWith(year))
+      .map((reading) => ({ reading, accent: person.accent })),
   )
   const abandoned = people.flatMap((person) => person.readings.filter((r) => r.status === 'abandoned'))
   const finishedByBoth =
     partner && who === 'both'
       ? (mineQuery.data ?? []).filter(
-          (r) => r.status === 'finished' && matches(r) && (theirsQuery.data ?? []).some((t) => t.book_id === r.book_id && t.status === 'finished'),
+          (r) =>
+            r.status === 'finished' &&
+            matches(r) &&
+            (theirsQuery.data ?? []).some((t) => t.book_id === r.book_id && t.status === 'finished'),
         )
       : []
   const togetherList = (together.data ?? []).filter((item) => !roomBooks.has(item.book_id))
@@ -98,7 +105,11 @@ export function LibraryPage() {
         />
       )}
       <label className="relative block">
-        <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" size={18} aria-hidden />
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted"
+          size={18}
+          aria-hidden
+        />
         <input
           className="input pl-10"
           type="search"
@@ -126,7 +137,10 @@ export function LibraryPage() {
         </EmptyState>
       ) : (
         <>
-          <Shelf title="Leyendo ahora" empty={normalized ? 'Nada en curso con ese título.' : 'Nadie está leyendo nada ahora mismo.'}>
+          <Shelf
+            title="Leyendo ahora"
+            empty={normalized ? 'Nada en curso con ese título.' : 'Nadie está leyendo nada ahora mismo.'}
+          >
             {who !== 'theirs' || partner
               ? sharedNow.map((room) => (
                   <Tile
@@ -135,7 +149,14 @@ export function LibraryPage() {
                     reading={room.mine}
                     ribbons={partner ? [partner.accent, profile.accent] : [profile.accent]}
                     caption={`A dúo · tú p. ${room.mine.current_position}, ${partner?.display_name ?? ''} p. ${room.theirs.current_position}`}
-                    bars={partner ? [{ value: progressFraction(room.theirs), accent: partner.accent }, { value: progressFraction(room.mine), accent: profile.accent }] : []}
+                    bars={
+                      partner
+                        ? [
+                            { value: progressFraction(room.theirs), accent: partner.accent },
+                            { value: progressFraction(room.mine), accent: profile.accent },
+                          ]
+                        : []
+                    }
                   />
                 ))
               : null}
@@ -157,7 +178,11 @@ export function LibraryPage() {
                 A dúo
               </h2>
               {sharedNow.map((room) => (
-                <Link key={room.book.id} to={`/libro/${room.mine.id}`} className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2.5 first-of-type:border-0">
+                <Link
+                  key={room.book.id}
+                  to={`/libro/${room.mine.id}`}
+                  className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2.5 first-of-type:border-0"
+                >
                   <Cover book={room.book} width={48} ribbons={[partner.accent, profile.accent]} />
                   <span className="grid min-w-0 flex-1 gap-0.5">
                     <span className="truncate font-serif text-[17px]">{room.book.title}</span>
@@ -168,7 +193,11 @@ export function LibraryPage() {
                 </Link>
               ))}
               {finishedByBoth.map((reading) => (
-                <Link key={reading.id} to={`/libro/${reading.id}`} className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2.5 first-of-type:border-0">
+                <Link
+                  key={reading.id}
+                  to={`/libro/${reading.id}`}
+                  className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2.5 first-of-type:border-0"
+                >
                   <Cover book={reading.book} width={48} ribbons={[partner.accent, profile.accent]} />
                   <span className="grid min-w-0 flex-1 gap-0.5">
                     <span className="truncate font-serif text-[17px]">{reading.book.title}</span>
@@ -201,7 +230,9 @@ export function LibraryPage() {
                     <Cover book={reading.book} ribbons={who === 'both' ? [accent] : undefined} />
                     <span className="line-clamp-2 text-[13px] font-extrabold leading-snug">{reading.book.title}</span>
                     {who === 'both' && (
-                      <span className="sr-only">{accent === profile.accent ? 'Tuyo' : `De ${partner?.display_name}`}</span>
+                      <span className="sr-only">
+                        {accent === profile.accent ? 'Tuyo' : `De ${partner?.display_name}`}
+                      </span>
                     )}
                   </Link>
                 ))}
@@ -328,7 +359,11 @@ function Spine({ reading, readers }: { reading: ReadingWithBook; readers: Accent
     >
       <span className="absolute top-1.5 left-1/2 flex -translate-x-1/2 gap-0.5" aria-hidden>
         {readers.map((accent, index) => (
-          <i key={index} className="h-1.5 w-1.5 rounded-full" style={{ background: `var(--${accent})`, boxShadow: `0 0 0 1.5px ${CLOTH_INK}` }} />
+          <i
+            key={index}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: `var(--${accent})`, boxShadow: `0 0 0 1.5px ${CLOTH_INK}` }}
+          />
         ))}
       </span>
       <span className="spine-title">{reading.book.title}</span>

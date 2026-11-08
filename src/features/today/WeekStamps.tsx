@@ -29,12 +29,25 @@ export function WeekStamps({
         const isToday = date === today
         const future = date > today
         const who = me ? profile : partner
-        const text = me && you ? 'leísteis los dos' : me ? 'solo leíste tú' : you ? `solo leyó ${partner?.display_name}` : 'sin lectura'
+        const text =
+          me && you
+            ? 'leísteis los dos'
+            : me
+              ? 'solo leíste tú'
+              : you
+                ? `solo leyó ${partner?.display_name}`
+                : 'sin lectura'
         return (
-          <div key={date} role="listitem" className={`grid justify-items-center gap-1.5 text-xs font-extrabold ${isToday ? 'text-ink' : 'text-muted'}`}>
+          <div
+            key={date}
+            role="listitem"
+            className={`grid justify-items-center gap-1.5 text-xs font-extrabold ${isToday ? 'text-ink' : 'text-muted'}`}
+          >
             <span
               className={`stamp ${me && you ? 'stamp-both' : me || you ? 'stamp-one' : ''} ${isToday && !(me && you) ? 'stamp-pending' : ''} ${future ? 'opacity-50' : ''}`}
-              style={{ '--rot': `${TILT[index]}deg`, '--pc': who ? `var(--${who.accent})` : undefined } as CSSProperties}
+              style={
+                { '--rot': `${TILT[index]}deg`, '--pc': who ? `var(--${who.accent})` : undefined } as CSSProperties
+              }
               role="img"
               aria-label={`${fmt(date, 'EEEE d')}: ${future ? 'aún no ha llegado' : text}${isToday && !me ? '; falta tu parte' : ''}`}
             >

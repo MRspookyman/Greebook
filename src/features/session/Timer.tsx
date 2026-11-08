@@ -89,16 +89,22 @@ export function useRatitoTimer(): void {
 }
 
 /** Starts timing a reading; asks before replacing a timer that belongs to another book. */
-export function startTimer(reading: ReadingWithBook): boolean {
+export function startTimer(reading: ReadingWithBook, togetherId: string | null = null): boolean {
   if (timer?.readingId === reading.id) {
     if (timer.pausedAt != null) resumeTimer()
+    if (togetherId && timer.togetherId !== togetherId) setTimer({ ...timer, togetherId })
     return true
   }
   if (timer && !window.confirm('Ya hay un cronómetro en marcha con otro libro. ¿Lo descartas y empiezas este?'))
     return false
-  setTimer({ readingId: reading.id, startedAt: Date.now(), pausedAt: null, pausedMs: 0 })
+  setTimer({ readingId: reading.id, startedAt: Date.now(), pausedAt: null, pausedMs: 0, togetherId })
   void setReadingNow(reading.id)
   return true
+}
+
+/** Links the running timer to a «lectura a la vez» (your partner joined you). */
+export function attachTogether(togetherId: string): void {
+  if (timer && timer.togetherId !== togetherId) setTimer({ ...timer, togetherId })
 }
 
 export function pauseTimer(): void {

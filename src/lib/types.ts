@@ -73,6 +73,8 @@ export interface Session {
   end_pos: number
   minutes: number | null
   created_at: string
+  /** Set when this session was read at the same time as the partner's (`read_together`). */
+  together_id?: string | null
 }
 
 /** Private diary note/quote of one reading (only its author sees it). */
@@ -192,4 +194,14 @@ export interface QuoteReply {
   body: string
   seen_at: string | null
   created_at: string
+}
+
+/** A «lectura a la vez»: user_a was reading, user_b joined; closed when both have saved their part. */
+export interface ReadTogether {
+  id: string
+  user_a: string
+  user_b: string
+  started_at: string
+  ended_at: string | null
+  note: string | null
 }

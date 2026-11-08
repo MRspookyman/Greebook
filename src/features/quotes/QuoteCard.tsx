@@ -18,7 +18,15 @@ const ago = (iso: string) =>
  * One quote or note on its page, with the author's ribbon. A partner's quote that would be a spoiler stays closed
  * until you reach its page; it can still be opened (they'll see you couldn't wait).
  */
-export function QuoteCard({ quote, compact = false, showBook = true }: { quote: Quote; compact?: boolean; showBook?: boolean }) {
+export function QuoteCard({
+  quote,
+  compact = false,
+  showBook = true,
+}: {
+  quote: Quote
+  compact?: boolean
+  showBook?: boolean
+}) {
   const { userId, profile, partner } = useMe()
   const mine = quote.user_id === userId
   const author = mine ? profile : partner
@@ -95,7 +103,11 @@ export function QuoteCard({ quote, compact = false, showBook = true }: { quote: 
           {confirmOpen ? (
             <>
               <span className="px-2 text-sm">Puede destriparte algo.</span>
-              <button className="btn btn-link px-2 text-sm" disabled={busy} onClick={() => void act(() => openQuoteEarly(quote.id), 'No se pudo abrir')}>
+              <button
+                className="btn btn-link px-2 text-sm"
+                disabled={busy}
+                onClick={() => void act(() => openQuoteEarly(quote.id), 'No se pudo abrir')}
+              >
                 Abrirla
               </button>
               <button className="btn btn-link px-2 text-sm" onClick={() => setConfirmOpen(false)}>
@@ -130,7 +142,9 @@ export function QuoteCard({ quote, compact = false, showBook = true }: { quote: 
         </p>
       )}
       {quote.opened_early && !mine && <p className="text-xs text-muted">La abriste antes de llegar.</p>}
-      {quote.opened_early && mine && <p className="text-xs text-muted">{partner?.display_name} no pudo esperar y la abrió antes.</p>}
+      {quote.opened_early && mine && (
+        <p className="text-xs text-muted">{partner?.display_name} no pudo esperar y la abrió antes.</p>
+      )}
       {!compact &&
         replies.map((r) => {
           const who = r.user_id === userId ? profile : partner
@@ -180,7 +194,9 @@ export function QuoteCard({ quote, compact = false, showBook = true }: { quote: 
       )}
       <div className="-mx-2 flex flex-wrap items-center border-t border-dashed border-rule pt-1">
         {mine ? (
-          <span className={`flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold ${partnerLiked ? 'text-rose' : 'text-muted'}`}>
+          <span
+            className={`flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold ${partnerLiked ? 'text-rose' : 'text-muted'}`}
+          >
             <Heart size={18} fill={partnerLiked ? 'currentColor' : 'none'} aria-hidden />
             {partnerLiked ? `Le gusta a ${partner?.display_name}` : quote.shared ? 'Aún sin corazón' : 'Privada'}
           </span>
@@ -192,19 +208,32 @@ export function QuoteCard({ quote, compact = false, showBook = true }: { quote: 
             className={`flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-sm font-extrabold ${liked ? 'text-rose' : 'text-muted'}`}
             onClick={() => void act(() => toggleQuoteHeart(quote.id), 'No se pudo guardar el corazón')}
           >
-            <Heart size={19} fill={liked ? 'currentColor' : 'none'} aria-hidden style={{ transition: 'fill 140ms var(--ease)' }} />
+            <Heart
+              size={19}
+              fill={liked ? 'currentColor' : 'none'}
+              aria-hidden
+              style={{ transition: 'fill 140ms var(--ease)' }}
+            />
             {liked ? 'Te gusta' : 'Me gusta'}
           </button>
         )}
         {quote.shared && !replying && (
-          <button type="button" className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold" onClick={() => setReplying(true)}>
+          <button
+            type="button"
+            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold"
+            onClick={() => setReplying(true)}
+          >
             <Reply size={18} aria-hidden /> Responder
           </button>
         )}
         {mine &&
           (confirmDelete ? (
             <span className="ml-auto flex items-center">
-              <button className="btn btn-link px-2 text-sm text-danger" disabled={busy} onClick={() => void act(() => deleteQuote(quote.id), 'No se pudo borrar')}>
+              <button
+                className="btn btn-link px-2 text-sm text-danger"
+                disabled={busy}
+                onClick={() => void act(() => deleteQuote(quote.id), 'No se pudo borrar')}
+              >
                 Borrar
               </button>
               <button className="btn btn-link px-2 text-sm" onClick={() => setConfirmDelete(false)}>
@@ -212,7 +241,12 @@ export function QuoteCard({ quote, compact = false, showBook = true }: { quote: 
               </button>
             </span>
           ) : (
-            <button type="button" className="ml-auto grid min-h-11 min-w-11 place-items-center text-muted" aria-label="Borrar" onClick={() => setConfirmDelete(true)}>
+            <button
+              type="button"
+              className="ml-auto grid min-h-11 min-w-11 place-items-center text-muted"
+              aria-label="Borrar"
+              onClick={() => setConfirmDelete(true)}
+            >
               <Trash2 size={17} aria-hidden />
             </button>
           ))}

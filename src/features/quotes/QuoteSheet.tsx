@@ -65,13 +65,21 @@ export function QuoteSheet({ open, onClose, bookId, page, onSaved }: Props) {
   async function save() {
     if (busy) return
     if (!book) return setError('Elige el libro')
-    if (!body.trim()) return setError(kind === 'cita' ? 'Escribe la frase antes de guardarla' : 'Escribe la nota antes de guardarla')
+    if (!body.trim())
+      return setError(kind === 'cita' ? 'Escribe la frase antes de guardarla' : 'Escribe la nota antes de guardarla')
     if (pageText !== '' && (!/^\d+$/.test(pageText) || Number(pageText) > maxPage))
       return setError(`Escribe una página entre 0 y ${maxPage}`)
     setBusy(true)
     setError('')
     try {
-      const saved = await saveQuote({ bookId: book, page: pageNumber, kind, body, comment, shared: shared && !!partner })
+      const saved = await saveQuote({
+        bookId: book,
+        page: pageNumber,
+        kind,
+        body,
+        comment,
+        shared: shared && !!partner,
+      })
       toast(kind === 'cita' ? 'Cita guardada' : 'Nota guardada', note && shared ? note.text : undefined)
       onSaved?.(saved)
       onClose()
@@ -83,7 +91,12 @@ export function QuoteSheet({ open, onClose, bookId, page, onSaved }: Props) {
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={kind === 'cita' ? 'Nueva cita' : 'Nueva nota'} dirty={!!body.trim() || !!comment.trim()}>
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={kind === 'cita' ? 'Nueva cita' : 'Nueva nota'}
+      dirty={!!body.trim() || !!comment.trim()}
+    >
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -126,7 +139,9 @@ export function QuoteSheet({ open, onClose, bookId, page, onSaved }: Props) {
             id={`${id}-body`}
             className={`input min-h-28 resize-none ${kind === 'cita' ? 'quote-text' : 'hand text-[23px]'}`}
             maxLength={2000}
-            placeholder={kind === 'cita' ? 'Escríbela o cópiala de la página' : 'Algo que quieras que lea al llegar aquí'}
+            placeholder={
+              kind === 'cita' ? 'Escríbela o cópiala de la página' : 'Algo que quieras que lea al llegar aquí'
+            }
             value={body}
             onChange={(event) => setBody(event.target.value)}
           />

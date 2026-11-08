@@ -74,7 +74,11 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const record = payload.record!
   const old = payload.old_record
   const actorId =
-    payload.table === 'readings' || payload.table === 'quotes' || payload.table === 'quote_replies'
+    payload.table === 'profiles'
+      ? record.id
+      : payload.table === 'read_together'
+        ? record.user_b
+        : payload.table === 'readings' || payload.table === 'quotes' || payload.table === 'quote_replies'
       ? record.user_id
       : payload.table === 'together_items'
         ? record.added_by
@@ -87,6 +91,29 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const name = actor.display_name as string
   const partnerId = actor.partner_id as string
   switch (payload.table) {
+    case 'profiles': {
+      // Started reading: one gentle push per night at most.
+      if (payload.type !== 'UPDATE' || old?.reading_now_since || !record.reading_now_since) return []
+      const today = localDate(new Date(), String(actor.timezone ?? 'Europe/Madrid'))
+      if (record.live_notified_on === today) return []
+      const reading = record.reading_now_id
+        ? await checked(admin.from('readings').select('book_id').eq('id', String(record.reading_now_id)).maybeSingle())
+        : null
+      const title = reading ? await book(admin, reading.book_id) : null
+      const { error } = await admin.from('profiles').update({ live_notified_on: today }).eq('id', actorId)
+      if (error) throw error
+      return [
+        {
+          to: partnerId,
+          body: `${name} se ha puesto a leer${title ? ` «${title.title}»` : ''}. ¿Te unes?`,
+          url: '/',
+        },
+      ]
+    }
+    case 'read_together': {
+      if (payload.type !== 'INSERT' || record.user_a !== partnerId) return []
+      return [{ to: partnerId, body: `${name} se ha unido a tu lectura`, url: '/leer' }]
+    }
     case 'quotes': {
       if (payload.type !== 'INSERT' || !record.shared) return []
       const title = await book(admin, record.book_id)
@@ -257,7 +284,11 @@ Deno.serve(async (request: Request) => {
   }
   if (!payload?.record || (payload.schema && payload.schema !== 'public'))
     return new Response('Invalid payload', { status: 400 })
-  if (!['messages', 'quotes', 'quote_replies', 'readings', 'invites', 'together_items', 'couple_goals'].includes(payload.table))
+  if (
+    !['profiles', 'read_together', 'messages', 'quotes', 'quote_replies', 'readings', 'invites', 'together_items', 'couple_goals'].includes(
+      payload.table,
+    )
+  )
     return Response.json({ sent: false })
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {

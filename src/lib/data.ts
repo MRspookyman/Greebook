@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import type {
   CoupleGoal,
+  ReadTogether,
   Quote,
   QuoteReply,
   Invite,
@@ -32,6 +33,8 @@ export const qk = {
   quotes: () => ['quotes'] as const,
   /** Replies on visible quotes. */
   quoteReplies: () => ['quote-replies'] as const,
+  /** Times we read at the same time, newest first. */
+  readTogether: () => ['read-together'] as const,
   /** Cooperative goal for a month ('yyyy-MM'). */
   coupleGoal: (month: string) => ['couple-goal', month] as const,
 }
@@ -187,6 +190,18 @@ export function useQuoteReplies(enabled = true) {
     queryFn: () =>
       fetchAll<QuoteReply>((from, to) =>
         supabase.from('quote_replies').select('*').order('created_at', { ascending: true }).range(from, to),
+      ),
+  })
+}
+
+/** Our «lecturas a la vez», newest first. */
+export function useReadTogether(enabled = true) {
+  return useQuery({
+    queryKey: qk.readTogether(),
+    enabled,
+    queryFn: () =>
+      fetchAll<ReadTogether>((from, to) =>
+        supabase.from('read_together').select('*').order('started_at', { ascending: false }).range(from, to),
       ),
   })
 }

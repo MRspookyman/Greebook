@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { ChevronRight, CloudUpload, Heart, Lamp, Play, Plus, Quote as QuoteIcon } from 'lucide-react'
+import { BookOpen, ChevronRight, CloudUpload, Heart, Lamp, Play, Plus, Quote as QuoteIcon } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { useMe } from '@/features/auth/me'
 import { useQuotes, useReadings, useSessions } from '@/lib/data'
@@ -21,6 +21,8 @@ import { useRooms } from '@/features/us/rooms'
 import { QuoteCard } from '@/features/quotes/QuoteCard'
 import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { recentReadings } from './recentReadings'
+import { joinReading } from '@/features/together/live'
+import { toast } from '@/components/toast'
 import { WeekStamps } from './WeekStamps'
 
 /** Minutes since a timestamp, refreshed every half minute while shown. */
@@ -61,7 +63,9 @@ export function TodayPage() {
   const mine = new Set(sessions.data?.map((s) => s.read_on) ?? [])
   const theirs = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
   const streak = sharedStreak(mine, theirs, today)
-  const finished = (readings.data ?? []).filter((r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4))).length
+  const finished = (readings.data ?? []).filter(
+    (r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4)),
+  ).length
   const week = weekDays(today)
   const weeklyPages = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] }).reduce(
     (sum, day) => sum + day.pages,
@@ -71,7 +75,11 @@ export function TodayPage() {
   const name = partner?.display_name ?? 'tu pareja'
 
   const todayLine = !partner ? (
-    mine.has(today) ? 'Hoy ya has leído.' : 'Un ratito hoy, cuando te apetezca.'
+    mine.has(today) ? (
+      'Hoy ya has leído.'
+    ) : (
+      'Un ratito hoy, cuando te apetezca.'
+    )
   ) : mine.has(today) && theirs.has(today) ? (
     <>
       <Heart size={17} className="mt-0.5 flex-none text-rose" fill="currentColor" aria-hidden />
@@ -90,7 +98,9 @@ export function TodayPage() {
   ) : (
     <>
       <Lamp size={17} className="mt-0.5 flex-none text-amber-ink" aria-hidden />
-      {streak > 0 ? `Lleváis ${formatDays(streak)} leyendo los dos. Un ratito hoy y sigue.` : 'Un ratito hoy y empieza vuestra racha.'}
+      {streak > 0
+        ? `Lleváis ${formatDays(streak)} leyendo los dos. Un ratito hoy y sigue.`
+        : 'Un ratito hoy y empieza vuestra racha.'}
     </>
   )
 
@@ -119,7 +129,11 @@ export function TodayPage() {
       <NowCard active={active} partnerReadings={partnerReadings.data ?? []} onRead={read} />
 
       {partner && forMe.count > 0 && (
-        <Link to="/nosotros" className="card enter flex min-h-14 items-center gap-3 py-3" style={{ '--i': 1 } as CSSProperties}>
+        <Link
+          to="/nosotros"
+          className="card enter flex min-h-14 items-center gap-3 py-3"
+          style={{ '--i': 1 } as CSSProperties}
+        >
           <Avatar person={partner} size={30} />
           <span className="flex-1 text-sm">
             {name}{' '}
@@ -152,7 +166,11 @@ export function TodayPage() {
             reading={main}
             sessions={sessions.data ?? []}
             today={today}
-            ribbons={rooms.some((room) => room.mine.id === main.id) && partner ? [partner.accent, profile.accent] : [profile.accent]}
+            ribbons={
+              rooms.some((room) => room.mine.id === main.id) && partner
+                ? [partner.accent, profile.accent]
+                : [profile.accent]
+            }
             onRead={() => read(main)}
             onQuote={() => setQuoting(main)}
           />
@@ -161,7 +179,11 @@ export function TodayPage() {
             return (
               <div key={reading.id} className="flex min-h-16 items-center gap-3 py-1">
                 <Link to={`/libro/${reading.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
-                  <Cover book={reading.book} width={44} ribbons={room && partner ? [partner.accent, profile.accent] : undefined} />
+                  <Cover
+                    book={reading.book}
+                    width={44}
+                    ribbons={room && partner ? [partner.accent, profile.accent] : undefined}
+                  />
                   <span className="grid min-w-0 flex-1 gap-1">
                     <span className="truncate font-extrabold">
                       {reading.book.title}
@@ -170,8 +192,16 @@ export function TodayPage() {
                     {room && partner ? (
                       <>
                         <span className="grid gap-[3px]" aria-hidden>
-                          <ProgressBar value={progressFraction(room.theirs)} color={`var(--${partner.accent})`} className="h-1" />
-                          <ProgressBar value={progressFraction(reading)} color={`var(--${profile.accent})`} className="h-1" />
+                          <ProgressBar
+                            value={progressFraction(room.theirs)}
+                            color={`var(--${partner.accent})`}
+                            className="h-1"
+                          />
+                          <ProgressBar
+                            value={progressFraction(reading)}
+                            color={`var(--${profile.accent})`}
+                            className="h-1"
+                          />
                         </span>
                         <span className="text-[13px] text-muted">
                           Tú p. {reading.current_position} · {name} p. {room.theirs.current_position}
@@ -184,7 +214,12 @@ export function TodayPage() {
                     )}
                   </span>
                 </Link>
-                <button type="button" className="icon-btn" aria-label={`Leer «${reading.book.title}»`} onClick={() => read(reading)}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={`Leer «${reading.book.title}»`}
+                  onClick={() => read(reading)}
+                >
                   <Play size={16} fill="currentColor" aria-hidden />
                 </button>
               </div>
@@ -259,6 +294,8 @@ function NowCard({
   onRead: (reading: ReadingWithBook) => void
 }) {
   const { profile, partner } = useMe()
+  const navigate = useNavigate()
+  const [joining, setJoining] = useState(false)
   const timer = useActiveTimer()
   const seconds = useElapsedSeconds(timer)
   const live = isPartnerReading(partner)
@@ -305,9 +342,25 @@ function NowCard({
         <Cover book={liveReading.book} width={44} ribbon={partner.accent} />
       </div>
       {along && (
-        <button type="button" className="btn btn-primary w-full" onClick={() => onRead(along)}>
-          <Play size={16} fill="currentColor" aria-hidden />
-          Leer a la vez
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          disabled={joining}
+          onClick={() => {
+            setJoining(true)
+            void joinReading()
+              .then((row) => {
+                if (startTimer(along, row.id)) navigate(`/leer/${along.id}`)
+              })
+              .catch(() => {
+                toast('No se pudo unir a su lectura', 'Empiezas tu cronómetro igualmente.')
+                onRead(along)
+              })
+              .finally(() => setJoining(false))
+          }}
+        >
+          <BookOpen size={17} aria-hidden />
+          {joining ? 'Uniéndote…' : 'Unirme a su lectura'}
         </button>
       )}
     </section>

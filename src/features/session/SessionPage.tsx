@@ -22,6 +22,10 @@ import type { Quote, ReadingWithBook } from '@/lib/types'
 import { formatDays, formatMinutes, formatUnitDelta, formatUnitValue, parseHMM, toHMM } from '@/lib/units'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
+import { JointPanel } from '@/features/together/JointPanel'
+import { joinReading } from '@/features/together/live'
+import { Avatar } from '@/components/Avatar'
+import { TicketPanel } from '@/features/together/TicketPanel'
 import {
   discardTimer,
   pauseTimer,
@@ -44,6 +48,7 @@ type Saved = {
   minutes: number | null
   streak: number
   unlocking: Quote[]
+  togetherId: string | null
 }
 
 const MODE_KEY = 'gb.session.mode'
@@ -246,7 +251,8 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     setBusy(true)
     setError(null)
     try {
-      await logSession({ reading, readOn, endPos: end, minutes: sessionMinutes })
+      const togetherId = timed ? (mine?.togetherId ?? null) : null
+      await logSession({ reading, readOn, endPos: end, minutes: sessionMinutes, togetherId })
       if (timed) stopTimer()
       const dates = new Set(sessions.map((session) => session.read_on))
       dates.add(readOn)
@@ -257,6 +263,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         minutes: sessionMinutes,
         streak: currentStreak(dates, today),
         unlocking,
+        togetherId,
       })
       navigator.vibrate?.(12)
       if (end === reading.total_units) setFinished({ ...reading, current_position: end })
@@ -325,12 +332,10 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       </header>
 
       {saved ? (
-        <SavedPanel
-          saved={saved}
-          partnerName={name}
-        />
+        <SavedPanel saved={saved} partnerName={name} />
       ) : (
         <>
+          {mine?.togetherId && <JointPanel togetherId={mine.togetherId} reading={reading} myPage={end} />}
           <section className="mt-6 flex items-start gap-4" aria-label="Libro de esta sesión">
             <Cover book={reading.book} width={64} priority />
             <div className="min-w-0 flex-1">
@@ -398,6 +403,28 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               />
               {partnerLine}
             </p>
+          )}
+          {partnerLive && !mine && !timer && (
+            <button
+              type="button"
+              className="card card-lamp mt-4 flex min-h-14 w-full items-center gap-3 py-3 text-left"
+              onClick={() => {
+                void joinReading()
+                  .then((row) => {
+                    if (startTimer(reading, row.id)) setMode('crono')
+                  })
+                  .catch(() => toast('No se pudo unir a su lectura', 'Inténtalo de nuevo con conexión.'))
+              }}
+            >
+              {partner && <Avatar person={partner} size={36} live />}
+              <span className="flex-1 text-sm">
+                <b className="font-extrabold">{name}</b> está leyendo. Leed a la vez: os veréis la página y os podréis
+                mandar latidos.
+              </span>
+              <span className="btn btn-primary min-h-10 px-3.5 text-sm" aria-hidden>
+                Unirme
+              </span>
+            </button>
           )}
 
           {!mine && (
@@ -579,8 +606,10 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                       style={{ animation: 'gb-pop-in 360ms var(--ease) both' }}
                     >
                       <LockOpen size={15} aria-hidden />
-                      Al guardar se abrirá{' '}
-                      {unlocking.length === 1 ? 'lo que te dejó' : `${unlocking.length} citas de`} {name}
+                      Al guardar se abrirá {unlocking.length === 1
+                        ? 'lo que te dejó'
+                        : `${unlocking.length} citas de`}{' '}
+                      {name}
                     </p>
                   ) : (
                     nextLocked && (
@@ -738,19 +767,24 @@ function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string 
   const first = saved.unlocking[0]
   return (
     <div className="pt-4">
-      <section role="status" className="flex flex-col items-center text-center">
-        <SessionStamp date={saved.date} detail={detail} />
-        <h1 className="display enter mt-5" style={{ '--i': 4 } as CSSProperties}>
-          Sesión <span className="display-italic">guardada</span>
-        </h1>
-        <p className="folio enter mt-3" style={{ '--i': 5 } as CSSProperties}>
-          {detail}
-        </p>
-        <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
-          {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del libro
-          {pace !== null && ` · ${pace} págs/hora`}
-        </p>
-      </section>
+      {saved.togetherId ? (
+        <TicketPanel togetherId={saved.togetherId} reading={reading} delta={saved.delta} minutes={saved.minutes} />
+      ) : (
+        <section role="status" className="flex flex-col items-center text-center">
+          <SessionStamp date={saved.date} detail={detail} />
+          <h1 className="display enter mt-5" style={{ '--i': 4 } as CSSProperties}>
+            Sesión <span className="display-italic">guardada</span>
+          </h1>
+          <p className="folio enter mt-3" style={{ '--i': 5 } as CSSProperties}>
+            {detail}
+          </p>
+          <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
+            {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del
+            libro
+            {pace !== null && ` · ${pace} págs/hora`}
+          </p>
+        </section>
+      )}
       {first && (
         <Link
           to={`/citas#c-${first.id}`}
