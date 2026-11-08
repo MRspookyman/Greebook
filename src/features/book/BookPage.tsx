@@ -27,7 +27,7 @@ import { QuoteCard } from '@/features/quotes/QuoteCard'
 import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { useRooms } from '@/features/us/rooms'
 import { addTogether } from '@/features/us/together'
-import { isReadingNow } from '@/features/us/CoupleProgress'
+import { isPartnerReading } from '@/lib/presence'
 
 const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
 type BookTab = 'sessions' | 'quotes' | 'joint'
@@ -476,7 +476,7 @@ function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) {
     ?.filter((item) => item.book_id === reading.book_id)
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
   const listed = together.data?.some((item) => item.book_id === reading.book_id)
-  const live = isReadingNow(partner) && partner.reading_now_id === reading.id
+  const live = isPartnerReading(partner) && partner.reading_now_id === reading.id
   const color = `var(--${partner.accent})`
   return (
     <section className="enter rule space-y-2 pt-3" aria-label={`Lectura de ${partner.display_name}`}>

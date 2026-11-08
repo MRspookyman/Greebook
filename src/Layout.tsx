@@ -5,7 +5,6 @@ import { useMe } from '@/features/auth/me'
 import { useRealtimeSync } from '@/features/us/useRealtimeSync'
 import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { SurpriseHost } from '@/features/surprises/SurpriseHost'
-import { useRatitoTimer } from '@/features/session/Timer'
 import { NightContext } from '@/components/night'
 import { useAttachTogether } from '@/features/together/live'
 
@@ -31,7 +30,6 @@ export function Layout() {
   }, [location.pathname])
   useRealtimeSync()
   useOfflineSync()
-  useRatitoTimer()
   useAttachTogether()
 
   // The reading screen is a focus mode: lamp-lit, it rises like a sheet and hides the tab bar.

@@ -8,6 +8,7 @@ import { SearchPage } from '@/features/library/SearchPage'
 import { BookPage } from '@/features/book/BookPage'
 import { StatsPage } from '@/features/stats/StatsPage'
 import { UsPage } from '@/features/us/UsPage'
+import { RachaPage } from '@/features/us/RachaPage'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { WelcomePage } from '@/features/onboarding/WelcomePage'
 import { SessionPage } from '@/features/session/SessionPage'
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: 'stats', element: <StatsPage /> },
       { path: 'calendario', element: <Navigate to="/stats" replace /> },
       { path: 'nosotros', element: <UsPage /> },
+      { path: 'nosotros/racha', element: <RachaPage /> },
       { path: 'citas', element: <CitasPage /> },
       { path: 'sala/:bookId', element: <RoomRedirect /> },
       { path: 'club/:bookId', element: <RoomRedirect /> },

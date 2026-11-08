@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, Moon } from 'lucide-react'
 import { fmt } from '@/lib/dates'
 import { weekDays } from '@/lib/stats/insights'
 import type { Profile } from '@/lib/types'
@@ -14,7 +14,9 @@ export function WeekStamps({
   theirs,
   profile,
   partner,
+  wildcards,
 }: {
+  wildcards?: Set<string>
   today: string
   mine: Set<string>
   theirs: Set<string>
@@ -29,6 +31,7 @@ export function WeekStamps({
         const isToday = date === today
         const future = date > today
         const who = me ? profile : partner
+        const free = wildcards?.has(date) ?? false
         const text =
           me && you
             ? 'leísteis los dos'
@@ -44,14 +47,15 @@ export function WeekStamps({
             className={`grid justify-items-center gap-1.5 text-xs font-extrabold ${isToday ? 'text-ink' : 'text-muted'}`}
           >
             <span
-              className={`stamp ${me && you ? 'stamp-both' : me || you ? 'stamp-one' : ''} ${isToday && !(me && you) ? 'stamp-pending' : ''} ${future ? 'opacity-50' : ''}`}
+              className={`stamp ${me && you ? 'stamp-both' : free ? 'stamp-free' : me || you ? 'stamp-one' : ''} ${isToday && !(me && you) ? 'stamp-pending' : ''} ${future ? 'opacity-50' : ''}`}
               style={
                 { '--rot': `${TILT[index]}deg`, '--pc': who ? `var(--${who.accent})` : undefined } as CSSProperties
               }
               role="img"
-              aria-label={`${fmt(date, 'EEEE d')}: ${future ? 'aún no ha llegado' : text}${isToday && !me ? '; falta tu parte' : ''}`}
+              aria-label={`${fmt(date, 'EEEE d')}: ${future ? 'aún no ha llegado' : text}${free ? ', cubierto con un comodín' : ''}${isToday && !me ? '; falta tu parte' : ''}`}
             >
               {me && you && <Heart size={15} fill="currentColor" aria-hidden />}
+              {free && <Moon size={14} fill="currentColor" aria-hidden />}
             </span>
             <span aria-hidden>{LETTERS[index]}</span>
           </div>

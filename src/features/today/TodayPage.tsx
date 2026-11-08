@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { useMe } from '@/features/auth/me'
 import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
-import { sharedStreak } from '@/lib/stats/streak'
+import { coupleStreak } from '@/lib/stats/streak'
 import { dailySeries, estimatedFinish, weekDays } from '@/lib/stats/insights'
 import { formatDays, formatPosition, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, Session } from '@/lib/types'
@@ -62,7 +62,8 @@ export function TodayPage() {
   const others = active.slice(1)
   const mine = new Set(sessions.data?.map((s) => s.read_on) ?? [])
   const theirs = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
-  const streak = sharedStreak(mine, theirs, today)
+  const couple = coupleStreak(mine, theirs, today)
+  const streak = couple.current
   const finished = (readings.data ?? []).filter(
     (r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4)),
   ).length
@@ -135,14 +136,7 @@ export function TodayPage() {
           style={{ '--i': 1 } as CSSProperties}
         >
           <Avatar person={partner} size={30} />
-          <span className="flex-1 text-sm">
-            {name}{' '}
-            {forMe.items[0].type === 'invite'
-              ? 'te invita a un ratito'
-              : forMe.items[0].type === 'together'
-                ? 'quiere leer contigo'
-                : 'te propone un reto para los dos'}
-          </span>
+          <span className="flex-1 text-sm">{name} quiere leer contigo</span>
           <ChevronRight size={18} aria-hidden />
         </Link>
       )}
@@ -237,7 +231,14 @@ export function TodayPage() {
               {formatDays(streak)}
             </span>
           </div>
-          <WeekStamps today={today} mine={mine} theirs={theirs} profile={profile} partner={partner} />
+          <WeekStamps
+            today={today}
+            mine={mine}
+            theirs={theirs}
+            profile={profile}
+            partner={partner}
+            wildcards={couple.wildcards}
+          />
         </section>
       )}
 

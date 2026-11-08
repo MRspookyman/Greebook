@@ -169,7 +169,13 @@ de 12 px como mínimo, contraste medido, movimiento reducido respetado y nada de
 
 Cada fase deja la app usable; se puede regalar al terminar la 3.
 
-## 8. Decisiones tomadas
+## 8. Estado
+
+Las cuatro fases están aplicadas en la app (migraciones 0008 y 0009). La valoración a ciegas oculta la nota
+de la pareja en la app hasta que existen las dos; en la base de datos las notas siguen siendo legibles por los dos.
+Los ratitos y el reto propuesto pasan a ser «Unirme a su lectura» y el reto fijo de 10 noches a la vez.
+
+## 9. Decisiones tomadas
 
 - Ambiente aprobado: papel rosado de día, ciruela y lámpara de noche.
 - Las citas y notas se comparten por defecto (se puede marcar una como privada al guardarla).
