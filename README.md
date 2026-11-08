@@ -5,6 +5,9 @@ Diario de lectura para dos (PWA). Vite + React + TypeScript, Supabase y Cloudfla
 Estética «diario editorial»: Fraunces + Inter, filetes en vez de tarjetas, portadas como libros y letra manuscrita
 (Caveat) solo en las huellas. Reglas, tokens y contrastes en [`docs/estilo.md`](docs/estilo.md).
 
+Propuesta de rediseño «Leer juntos» (flujo nuevo, ideas y plan por fases) con prototipo navegable en
+[`docs/rediseno`](docs/rediseno/README.md).
+
 ## Desarrollo
 
 ```bash
