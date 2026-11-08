@@ -12,7 +12,7 @@ export function MoodChips({ value, onChange }: Props) {
     return (
       <div className="flex flex-wrap gap-2">
         {value.map((m) => (
-          <span key={m} className={`${chip} border-accent text-accent`}>
+          <span key={m} className={`${chip} bg-sunk`}>
             {m}
           </span>
         ))}

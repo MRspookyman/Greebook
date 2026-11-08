@@ -8,6 +8,6 @@ with ids as (
     '00000000-0000-0000-0000-00000000000b'::uuid as el     -- ✏️ UUID de él
 )
 insert into profiles (id, display_name, accent, partner_id, is_gift_recipient)
-select ella, 'Ella', 'blue', el, true from ids        -- ✏️ nombre de ella
+select ella, 'Laura', 'blue', el, true from ids        -- ✏️ nombre de ella
 union all
-select el, 'Él', 'green', ella, false from ids;       -- ✏️ tu nombre
+select el, 'Javier', 'green', ella, false from ids;       -- ✏️ tu nombre

@@ -50,7 +50,6 @@
     leaf: '<path d="M5.2 18.8C5 10.6 9.7 5.5 19 5c-.2 9.4-5.3 14-13.8 13.8z"/><path d="m5.2 18.8 7.6-7.6"/>',
     lock: '<rect x="5.5" y="10.5" width="13" height="9.5" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
     unlock: '<rect x="5.5" y="10.5" width="13" height="9.5" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.2"/>',
-    rain: '<path d="M7.2 15a4 4 0 0 1 .4-8A5 5 0 0 1 17 8.6 3.2 3.2 0 0 1 17 15z"/><path d="m8.5 18-1 2.5M12.5 18l-1 2.5M16.5 18l-1 2.5"/>',
     camera: '<path d="M4.5 8.5h3l1.6-2.5h5.8l1.6 2.5h3v10h-15z"/><circle cx="12" cy="13.2" r="3"/>',
     gift: '<rect x="4.5" y="9.5" width="15" height="10" rx="1.5"/><path d="M3.5 9.5h17M12 9.5v10M12 9.5C10.6 6.2 7 5.8 7 7.9s3.3 1.6 5 1.6zM12 9.5c1.4-3.3 5-3.7 5-1.6s-3.3 1.6-5 1.6z"/>',
     check: '<path d="m5.5 12.5 4 4 9-9"/>',
@@ -67,8 +66,8 @@
 
   // ───────────── Example data ─────────────
   const PEOPLE = {
-    el: { id: 'el', name: 'Gordito', cls: 'p-him', glyph: 'leaf' },
-    ella: { id: 'ella', name: 'Gordita', cls: 'p-her', glyph: 'moon' },
+    el: { id: 'el', name: 'Javier', cls: 'p-him' },
+    ella: { id: 'ella', name: 'Laura', cls: 'p-her' },
   }
   const other = (id) => (id === 'el' ? 'ella' : 'el')
   const name = (id) => PEOPLE[id].name
@@ -245,7 +244,6 @@
       opened: [],
       ratings: { el: { klara: null }, ella: { klara: 5 } },
       readBook: CURRENT[me],
-      rain: false,
     }
   }
   const findReading = (id, key) => READINGS[id].find((r) => r.b === key)
@@ -373,7 +371,7 @@
   function avatar(id, size = 40, opts = {}) {
     const p = PEOPLE[id]
     const label = opts.label ? `role="img" aria-label="${esc(opts.label)}"` : 'aria-hidden="true"'
-    return `<span class="av ${p.cls}${opts.live ? ' av--live' : ''}" style="--s:${size}px" ${label}>${ic(p.glyph, Math.round(size * 0.5), { fill: p.glyph === 'moon' })}${opts.live ? '<span class="av__dot"></span>' : ''}</span>`
+    return `<span class="av ${p.cls}${opts.live ? ' av--live' : ''}" style="--s:${size}px;font-size:${Math.max(12, Math.round(size * 0.46))}px" ${label}>${p.name.charAt(0)}${opts.live ? '<span class="av__dot"></span>' : ''}</span>`
   }
   function cover(key, w, opts = {}) {
     const b = BOOKS[key]
@@ -610,6 +608,7 @@
   }
   function scrJuntos(st) {
     const s = st.session
+    const paused = s.pausedAt != null && !s.frozen
     const me = st.me
     const pa = st.partner
     const color = (id) => (id === 'ella' ? 'var(--her)' : 'var(--him)')
@@ -636,12 +635,12 @@
             <p class="reader__page num">p. <span data-live-page>${s.page}</span></p>
             <button class="btn btn--soft" data-act="step" data-field="page" data-d="1" aria-label="Una página más">${ic('plus', 16)}</button></div></div>
       </div>
-      <div><p class="timer" role="timer" data-tick="clock">${clock(elapsed(st))}</p><p class="timer-sub">leyendo a la vez</p></div>
+      <div><p class="timer" role="timer" data-tick="clock">${clock(elapsed(st))}</p><p class="timer-sub">${paused ? 'Tu parte, en pausa' : 'leyendo a la vez'}</p></div>
       <div class="feed" aria-label="Lo último de la sesión">${feed}</div>
       <div class="actions">
         <button class="action action--heart" data-act="beat">${ic('heart', 24, { fill: true })}Latido</button>
         <button class="action" data-act="sheet" data-sheet="cita" data-book="${s.book}">${ic('quote', 24)}Cita</button>
-        <button class="action" data-act="rain" aria-pressed="${st.rain}">${ic('rain', 24)}${st.rain ? 'Lloviendo' : 'Lluvia'}</button></div>
+        <button class="action" data-act="${paused ? 'resume' : 'pause'}">${ic(paused ? 'play' : 'pause', 24, { fill: paused })}${paused ? 'Seguir' : 'Pausa'}</button></div>
       <div class="session__end"><button class="btn btn--primary btn--block" data-act="sheet" data-sheet="terminar">Terminar mi parte</button>
         <p>Cuando terminéis los dos, se guarda como una sesión juntos.</p></div>
     </div>`
@@ -671,7 +670,7 @@
         <p class="row small">${ic('lamp', 20, { cls: 'honey' })}<span>Racha de los dos: <b>${plural(s.shared, 'día', 'días')}</b> · Reto de noviembre: <b>${night} de 10</b> noches</span></p>
       </article>
       <div class="field"><label for="${ctx.uid}-memo">Una línea para recordarla (opcional)</label>
-        <input id="${ctx.uid}-memo" class="input textarea--hand" data-input="memo" placeholder="Con lluvia, té y tus pies fríos" value="${esc(j.note)}"></div>
+        <input id="${ctx.uid}-memo" class="input textarea--hand" data-input="memo" placeholder="Con té y tus pies fríos" value="${esc(j.note)}"></div>
       <div class="session__end"><button class="btn btn--primary btn--block" data-act="ticket-done">Listo</button></div>
     </div>`
   }
@@ -879,7 +878,7 @@
     const loved = [...st.quotes].sort((a, b) => b.hearts.length + b.replies.length - (a.hearts.length + a.replies.length) || b.t - a.t)[0]
     return `
       <header class="exlibris"><p class="exlibris__k">Ex libris</p>
-        <p class="exlibris__mono" aria-hidden="true"><span class="p-her">G</span><span class="amp">&amp;</span><span class="p-him">G</span></p>
+        <p class="exlibris__mono" aria-hidden="true"><span class="p-her">L</span><span class="amp">&amp;</span><span class="p-him">J</span></p>
         <h1 class="h2">${name('ella')} y ${name('el')}</h1><p class="exlibris__sub">Leyendo juntos desde marzo de 2026</p></header>
       <section class="card hero-stat" aria-label="Horas leyendo a la vez"><p class="hero-stat__n num">${Math.floor(hours)} <small>horas</small></p>
         <p class="b">leyendo a la vez en 2026</p><p class="muted">Más de dos días y medio, cada uno con su libro y el otro al lado.</p></section>
@@ -1049,7 +1048,7 @@
       'Carta de octubre',
       `<article class="letter">
         <p>Querida ${name('ella')}, querido ${name('el')}:</p>
-        <p>En octubre leísteis los dos 27 de sus 31 días. Hubo 9 noches en las que leísteis a la vez, casi siete horas en total. La más larga fue la del sábado 24: 1 h 32 min, con lluvia de fondo.</p>
+        <p>En octubre leísteis los dos 27 de sus 31 días. Hubo 9 noches en las que leísteis a la vez, casi siete horas en total. La más larga fue la del sábado 24: 1 h 32 min.</p>
         <p>${name('el')} terminó <i>Klara y el Sol</i>, el libro que ${name('ella')} le había recomendado, y empezó <i>Proyecto Hail Mary</i>. ${name('ella')} se metió en <i>La sombra del viento</i> y a final de mes ya iba por la mitad.</p>
         <p>El día 20 empezasteis <i>Tokio blues</i> a dúo.</p>
         <p>La cita que más os gustó: «Cada libro, cada tomo que ves, tiene alma».</p>
@@ -1142,7 +1141,6 @@
   let justLiked = null
   let toastTimer = 0
   let beatTimer = 0
-  let audio = null
 
   const KEY_ATTRS = ['act', 'to', 'book', 'id', 'sheet', 'field', 'd', 'kind', 'min', 'day', 'filter', 'input', 'r']
   const keyOf = (el) => (el && el !== document.body && appEl.contains(el) ? KEY_ATTRS.map((k) => el.dataset[k] ?? '').join('|') : null)
@@ -1209,46 +1207,6 @@
     render()
   }
 
-  function startRain() {
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext
-      if (!Ctx) return
-      const ctx = new Ctx()
-      const length = ctx.sampleRate * 3
-      const buffer = ctx.createBuffer(1, length, ctx.sampleRate)
-      const data = buffer.getChannelData(0)
-      let last = 0
-      for (let i = 0; i < length; i++) {
-        last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02
-        data[i] = last * 3.2 + (Math.random() < 0.0009 ? (Math.random() - 0.5) * 0.5 : 0)
-      }
-      const source = ctx.createBufferSource()
-      source.buffer = buffer
-      source.loop = true
-      const filter = ctx.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.value = 1400
-      const gain = ctx.createGain()
-      gain.gain.setValueAtTime(0, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 1.5)
-      source.connect(filter).connect(gain).connect(ctx.destination)
-      source.start()
-      audio = { ctx, gain }
-    } catch {
-      audio = null
-    }
-  }
-  function stopRain() {
-    if (!audio) return
-    const { ctx, gain } = audio
-    audio = null
-    try {
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5)
-      setTimeout(() => ctx.close(), 600)
-    } catch {
-      /* Audio is optional. */
-    }
-  }
 
   /** A heart crossing from one reader to the other along the thread. */
   function flyHeart(fromMe) {
@@ -1365,12 +1323,6 @@
         }
         if (st.session?.kind === 'juntos') st.session.feed.push({ t: storyNow(st), text: `Le has mandado un latido a ${name(st.partner)}` })
         showToast(`Latido enviado. A ${name(st.partner)} le vibrará el móvil, suave.`)
-        return render()
-      case 'rain':
-        st.rain = !st.rain
-        if (st.rain) startRain()
-        else stopRain()
-        showToast(st.rain ? `Lluvia de fondo para los dos. ${name(st.partner)} también la oye.` : 'Lluvia quitada.')
         return render()
       case 'pause':
         if (st.session && st.session.pausedAt == null) st.session.pausedAt = Date.now()
@@ -1509,8 +1461,6 @@
       st.page[st.partner][partnerBook(st)] = pEnd - Math.floor(STORY.liveMin / 2)
       st.partnerLive = false
       st.session = null
-      st.rain = false
-      stopRain()
       return go('ticket')
     }
     st.session = null
@@ -1676,7 +1626,7 @@
       notes: [
         'Un cronómetro compartido y la página del otro en directo, con un hilo que os une en pantalla.',
         'Latido: un toque que cruza la pantalla y hace vibrar su móvil. Sin tener que escribir nada.',
-        'Lluvia de fondo para los dos y las citas que guardáis, al momento. Cada uno termina cuando quiere.',
+        'Las citas que guardáis aparecen al momento. Cada uno pausa o termina su parte cuando quiere.',
       ],
       apply: (st) => {
         startSession(st, 'juntos', { offset: 27 * 60 + 41 })
@@ -1880,7 +1830,6 @@
   function goStep(id, opts = {}) {
     const step = STEPS.find((s) => s.id === id)
     if (!step) return
-    stopRain()
     clearTimeout(beatTimer)
     const userQuotes = state.quotes.filter((q) => q.id.startsWith('u'))
     state = freshState(state.me, state.mode, [...BASE_QUOTES, ...userQuotes])

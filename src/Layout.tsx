@@ -6,6 +6,7 @@ import { useRealtimeSync } from '@/features/us/useRealtimeSync'
 import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { SurpriseHost } from '@/features/surprises/SurpriseHost'
 import { useRatitoTimer } from '@/features/session/Timer'
+import { NightContext } from '@/components/night'
 
 const TAB_ORDER = ['/', '/biblioteca', '/stats', '/nosotros']
 
@@ -31,7 +32,7 @@ export function Layout() {
   useOfflineSync()
   useRatitoTimer()
 
-  // The reading screen is a focus mode: it rises like a sheet and hides the tab bar.
+  // The reading screen is a focus mode: lamp-lit, it rises like a sheet and hides the tab bar.
   const focus = location.pathname.startsWith('/leer')
   const fromFocus = prev.current.startsWith('/leer') && !focus
   const from = depthOf(location.pathname) >= depthOf(prev.current) ? '16px' : '-16px'
@@ -42,19 +43,28 @@ export function Layout() {
   return (
     <>
       <a
-        className="sr-only z-50 min-h-11 bg-surface p-3 text-accent focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-50 min-h-11 rounded-full bg-surface p-3 font-extrabold text-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
         href="#main-content"
       >
         Ir al contenido
       </a>
+      {focus && (
+        <div
+          aria-hidden
+          className="night fixed inset-0 -z-10"
+          style={{ backgroundImage: 'radial-gradient(85% 42% at 50% -6%, var(--lamp-strong), transparent 72%)' }}
+        />
+      )}
       <main
         ref={mainRef}
         id="main-content"
         tabIndex={-1}
-        className="mx-auto max-w-xl px-[26px]"
+        className={`mx-auto max-w-xl px-5 ${focus ? 'night min-h-dvh bg-transparent' : ''}`}
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 24px)',
-          paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
+          paddingTop: 'calc(env(safe-area-inset-top) + 22px)',
+          paddingBottom: focus
+            ? 'calc(112px + env(safe-area-inset-bottom))'
+            : 'calc(var(--tabbar-h) + 44px + env(safe-area-inset-bottom))',
         }}
       >
         <div
@@ -68,7 +78,9 @@ export function Layout() {
             ['--page-from' as string]: from,
           }}
         >
-          <Outlet />
+          <NightContext.Provider value={focus}>
+            <Outlet />
+          </NightContext.Provider>
         </div>
       </main>
       {!focus && <TabBar />}

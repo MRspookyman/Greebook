@@ -20,3 +20,17 @@ export async function setReadingNow(readingId: string | null): Promise<void> {
     /* Presence is optional. */
   }
 }
+
+/** After this long a «leyendo ahora» left behind (app closed mid-session) no longer counts. */
+const LIVE_MS = 2 * 60 * 60 * 1000
+
+/** Whether this person's timer is running right now, from their profile's soft presence. */
+export function isPartnerReading(
+  person: Pick<Profile, 'reading_now_id' | 'reading_now_since'> | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (!person?.reading_now_id || !person.reading_now_since) return false
+  const elapsed = now - new Date(person.reading_now_since).getTime()
+  // A few minutes of clock difference between both phones is tolerated.
+  return elapsed > -5 * 60 * 1000 && elapsed < LIVE_MS
+}

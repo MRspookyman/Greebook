@@ -662,7 +662,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
 
       {createPortal(
         <div
-          className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-xl gap-2 border-t border-rule bg-bg px-[26px] pt-3"
+          className="night fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-xl gap-2 border-t border-rule px-5 pt-3"
           style={{
             paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
             animation: 'gb-sheet-up 420ms var(--ease) both',

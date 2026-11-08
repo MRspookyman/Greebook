@@ -1,4 +1,4 @@
--- Greenbook: datos de ejemplo para ver la app llena (Gordita y Gordito).
+-- Greenbook: datos de ejemplo para ver la app llena (Laura y Javier).
 -- Ejecutar completo en Supabase → SQL Editor.
 -- BORRA antes los datos de lectura y pareja; conserva cuentas y perfiles.
 -- Requiere las migraciones hasta 0007. Para vaciar después: supabase/reset.sql.
@@ -21,9 +21,11 @@ delete from surprises_seen;
 -- Perfiles (solo si aún no existen).
 insert into profiles (id, display_name, accent, partner_id, is_gift_recipient, onboarded_at)
 values
-  ('0ef9b6d1-cfba-4921-8850-e98390566181', 'Gordita', 'blue', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', true, now()),
-  ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'Gordito', 'green', '0ef9b6d1-cfba-4921-8850-e98390566181', false, now())
+  ('0ef9b6d1-cfba-4921-8850-e98390566181', 'Laura', 'blue', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', true, now()),
+  ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'Javier', 'green', '0ef9b6d1-cfba-4921-8850-e98390566181', false, now())
 on conflict (id) do nothing;
+update profiles set display_name = 'Laura' where id = '0ef9b6d1-cfba-4921-8850-e98390566181';
+update profiles set display_name = 'Javier' where id = '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e';
 
 insert into books (id, google_id, isbn13, title, authors, cover_url, page_count, published_year, description, created_by) values ('d66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 'kh5fAAAAMAAJ', null, 'La sombra del viento', array['Carlos Ruiz Zafón']::text[], 'https://books.google.com/books/content?id=kh5fAAAAMAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api', 590, 2001, 'Un amanecer de 1945, un muchacho es conducido por su padre a un misterioso lugar oculto en el corazón de la ciudad vieja: El Cementerio de los Libros Olvidados. Allí, Daniel Sempere encuentra un libro maldito que cambia el rumbo de su vida y le arrastra a un laberinto de intrigas y secretos enterrados en el alma oscura de la ciudad.', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e');
 insert into books (id, google_id, isbn13, title, authors, cover_url, page_count, published_year, description, created_by) values ('2fa65266-bc9a-4e1a-9e03-ff6d188a4a40', 'TunBEQAAQBAJ', '9788410466494', 'Proyecto Hail Mary', array['Andy Weir']::text[], 'https://books.google.com/books/content?id=TunBEQAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api', 646, 2021, 'Nueva edición de la obra maestra de Andy Weir, con las 2 ilustra ciones de Marc Simonetti incluidas en la versión de Subterranean Press. MÁS DE 5 MILLONES DE LECTORES EN TODO EL MUNDO. UNA GRAN PELÍCULA PROTAGONIZADA POR RYAN GOSLING. «La mejor obra de Andy Weir hasta la fecha». BRANDON SANDERSON «Este libro tiene todo lo que les gusta alos aficionados de la ciencia ficción clásica (como yo)». GEORGE R. R. MARTIN «Uno de los viajes más originales, emocionantes y divertidos que he hecho.» ERNEST CLINE UN ÚNICO ASTRONAUTA. UNA MISIÓN IMPOSIBLE. Y UN ALIADO QUE JAMÁS HABRÍA IMAGINADO. Ryland Grac', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e');
@@ -247,7 +249,7 @@ insert into notes (reading_id, user_id, kind, body, page) values
   ('db512234-3a10-44f9-b099-7b789ea1b7c2', '0ef9b6d1-cfba-4921-8850-e98390566181', 'note', 'Me ha dejado tocada. Tienes que leerlo.', null),
   ('a232f40c-1886-4cea-8814-e2d631532ab4', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'quote', 'Es la pregunta, no la respuesta, lo que nos hace crecer.', 512);
 
--- Huellas: la de la página 330 sigue bloqueada para Gordito (va por la 300).
+-- Huellas: la de la página 330 sigue bloqueada para Javier (va por la 300).
 insert into messages (id, from_user, to_user, kind, book_id, page, emotion, body, created_at) values
   ('10000000-0000-4000-8000-000000000001', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 120, 'love', 'Esta frase me ha recordado a ti.', now() - interval '2 days'),
   ('10000000-0000-4000-8000-000000000002', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 330, 'twist', 'Cuando llegues aquí necesito que hablemos de este giro.', now() - interval '1 hour'),

@@ -13,14 +13,14 @@ interface Props {
 export function ProgressBar({
   value,
   color = 'var(--accent)',
-  className = 'h-[3px]',
+  className = 'h-1.5',
   label = 'Progreso de lectura',
 }: Props) {
   const entered = useEntered()
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100)
   return (
     <div
-      className={`relative overflow-hidden bg-rule ${className}`}
+      className={`relative overflow-hidden rounded-full bg-sunk ${className}`}
       role="progressbar"
       aria-label={label}
       aria-valuenow={pct}
@@ -28,7 +28,7 @@ export function ProgressBar({
       aria-valuemax={100}
     >
       <div
-        className="absolute inset-0 origin-left"
+        className="absolute inset-0 origin-left rounded-full"
         style={{
           transform: `scaleX(${entered ? pct / 100 : 0})`,
           background: color,

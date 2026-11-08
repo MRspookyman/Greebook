@@ -918,9 +918,9 @@ select {
     inset 0 0 0 2px var(--pc),
     0 0 0 2px var(--paper);
 }
-.av .ic {
-  width: 50%;
-  height: 50%;
+.av {
+  font-family: var(--f-display);
+  line-height: 1;
 }
 .av--live::before {
   content: '';

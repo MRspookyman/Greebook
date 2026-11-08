@@ -72,7 +72,7 @@ export function Stepper({
   const atMax = max !== undefined && value >= max
   const less = useHoldRepeat((times) => onChange(clamp(value - step * times)), atMin)
   const more = useHoldRepeat((times) => onChange(clamp(value + step * times)), atMax)
-  const btn = `pressable grid flex-none select-none place-items-center rounded-[6px] border border-accent bg-transparent text-accent [-webkit-touch-callout:none] disabled:opacity-40 ${large ? 'h-14 w-14' : 'h-[48px] w-[48px]'}`
+  const btn = `pressable grid flex-none select-none place-items-center rounded-full bg-sunk text-ink [-webkit-touch-callout:none] disabled:opacity-40 ${large ? 'h-14 w-14' : 'h-[48px] w-[48px]'}`
   const number = `stat-number leading-none ${large ? 'text-[60px]' : 'text-[44px]'}`
   return (
     <div className="flex items-center justify-between gap-2.5" role="group" aria-label={label}>

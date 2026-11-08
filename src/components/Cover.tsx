@@ -8,13 +8,15 @@ interface Props {
   className?: string
   children?: ReactNode
   priority?: boolean
-  /** Small bookmark on a current reading; leave other books unmarked. */
+  /** Bookmark of whoever is reading it; leave other books unmarked. */
   ribbon?: Accent
+  /** One bookmark per reader when both of you have it open (partner first, then you). */
+  ribbons?: Accent[]
 }
 
 /** Book-cloth colours for books without a cover image; paper text stays ≥ 5:1 on every one. */
-const CLOTH = ['#3f5f4a', '#3d5677', '#7b4038', '#7d5f28', '#5b4762', '#4b5b5f', '#3e6a67', '#6b5a3e']
-const INK = '#f6efe1'
+const CLOTH = ['#2e4a3e', '#1d2949', '#8f3a33', '#6b4a1f', '#5b2b4c', '#3f4c55', '#2f5c5a', '#682b2e']
+const INK = '#f8ecdf'
 
 function clothFor(title: string): string {
   let hash = 0
@@ -22,7 +24,8 @@ function clothFor(title: string): string {
   return CLOTH[hash % CLOTH.length]
 }
 
-export function Cover({ book, width, className = '', children, priority = false, ribbon }: Props) {
+export function Cover({ book, width, className = '', children, priority = false, ribbon, ribbons }: Props) {
+  const marks = ribbons ?? (ribbon ? [ribbon] : [])
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const fallback = !book.cover_url || failedUrl === book.cover_url
   const size = width ? { width, height: Math.round(width * 1.5) } : { width: '100%', aspectRatio: '2 / 3' }
@@ -43,8 +46,8 @@ export function Cover({ book, width, className = '', children, priority = false,
             padding: tiny
               ? 0
               : width
-                ? `${Math.max(6, width * 0.13)}px ${ribbon ? width * 0.3 : inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
-                : `13% ${ribbon ? '30%' : '11%'} 13% 11%`,
+                ? `${Math.max(6, width * 0.13)}px ${marks.length ? width * (0.22 + marks.length * 0.08) : inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
+                : `13% ${marks.length ? `${22 + marks.length * 8}%` : '11%'} 13% 11%`,
             justifyContent: tiny ? 'center' : 'space-between',
             alignItems: tiny ? 'center' : 'stretch',
           }}
@@ -79,8 +82,16 @@ export function Cover({ book, width, className = '', children, priority = false,
           className="h-full w-full object-cover"
         />
       )}
-      {ribbon && (
-        <span aria-hidden className="book-ribbon" style={{ '--ribbon': `var(--${ribbon})` } as CSSProperties} />
+      {marks.length > 0 && (
+        <span
+          aria-hidden
+          className="book-ribbons"
+          style={{ '--ribbon-w': `${Math.round((width ?? 100) * 0.075)}px` } as CSSProperties}
+        >
+          {marks.map((accent, index) => (
+            <span key={`${accent}-${index}`} className="book-ribbon" style={{ '--ribbon': `var(--${accent})` } as CSSProperties} />
+          ))}
+        </span>
       )}
       {children}
     </div>

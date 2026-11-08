@@ -17,7 +17,7 @@ export function Stars({ value, onChange, size = 28 }: Props) {
   const description = value ? `${ratingFormat.format(value)} de 5 estrellas` : 'Sin valorar'
   return (
     <div
-      className="relative inline-flex rounded-lg focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent"
+      className="relative inline-flex rounded-lg focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-amber"
       role={onChange ? undefined : 'img'}
       aria-label={onChange ? undefined : description}
     >
@@ -35,7 +35,7 @@ export function Stars({ value, onChange, size = 28 }: Props) {
                   strokeWidth={0}
                 />
                 <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
-                  <Star aria-hidden size={size} className="text-accent" fill="currentColor" strokeWidth={0} />
+                  <Star aria-hidden size={size} className="text-amber" fill="currentColor" strokeWidth={0} />
                 </span>
               </span>
             </span>

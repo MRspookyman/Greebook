@@ -5,7 +5,7 @@ que ya funciona (cronómetro, cola sin conexión, búsqueda, avisos) se conserva
 interactuar entre los dos y el aspecto.
 
 **Prototipo navegable:** [`mockup/index.html`](mockup/index.html). Ábrelo en el navegador (necesita internet solo para
-las tipografías). Tiene 15 pasos guiados, «Ver como» Gordito o Gordita, ambiente de tarde o de noche y una vista con
+las tipografías). Tiene 15 pasos guiados, «Ver como» Javier o Laura, ambiente de tarde o de noche y una vista con
 todas las pantallas. Los datos son de ejemplo y no toca Supabase.
 
 ## 1. Principios
@@ -22,7 +22,7 @@ todas las pantallas. Los datos son de ejemplo y no toca Supabase.
 | --- | --- |
 | Hoy | **Inicio**: tarjeta «está leyendo» con luz de lámpara y *Unirme*, tu libro con Leer · + Página · Cita, el libro a dúo, la racha de los dos en sellos y lo último que te ha dejado. |
 | Botón central Leer | Sabe si tu pareja está leyendo: te ofrece leer con ella, por tu cuenta o apuntar sin cronómetro. |
-| Ratitos (invitaciones) | **Leer juntos en directo**: te unes a su sesión, cronómetro compartido, página del otro en vivo, latidos, lluvia de fondo y un ticket al terminar. |
+| Ratitos (invitaciones) | **Leer juntos en directo**: te unes a su sesión, cronómetro compartido, página del otro en vivo, latidos y un ticket al terminar. |
 | Huellas, notas privadas y mensajes de sala | **Citas y notas en una página**: una sola idea. Compartidas por defecto, cerradas si serían spoiler, con corazón y respuestas. |
 | Salas por libro | **Ficha a dúo**: las dos cintas sobre el libro, cada cita marcada en su página y las sesiones de los dos. |
 | Estadísticas | **Nosotros**: horas a la vez, noches juntos, estantería del año, la cita más querida, reto del mes, hitos y carta del mes. Los números personales pasan a Perfil. |
@@ -37,15 +37,15 @@ pantallas de sesión (leer, leer juntos, ticket) son modo foco, sin barra y siem
 
 ### 3.1 Leer juntos (el corazón de la app)
 
-1. Ella pulsa Leer. Su presencia pasa a «leyendo ahora» y a ti te llega un aviso suave: *Gordita se ha puesto a leer
+1. Ella pulsa Leer. Su presencia pasa a «leyendo ahora» y a ti te llega un aviso suave: *Laura se ha puesto a leer
    «La sombra del viento». ¿Te unes?* Como mucho uno por noche, y se puede apagar.
 2. Tocas el aviso, la tarjeta de Inicio o el botón central y eliges **Leer con ella**.
 3. Sesión juntos: un cronómetro desde que te unes; cada uno con su libro y su página; la página del otro avanza en
-   directo. **Latido**: un toque que cruza la pantalla y hace vibrar su móvil. **Lluvia** de fondo para los dos. Las
-   citas que guardáis aparecen al momento en la sesión.
+   directo. **Latido**: un toque que cruza la pantalla y hace vibrar su móvil. Las citas que guardáis aparecen al
+   momento en la sesión. Cada uno puede pausar su parte.
 4. Cada uno pulsa **Terminar mi parte** y confirma su página. Cuando terminan los dos se crea el **ticket**: minutos a la
    vez, páginas de cada uno, racha y reto del mes. Si uno sigue leyendo, el ticket se completa cuando termine.
-5. Opcional: una línea para recordarla («Con lluvia, té y tus pies fríos») y **darle las buenas noches**.
+5. Opcional: una línea para recordarla («Con té y tus pies fríos») y **darle las buenas noches**.
 
 Casos límite: si alguien cierra la app, su cronómetro sigue guardado como ahora (localStorage) y la sesión conjunta
 espera; a las 2 h sin actividad se pregunta si seguís leyendo; sin conexión, la sesión se guarda en la cola y se une al
@@ -83,7 +83,7 @@ lectura de ella (con «Queremos leerlo juntos») y el regalo con su dedicatoria.
 
 ### 3.6 Nosotros
 
-Ex libris con vuestras iniciales, horas leyendo a la vez en el año, racha, el mes en curso (noches juntos, páginas entre
+Ex libris con vuestras iniciales (L & J), horas leyendo a la vez en el año, racha, el mes en curso (noches juntos, páginas entre
 los dos, citas), estantería del año, la cita más querida, reto del mes cooperativo, hitos en forma de sello, la carta del
 mes y la lista para leer juntos. Nada de gráficas de rendimiento.
 
@@ -98,7 +98,7 @@ acuerdo: medio punto de diferencia») y desde ahí se abre la charla del libro (
 spoilers · racha de los dos con comodines · Nosotros · nueva Inicio y Biblioteca.
 
 **Muy recomendables:** valorar a ciegas · carta del mes · regalo con dedicatoria (aparece envuelto en su biblioteca) ·
-lluvia o chimenea de fondo · modo noche automático a partir de las 22:00 · «darle las buenas noches».
+modo noche automático a partir de las 22:00 · «darle las buenas noches».
 
 **Para más adelante:** cita como imagen para compartir · «Hace un año estabais leyendo…» · «Te leo yo» (uno lee en voz
 alta y suman los dos) · lugares donde leéis (opcional) · widget de pantalla de bloqueo (requiere app nativa, una PWA no
@@ -108,7 +108,6 @@ Lo que se ha mirado esta vez (además de [`../estudio-ux.md`](../estudio-ux.md))
 
 - Presencia en tiempo real para leer «en paralelo», como una hoguera virtual: [BookBuds](https://apps.apple.com/us/app/bookbuds-read-with-friends/id6755941845).
 - Rachas de pareja con comodín, calendario de los dos y reglas visibles antes de perderla: [ejemplos de rachas](https://screensdesign.com/articles/mobile-app-streak-design-examples/) · [Twin Flame Widget](https://apps.apple.com/bb/app/twin-flame-widget/id6748699818).
-- Sonidos ambiente con el temporizador de lectura: [Bookly en Book Riot](https://bookriot.com/best-book-tracking-app/).
 - Citas diseñadas para compartir: [Basmo](https://appgoblin.info/apps/com.underline.booktracker).
 - Texto en vivo desde un campo de texto de Safari: [Gadget Hacks](https://ios.gadgethacks.com/how-to/enter-text-from-real-world-into-any-search-field-ios-15-0384737/).
 
@@ -166,14 +165,15 @@ de 12 px como mínimo, contraste medido, movimiento reducido respetado y nada de
 2. **Citas compartidas**: migración, muro, ficha a dúo y protección de spoilers.
 3. **Leer juntos en directo**: presencia, sesión juntos, latidos, ticket y avisos.
 4. **Racha de los dos y Nosotros**: comodines, hitos, carta del mes y valoración a ciegas.
-5. **Extras**: sonido ambiente real, cita como imagen, regalos.
+5. **Extras**: cita como imagen, regalos con dedicatoria, «Hace un año…».
 
 Cada fase deja la app usable; se puede regalar al terminar la 3.
 
-## 8. Preguntas abiertas
+## 8. Decisiones tomadas
 
-1. ¿Os convence el ambiente (papel rosado de día, ciruela y lámpara de noche) o preferís otro?
-2. ¿Las citas se comparten por defecto, o mejor privadas salvo que se marquen?
-3. Racha: ¿2 comodines al mes y 5 minutos mínimos os parece justo?
-4. ¿Queréis el aviso cuando el otro empieza a leer? ¿Uno por noche como máximo?
-5. ¿Qué nombres, colores e iniciales usamos (en el prototipo, Gordita en azul y Gordito en verde)?
+- Ambiente aprobado: papel rosado de día, ciruela y lámpara de noche.
+- Las citas y notas se comparten por defecto (se puede marcar una como privada al guardarla).
+- Racha de los dos con 2 comodines al mes y 5 minutos o una página como mínimo.
+- Aviso cuando el otro empieza a leer, como mucho uno por noche.
+- Nombres: Laura (azul) y Javier (verde).
+- Sin sonido de fondo en la sesión juntos.
