@@ -1,221 +1,338 @@
 import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { Plus, Search, Star } from 'lucide-react'
-import { Cover } from '@/components/Cover'
+import { CLOTH_INK, clothFor, Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
+import { ProgressBar } from '@/components/ProgressBar'
 import { Segmented } from '@/components/Segmented'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
 import { useReadings, useTogether } from '@/lib/data'
-import type { ReadingStatus, TogetherItemWithBook } from '@/lib/types'
-import { progressFraction } from '@/lib/units'
+import type { Accent, ReadingWithBook, TogetherItemWithBook } from '@/lib/types'
+import { formatPosition, progressFraction } from '@/lib/units'
 import { useRooms } from '@/features/us/rooms'
 import { answerTogether, startTogether } from '@/features/us/together'
 import { fmt, todayISO } from '@/lib/dates'
 
-const segments = [
-  { value: 'reading', label: 'Leyendo' },
-  { value: 'want', label: 'Pendientes' },
-  { value: 'finished', label: 'Leídos' },
-  { value: 'together', label: 'Juntos' },
-] as const
+type Who = 'both' | 'mine' | 'theirs'
 
-type View = ReadingStatus | 'together'
+/** One book on the year's shelf and who read it. */
+interface ShelfBook {
+  reading: ReadingWithBook
+  readers: Accent[]
+}
 
+/** The library of both of you: who is reading what, what you share, and the year's shelf. */
 export function LibraryPage() {
-  const { userId, partner } = useMe()
-  const readings = useReadings(userId)
-  const partnerReadings = useReadings(partner?.id)
-  // Books your partner also has (any shelf): a small mark on the cover links both libraries.
-  const partnerBooks = new Set((partnerReadings.data ?? []).map((reading) => reading.book_id))
+  const { userId, profile, partner } = useMe()
+  const mineQuery = useReadings(userId)
+  const theirsQuery = useReadings(partner?.id)
   const together = useTogether()
   const rooms = useRooms()
-  const [view, setView] = useState<View>('reading')
+  const [who, setWho] = useState<Who>('both')
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<'recent' | 'title' | 'rating'>('recent')
   const normalized = search.trim().toLocaleLowerCase('es')
-  const matches = (book: { title: string; authors: string[] }) =>
-    [book.title, ...book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized))
-  const visible = (readings.data ?? [])
-    .filter((reading) => reading.status === view && matches(reading.book))
-    .sort((a, b) => {
-      if (sort === 'title') return a.book.title.localeCompare(b.book.title, 'es')
-      if (sort === 'rating' && view === 'finished') return (b.rating ?? -1) - (a.rating ?? -1)
-      return b.updated_at.localeCompare(a.updated_at)
-    })
-  const list = (together.data ?? []).filter(
-    (item) => !rooms.some((room) => room.book.id === item.book_id) && matches(item.book),
+  const matches = (reading: ReadingWithBook) =>
+    !normalized ||
+    [reading.book.title, ...reading.book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized))
+  const mine = (mineQuery.data ?? []).filter(matches)
+  const theirs = (theirsQuery.data ?? []).filter(matches)
+  const people: { readings: ReadingWithBook[]; accent: Accent; own: boolean }[] = [
+    ...(who !== 'theirs' ? [{ readings: mine, accent: profile.accent, own: true }] : []),
+    ...(who !== 'mine' && partner ? [{ readings: theirs, accent: partner.accent, own: false }] : []),
+  ]
+  const roomBooks = new Set(rooms.map((room) => room.book.id))
+  const year = todayISO().slice(0, 4)
+
+  // Reading now: shared books first (both ribbons), then each person's own.
+  const sharedNow = rooms.filter((room) => matches(room.mine))
+  const ownNow = people.flatMap((person) =>
+    person.readings
+      .filter((r) => r.status === 'reading' && !roomBooks.has(r.book_id))
+      .map((reading) => ({ reading, accent: person.accent, own: person.own })),
   )
-  const sharedRooms = rooms.filter((room) => matches(room.book))
+  const wanted = people.flatMap((person) =>
+    person.readings.filter((r) => r.status === 'want').map((reading) => ({ reading, accent: person.accent })),
+  )
+  // Finished this year, one spine per book with every reader's dot.
+  const shelf = new Map<string, ShelfBook>()
+  for (const person of people)
+    for (const reading of person.readings)
+      if (reading.status === 'finished' && reading.finished_on?.startsWith(year)) {
+        const entry = shelf.get(reading.book_id)
+        if (entry) entry.readers.push(person.accent)
+        else shelf.set(reading.book_id, { reading, readers: [person.accent] })
+      }
+  const shelfBooks = [...shelf.values()].sort((a, b) => (a.reading.finished_on ?? '').localeCompare(b.reading.finished_on ?? ''))
+  const earlier = people.flatMap((person) =>
+    person.readings.filter((r) => r.status === 'finished' && !r.finished_on?.startsWith(year)).map((reading) => ({ reading, accent: person.accent })),
+  )
+  const abandoned = people.flatMap((person) => person.readings.filter((r) => r.status === 'abandoned'))
+  const finishedByBoth =
+    partner && who === 'both'
+      ? (mineQuery.data ?? []).filter(
+          (r) => r.status === 'finished' && matches(r) && (theirsQuery.data ?? []).some((t) => t.book_id === r.book_id && t.status === 'finished'),
+        )
+      : []
+  const togetherList = (together.data ?? []).filter((item) => !roomBooks.has(item.book_id))
+  const loading = mineQuery.isPending || (!!partner && theirsQuery.isPending)
+
   return (
-    <section className="space-y-6">
-      <header className="enter flex min-h-11 items-center justify-between">
+    <section className="space-y-7">
+      <header className="enter flex min-h-11 items-center justify-between gap-3">
         <h1 className="display">Biblioteca</h1>
         <Link to="/biblioteca/buscar" className="icon-btn" aria-label="Buscar y añadir un libro">
-          <Plus size={23} />
+          <Plus size={22} aria-hidden />
         </Link>
       </header>
+      {partner && (
+        <Segmented<Who>
+          options={[
+            { value: 'both', label: 'Los dos' },
+            { value: 'mine', label: 'Míos' },
+            { value: 'theirs', label: `De ${partner.display_name}` },
+          ]}
+          value={who}
+          onChange={setWho}
+          aria-label="De quién son los libros"
+        />
+      )}
       <label className="relative block">
-        <Search className="pointer-events-none absolute top-3 left-0 text-muted" size={19} />
+        <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" size={18} aria-hidden />
         <input
-          className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent pl-7"
+          className="input pl-10"
           type="search"
           name="library-search"
           autoComplete="off"
           spellCheck={false}
           aria-label="Buscar por título o autor"
-          placeholder="p. ej. Patria…"
+          placeholder="Buscar en vuestra biblioteca"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
       </label>
-      <Segmented
-        variant="underline"
-        options={(view === 'abandoned'
-          ? [...segments, { value: 'abandoned' as const, label: 'Dejados' }]
-          : [...segments]
-        ).map((segment) => ({
-          ...segment,
-          count:
-            segment.value === 'together'
-              ? rooms.length +
-                (together.data ?? []).filter((item) => !rooms.some((room) => room.book.id === item.book_id)).length
-              : (readings.data ?? []).filter((reading) => reading.status === segment.value).length,
-        }))}
-        value={view}
-        onChange={setView}
-        aria-label="Vista de biblioteca"
-      />
-      <div className="flex flex-wrap items-center gap-2">
-        {view !== 'together' &&
-          (['recent', 'title', ...(view === 'finished' ? (['rating'] as const) : [])] as const).map((value) => (
-            <button
-              key={value}
-              className={`min-h-11 px-1 text-xs underline-offset-4 ${sort === value ? 'text-ink underline' : 'text-muted'}`}
-              aria-pressed={sort === value}
-              onClick={() => setSort(value)}
-            >
-              {value === 'recent' ? 'Recientes' : value === 'title' ? 'Título' : 'Nota'}
-            </button>
+
+      {loading ? (
+        <div className="flex gap-4" role="status" aria-label="Cargando biblioteca">
+          {[0, 1, 2].map((index) => (
+            <div key={index} className="aspect-[2/3] w-28 animate-pulse rounded-md bg-sunk" />
           ))}
-        {view !== 'together' && (
-          <button
-            className="btn btn-ghost ml-auto text-xs"
-            aria-pressed={view === 'abandoned'}
-            onClick={() => setView(view === 'abandoned' ? 'reading' : 'abandoned')}
-          >
-            Ver dejados
+        </div>
+      ) : mineQuery.isError ? (
+        <EmptyState title="No se pudo cargar la biblioteca">
+          <button className="btn btn-outline" onClick={() => void mineQuery.refetch()}>
+            Reintentar
           </button>
-        )}
-      </div>
-      {view === 'together' ? (
-        <div className="space-y-4">
-          {sharedRooms.length > 0 && (
-            <section className="space-y-3">
-              <h2>Salas abiertas</h2>
-              {sharedRooms.map((room) => (
-                <Link
-                  key={room.book.id}
-                  className="pressable flex items-center gap-4 border-b border-rule py-4"
-                  to={`/sala/${room.book.id}`}
-                >
-                  <Cover book={room.book} width={48} />
-                  <div className="min-w-0">
-                    <p className="font-serif">{room.book.title}</p>
-                    <p className="text-xs text-muted">Abrir la sala</p>
-                  </div>
+        </EmptyState>
+      ) : (
+        <>
+          <Shelf title="Leyendo ahora" empty={normalized ? 'Nada en curso con ese título.' : 'Nadie está leyendo nada ahora mismo.'}>
+            {who !== 'theirs' || partner
+              ? sharedNow.map((room) => (
+                  <Tile
+                    key={room.book.id}
+                    to={`/libro/${room.mine.id}`}
+                    reading={room.mine}
+                    ribbons={partner ? [partner.accent, profile.accent] : [profile.accent]}
+                    caption={`A dúo · tú p. ${room.mine.current_position}, ${partner?.display_name ?? ''} p. ${room.theirs.current_position}`}
+                    bars={partner ? [{ value: progressFraction(room.theirs), accent: partner.accent }, { value: progressFraction(room.mine), accent: profile.accent }] : []}
+                  />
+                ))
+              : null}
+            {ownNow.map(({ reading, accent, own }) => (
+              <Tile
+                key={reading.id}
+                to={`/libro/${reading.id}`}
+                reading={reading}
+                ribbons={[accent]}
+                caption={`${own ? 'Tú' : partner?.display_name} · ${formatPosition(reading)}`}
+                bars={[{ value: progressFraction(reading), accent }]}
+              />
+            ))}
+          </Shelf>
+
+          {who === 'both' && partner && (sharedNow.length > 0 || finishedByBoth.length > 0) && (
+            <section className="space-y-1" aria-labelledby="duo">
+              <h2 id="duo" className="mb-2">
+                A dúo
+              </h2>
+              {sharedNow.map((room) => (
+                <Link key={room.book.id} to={`/libro/${room.mine.id}`} className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2.5 first-of-type:border-0">
+                  <Cover book={room.book} width={48} ribbons={[partner.accent, profile.accent]} />
+                  <span className="grid min-w-0 flex-1 gap-0.5">
+                    <span className="truncate font-serif text-[17px]">{room.book.title}</span>
+                    <span className="text-[13px] text-muted">
+                      En curso{room.mine.started_on ? ` desde el ${fmt(room.mine.started_on, "d 'de' MMMM")}` : ''}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+              {finishedByBoth.map((reading) => (
+                <Link key={reading.id} to={`/libro/${reading.id}`} className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2.5 first-of-type:border-0">
+                  <Cover book={reading.book} width={48} ribbons={[partner.accent, profile.accent]} />
+                  <span className="grid min-w-0 flex-1 gap-0.5">
+                    <span className="truncate font-serif text-[17px]">{reading.book.title}</span>
+                    <span className="text-[13px] text-muted">Terminado por los dos</span>
+                  </span>
                 </Link>
               ))}
             </section>
           )}
-          <section className="space-y-3">
-            <h2>Queremos leer juntos</h2>
-            {together.isPending && <p className="text-sm text-muted">Cargando vuestros libros…</p>}
-            {together.isError && (
-              <button className="btn btn-secondary" onClick={() => void together.refetch()}>
-                Reintentar
-              </button>
-            )}
-            {together.isSuccess && !list.length && (
-              <p className="text-sm text-muted">
-                {normalized
-                  ? 'No hay libros con ese título o autor.'
-                  : 'Añadid vuestro próximo libro desde su ficha con «Leerlo juntos».'}
-              </p>
-            )}
-            {list.map((item) => (
-              <TogetherBook key={item.id} item={item} />
-            ))}
-          </section>
-        </div>
-      ) : readings.isPending ? (
-        <div className="grid animate-pulse grid-cols-3 gap-5" role="status" aria-label="Cargando biblioteca">
-          {[0, 1, 2].map((index) => (
-            <div key={index} className="aspect-[2/3] rounded-sm bg-border" />
-          ))}
-        </div>
-      ) : readings.isError ? (
-        <EmptyState title="No se pudo cargar tu biblioteca">
-          <button className="btn btn-secondary" onClick={() => void readings.refetch()}>
-            Reintentar
-          </button>
-        </EmptyState>
-      ) : !visible.length ? (
-        <EmptyState
-          title={normalized ? 'No hay libros con ese título o autor' : 'Tu próxima lectura está por descubrir'}
-        >
-          <Link className="btn btn-primary" to="/biblioteca/buscar">
-            Buscar un libro
-          </Link>
-        </EmptyState>
-      ) : (
-        <div className="grid grid-cols-3 gap-x-5 gap-y-7">
-          {visible.map((reading, index) => (
-            <Link
-              key={reading.id}
-              to={`/libro/${reading.id}`}
-              className="pressable enter flex min-w-0 flex-col items-start gap-3"
-              style={{ '--i': Math.min(index, 11) } as CSSProperties}
-              aria-label={
-                partner && partnerBooks.has(reading.book_id)
-                  ? `${reading.book.title}, ${partner.display_name} también lo tiene`
-                  : undefined
-              }
-            >
-              <Cover book={reading.book}>
-                {partner && partnerBooks.has(reading.book_id) && (
-                  <span
-                    className="absolute right-1.5 bottom-1.5 z-[4] grid h-5 w-5 place-items-center rounded-full font-serif text-xs text-[var(--accent-contrast)] ring-2 ring-[var(--bg)]"
-                    style={{ background: `var(--${partner.accent})` }}
-                    aria-hidden
-                  >
-                    {partner.display_name.charAt(0).toUpperCase()}
-                  </span>
+
+          {who === 'both' && partner && (
+            <section className="space-y-3" aria-labelledby="juntos">
+              <h2 id="juntos">Queremos leer juntos</h2>
+              {together.isPending && <p className="text-sm text-muted">Cargando vuestros libros…</p>}
+              {together.isSuccess && !togetherList.length && (
+                <p className="text-sm text-muted">Añadid vuestro próximo libro desde su ficha con «Leerlo juntos».</p>
+              )}
+              {togetherList.map((item) => (
+                <TogetherBook key={item.id} item={item} />
+              ))}
+            </section>
+          )}
+
+          {wanted.length > 0 && (
+            <section className="space-y-3" aria-labelledby="pendientes">
+              <h2 id="pendientes">Pendientes</h2>
+              <div className="grid grid-cols-3 gap-x-4 gap-y-5">
+                {wanted.map(({ reading, accent }) => (
+                  <Link key={reading.id} to={`/libro/${reading.id}`} className="pressable grid min-w-0 gap-2">
+                    <Cover book={reading.book} ribbons={who === 'both' ? [accent] : undefined} />
+                    <span className="line-clamp-2 text-[13px] font-extrabold leading-snug">{reading.book.title}</span>
+                    {who === 'both' && (
+                      <span className="sr-only">{accent === profile.accent ? 'Tuyo' : `De ${partner?.display_name}`}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-3" aria-labelledby="leidos">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="leidos">Leídos en {year}</h2>
+              <span className="text-sm text-muted">
+                {shelfBooks.length} {shelfBooks.length === 1 ? 'libro' : 'libros'}
+              </span>
+            </div>
+            {shelfBooks.length === 0 ? (
+              <p className="text-sm text-muted">Aquí irá vuestra estantería del año.</p>
+            ) : (
+              <>
+                <div className="shelf" role="list" aria-label={`Estantería de ${year}`}>
+                  {shelfBooks.map(({ reading, readers }) => (
+                    <Spine key={reading.book_id} reading={reading} readers={readers} />
+                  ))}
+                </div>
+                {who === 'both' && partner && (
+                  <p className="flex flex-wrap gap-x-4 text-[13px] font-bold text-muted">
+                    <span className="flex items-center gap-1.5">
+                      <i className="h-2.5 w-2.5 rounded-full" style={{ background: `var(--${partner.accent})` }} />
+                      {partner.display_name}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <i className="h-2.5 w-2.5 rounded-full" style={{ background: `var(--${profile.accent})` }} />
+                      Tú
+                    </span>
+                  </p>
                 )}
-              </Cover>
-              <span className="line-clamp-2 font-serif text-base leading-snug">{reading.book.title}</span>
-              {reading.status === 'reading' && (
-                <span className="flex w-full items-center gap-2">
-                  <span className="relative h-[2px] flex-1 overflow-hidden bg-rule" aria-hidden>
-                    <span
-                      className="absolute inset-y-0 left-0 bg-accent"
-                      style={{ width: `${Math.round(progressFraction(reading) * 100)}%` }}
-                    />
-                  </span>
-                  <span className="folio text-sm text-muted">{Math.round(progressFraction(reading) * 100)} %</span>
-                </span>
-              )}
-              {reading.status === 'finished' && reading.rating !== null && (
-                <span className="flex items-center gap-1 text-xs text-muted">
-                  <Star size={13} />
-                  {reading.rating.toLocaleString('es')}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
+              </>
+            )}
+          </section>
+
+          {(earlier.length > 0 || abandoned.length > 0) && (
+            <details className="rule pt-3">
+              <summary className="min-h-11 cursor-pointer py-2 font-extrabold">
+                Más libros ({earlier.length + abandoned.length})
+              </summary>
+              <div className="grid grid-cols-3 gap-x-4 gap-y-5 pt-3">
+                {[...earlier.map((item) => item.reading), ...abandoned].map((reading) => (
+                  <Link key={reading.id} to={`/libro/${reading.id}`} className="pressable grid min-w-0 gap-2">
+                    <Cover book={reading.book} />
+                    <span className="line-clamp-2 text-[13px] font-extrabold leading-snug">{reading.book.title}</span>
+                    <span className="flex items-center gap-1 text-xs text-muted">
+                      {reading.status === 'abandoned' ? (
+                        'Dejado'
+                      ) : reading.rating !== null ? (
+                        <>
+                          <Star size={12} aria-hidden /> {reading.rating.toLocaleString('es')}
+                        </>
+                      ) : (
+                        reading.finished_on?.slice(0, 4)
+                      )}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </details>
+          )}
+        </>
       )}
     </section>
+  )
+}
+
+function Shelf({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+  const items = (Array.isArray(children) ? children.flat() : [children]).filter(Boolean)
+  return (
+    <section className="space-y-3" aria-label={title}>
+      <h2>{title}</h2>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted">{empty}</p>
+      ) : (
+        <div className="no-scrollbar -mx-5 flex gap-4 overflow-x-auto px-5 pt-1 pb-2">{children}</div>
+      )}
+    </section>
+  )
+}
+
+function Tile({
+  to,
+  reading,
+  ribbons,
+  caption,
+  bars,
+}: {
+  to: string
+  reading: ReadingWithBook
+  ribbons: Accent[]
+  caption: string
+  bars: { value: number; accent: Accent }[]
+}) {
+  return (
+    <Link to={to} className="pressable grid w-28 flex-none content-start gap-2 text-left">
+      <Cover book={reading.book} width={112} ribbons={ribbons} />
+      <span className="line-clamp-2 text-[13.5px] font-extrabold leading-tight">{reading.book.title}</span>
+      <span className="grid gap-[3px]" aria-hidden>
+        {bars.map((bar, index) => (
+          <ProgressBar key={index} value={bar.value} color={`var(--${bar.accent})`} className="h-1" />
+        ))}
+      </span>
+      <span className="text-[12.5px] leading-snug text-muted">{caption}</span>
+    </Link>
+  )
+}
+
+function Spine({ reading, readers }: { reading: ReadingWithBook; readers: Accent[] }) {
+  const pages = reading.book.page_count ?? reading.total_units
+  const width = Math.min(44, Math.max(26, 22 + Math.round(pages / 45)))
+  const height = 120 + ((reading.book.title.length * 7) % 38)
+  return (
+    <Link
+      role="listitem"
+      to={`/libro/${reading.id}`}
+      className="spine"
+      style={{ width, height, background: clothFor(reading.book.title), color: CLOTH_INK } as CSSProperties}
+      aria-label={`${reading.book.title}${reading.finished_on ? `, terminado el ${fmt(reading.finished_on, "d 'de' MMMM")}` : ''}`}
+    >
+      <span className="absolute top-1.5 left-1/2 flex -translate-x-1/2 gap-0.5" aria-hidden>
+        {readers.map((accent, index) => (
+          <i key={index} className="h-1.5 w-1.5 rounded-full" style={{ background: `var(--${accent})`, boxShadow: `0 0 0 1.5px ${CLOTH_INK}` }} />
+        ))}
+      </span>
+      <span className="spine-title">{reading.book.title}</span>
+    </Link>
   )
 }
 
@@ -292,7 +409,7 @@ function TogetherBook({ item }: { item: TogetherItemWithBook }) {
         </div>
       ) : (
         <p className="text-xs text-muted">
-          {item.partner_answer === 'later' ? 'Lo guardáis para otro día' : 'Esperando a que a tu pareja le apetezca'}
+          {item.partner_answer === 'later' ? 'Lo guardáis para otro día' : 'Esperando su respuesta'}
         </p>
       )}
     </article>

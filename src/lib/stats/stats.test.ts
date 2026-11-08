@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { audioMinutes, pagesRead, sessionScore } from './aggregate'
 import { level } from './intensity'
-import { bestStreak, currentStreak } from './streak'
+import { bestStreak, currentStreak, sharedStreak } from './streak'
 
 describe('currentStreak', () => {
   const today = '2026-03-10'
@@ -48,5 +48,18 @@ describe('aggregate', () => {
     expect(audioMinutes(s, { unit: 'minutes' })).toBe(60)
     expect(pagesRead(s, { unit: 'minutes' })).toBe(0)
     expect(sessionScore(s, { unit: 'minutes' })).toBe(30)
+  })
+})
+
+describe('sharedStreak', () => {
+  it('counts only days both read, and waits for today', () => {
+    const me = new Set(['2026-03-08', '2026-03-09'])
+    const you = new Set(['2026-03-07', '2026-03-08', '2026-03-09', '2026-03-10'])
+    expect(sharedStreak(me, you, '2026-03-10')).toBe(2)
+    me.add('2026-03-10')
+    expect(sharedStreak(me, you, '2026-03-10')).toBe(3)
+  })
+  it('breaks on a day only one read', () => {
+    expect(sharedStreak(new Set(['2026-03-08', '2026-03-10']), new Set(['2026-03-08', '2026-03-09', '2026-03-10']), '2026-03-10')).toBe(1)
   })
 })

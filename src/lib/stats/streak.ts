@@ -30,3 +30,12 @@ export function bestStreak(dates: Set<string>): number {
   }
   return best
 }
+
+/**
+ * Consecutive days on which both of you read, ending today (or yesterday while today is still open for one of
+ * you). Each set holds that person's local reading dates.
+ */
+export function sharedStreak(mine: Set<string>, theirs: Set<string>, today: string): number {
+  const both = new Set([...mine].filter((date) => theirs.has(date)))
+  return currentStreak(both, today)
+}

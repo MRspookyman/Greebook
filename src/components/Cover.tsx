@@ -16,9 +16,10 @@ interface Props {
 
 /** Book-cloth colours for books without a cover image; paper text stays ≥ 5:1 on every one. */
 const CLOTH = ['#2e4a3e', '#1d2949', '#8f3a33', '#6b4a1f', '#5b2b4c', '#3f4c55', '#2f5c5a', '#682b2e']
-const INK = '#f8ecdf'
+export const CLOTH_INK = '#f8ecdf'
+const INK = CLOTH_INK
 
-function clothFor(title: string): string {
+export function clothFor(title: string): string {
   let hash = 0
   for (const char of title) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
   return CLOTH[hash % CLOTH.length]

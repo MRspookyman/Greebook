@@ -1,39 +1,52 @@
-import type { CSSProperties } from 'react'
-import { ChevronRight, CloudUpload, Play, Plus } from 'lucide-react'
-import { formatDistanceToNowStrict } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { ChevronRight, CloudUpload, Heart, Lamp, Play, Plus, Quote as QuoteIcon } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { useMe } from '@/features/auth/me'
-import { useInvites, useReadings, useSessions } from '@/lib/data'
+import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
-import { currentStreak } from '@/lib/stats/streak'
-import { dailySeries, estimatedFinish, pacePerDay, weekDays } from '@/lib/stats/insights'
-import { formatDays, formatMinutes, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
+import { sharedStreak } from '@/lib/stats/streak'
+import { dailySeries, estimatedFinish, weekDays } from '@/lib/stats/insights'
+import { formatDays, formatPosition, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
+import { isPartnerReading } from '@/lib/presence'
 import { Avatar } from '@/components/Avatar'
-import { CountUp } from '@/components/CountUp'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
 import { EmptyState } from '@/components/EmptyState'
 import { startTimer, useActiveTimer, useElapsedSeconds } from '@/features/session/Timer'
 import { formatClock } from '@/lib/timer'
 import { usePendingForMe } from '@/features/us/messages'
-import { InviteCard } from '@/features/us/InviteCard'
-import { isInviteExpired } from '@/features/us/ratito'
+import { useRooms } from '@/features/us/rooms'
+import { QuoteCard } from '@/features/quotes/QuoteCard'
+import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { recentReadings } from './recentReadings'
+import { WeekStamps } from './WeekStamps'
 
-const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+/** Minutes since a timestamp, refreshed every half minute while shown. */
+function useMinutesSince(iso: string | null | undefined): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!iso) return
+    const id = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(id)
+  }, [iso])
+  return iso ? Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000)) : 0
+}
 
+/** Inicio: what is happening between the two of you right now, your book, and your week together. */
 export function TodayPage() {
   const { userId, profile, partner } = useMe()
   const readings = useReadings(userId)
   const sessions = useSessions(userId)
   const partnerReadings = useReadings(partner?.id)
   const partnerSessions = useSessions(partner?.id)
-  const invites = useInvites()
+  const quotes = useQuotes(!!partner).data ?? []
+  const rooms = useRooms()
   const pending = usePendingSessionCount()
+  const forMe = usePendingForMe()
   const navigate = useNavigate()
+  const [quoting, setQuoting] = useState<ReadingWithBook | null>(null)
   const read = (reading: ReadingWithBook) => {
     if (startTimer(reading)) navigate(`/leer/${reading.id}`)
   }
@@ -43,122 +56,89 @@ export function TodayPage() {
     (readings.data ?? []).filter((r) => r.status === 'reading'),
     sessions.data ?? [],
   )
-  const dates = new Set(sessions.data?.map((s) => s.read_on) ?? [])
-  const streak = currentStreak(dates, today)
-  const partnerDates = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
-  const duo = [...dates].filter((date) => date.startsWith(today.slice(0, 7)) && partnerDates.has(date)).length
-  const forMe = usePendingForMe()
-  const priority = forMe.items.find((item) => item.type === 'invite') ?? forMe.items[0]
-  const inlineInvite =
-    priority?.type === 'invite'
-      ? priority.invite
-      : invites.data?.find(
-          (invite) => invite.from_user === userId && invite.status === 'accepted' && !isInviteExpired(invite),
-        )
+  const main = active[0]
+  const others = active.slice(1)
+  const mine = new Set(sessions.data?.map((s) => s.read_on) ?? [])
+  const theirs = new Set(partnerSessions.data?.map((s) => s.read_on) ?? [])
+  const streak = sharedStreak(mine, theirs, today)
+  const finished = (readings.data ?? []).filter((r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4))).length
   const week = weekDays(today)
-  const series = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] })
-  const weeklyPages = series.reduce((sum, day) => sum + day.pages, 0)
-  const finished = (readings.data ?? []).filter(
-    (r) => r.status === 'finished' && r.finished_on?.startsWith(today.slice(0, 4)),
-  ).length
-  const goal = profile.yearly_goal
-  const latest = partnerSessions.data?.reduce<Session | null>(
-    (last, session) => (!last || session.created_at > last.created_at ? session : last),
-    null,
+  const weeklyPages = dailySeries(sessions.data ?? [], readings.data ?? [], { from: week[0], to: week[6] }).reduce(
+    (sum, day) => sum + day.pages,
+    0,
   )
-  const latestReading = partnerReadings.data?.find((r) => r.id === latest?.reading_id)
-  const liveReading = partnerReadings.data?.find((reading) => reading.id === partner?.reading_now_id)
-  const live =
-    !!partner?.reading_now_since && Date.now() - new Date(partner.reading_now_since).getTime() < 2 * 60 * 60 * 1000
-  // A gentle way to answer presence: start your own timer, on the same book when you share it.
-  const timer = useActiveTimer()
-  const readAlong =
-    live && liveReading && !priority && !timer
-      ? (active.find((reading) => reading.book_id === liveReading.book_id) ?? active[0])
-      : undefined
-  const pendingId = priority
-    ? priority.type === 'invite'
-      ? priority.invite.id
-      : priority.type === 'together'
-        ? priority.item.id
-        : null
-    : null
+  const latest = quotes.find((q) => q.user_id === partner?.id)
+  const name = partner?.display_name ?? 'tu pareja'
+
+  const todayLine = !partner ? (
+    mine.has(today) ? 'Hoy ya has leído.' : 'Un ratito hoy, cuando te apetezca.'
+  ) : mine.has(today) && theirs.has(today) ? (
+    <>
+      <Heart size={17} className="mt-0.5 flex-none text-rose" fill="currentColor" aria-hidden />
+      Hoy habéis leído los dos. {formatDays(streak)} {streak === 1 ? 'seguido' : 'seguidos'}.
+    </>
+  ) : theirs.has(today) ? (
+    <>
+      <Lamp size={17} className="mt-0.5 flex-none text-amber-ink" aria-hidden />
+      {name} ya ha leído hoy. Falta tu ratito para la racha de los dos.
+    </>
+  ) : mine.has(today) ? (
+    <>
+      <Lamp size={17} className="mt-0.5 flex-none text-amber-ink" aria-hidden />
+      Hoy ya has leído. Falta {name} para la racha de los dos.
+    </>
+  ) : (
+    <>
+      <Lamp size={17} className="mt-0.5 flex-none text-amber-ink" aria-hidden />
+      {streak > 0 ? `Lleváis ${formatDays(streak)} leyendo los dos. Un ratito hoy y sigue.` : 'Un ratito hoy y empieza vuestra racha.'}
+    </>
+  )
 
   return (
-    <div className="space-y-5">
-      <header className="enter">
+    <div className="space-y-7">
+      <header className="enter space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted">{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</p>
-          <Link
-            to="/perfil"
-            className="-mr-1.5 flex min-h-11 min-w-11 items-center justify-center"
-            aria-label="Tu perfil"
-          >
+          <p className="text-sm font-bold text-muted">{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</p>
+          <Link to="/perfil" className="-mr-1 flex min-h-11 items-center pl-2" aria-label="Perfil y ajustes">
             <Avatar person={profile} size={32} />
+            {partner && (
+              <span className="-ml-2 rounded-full ring-2 ring-bg">
+                <Avatar person={partner} size={32} />
+              </span>
+            )}
           </Link>
         </div>
-        <h1 className="display mt-1">
+        <h1 className="display">
           {greeting()},
           <br />
-          <span className="display-italic">{profile.display_name}</span>
+          <span style={{ color: `var(--${profile.accent})` }}>{profile.display_name}</span>
         </h1>
+        <p className="flex items-start gap-2 text-[15px] text-muted">{todayLine}</p>
       </header>
 
-      {partner && inlineInvite ? (
-        <div className="rule pt-3">
-          <InviteCard invite={inlineInvite} compact />
-        </div>
-      ) : (
-        partner &&
-        (priority || (live && liveReading) || (latest && latestReading)) && (
-          <div className="rule enter flex min-h-11 items-center gap-2 pt-3">
-            <Link
-              to={pendingId ? `/nosotros#m-${pendingId}` : '/nosotros'}
-              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-xs"
-            >
-              <span className="relative">
-                <Avatar person={partner} size={28} />
-                {live && !priority && (
-                  <span
-                    className="live-dot absolute -right-0.5 -bottom-0.5 ring-2 ring-[var(--bg)]"
-                    style={{ color: `var(--${partner.accent})` }}
-                    aria-hidden
-                  />
-                )}
-              </span>
-              <span className="line-clamp-2">
-                {partner.display_name}{' '}
-                {priority
-                  ? priority.type === 'invite'
-                    ? 'te invita a un ratito'
-                    : priority.type === 'together'
-                      ? 'quiere leer contigo'
-                      : priority.type === 'goal'
-                        ? 'te propone un reto para los dos'
-                        : `te dejó algo · ${forMe.count}`
-                  : live && liveReading
-                    ? `está leyendo «${liveReading.book.title}»`
-                    : latest && latestReading
-                      ? `leyó ${formatUnitDelta(latestReading.unit, latest.end_pos - latest.start_pos)} ${formatDistanceToNowStrict(new Date(latest.created_at), { addSuffix: true, locale: es })}`
-                      : ''}
-              </span>
-              {!readAlong && <ChevronRight size={16} className="ml-auto shrink-0" aria-hidden />}
-            </Link>
-            {readAlong && (
-              <button type="button" className="btn btn-outline shrink-0 px-3 text-xs" onClick={() => read(readAlong)}>
-                Leer a la vez
-              </button>
-            )}
-          </div>
-        )
+      <NowCard active={active} partnerReadings={partnerReadings.data ?? []} onRead={read} />
+
+      {partner && forMe.count > 0 && (
+        <Link to="/nosotros" className="card enter flex min-h-14 items-center gap-3 py-3" style={{ '--i': 1 } as CSSProperties}>
+          <Avatar person={partner} size={30} />
+          <span className="flex-1 text-sm">
+            {name}{' '}
+            {forMe.items[0].type === 'invite'
+              ? 'te invita a un ratito'
+              : forMe.items[0].type === 'together'
+                ? 'quiere leer contigo'
+                : 'te propone un reto para los dos'}
+          </span>
+          <ChevronRight size={18} aria-hidden />
+        </Link>
       )}
 
       {readings.isPending ? (
-        <div className="rule h-56 animate-pulse bg-soft" role="status" aria-label="Cargando lecturas" />
+        <div className="h-56 animate-pulse rounded-[22px] bg-sunk" role="status" aria-label="Cargando lecturas" />
       ) : readings.isError && !readings.data ? (
         <p className="text-sm text-danger">No se pudieron cargar tus libros. Inténtalo al volver a conectarte.</p>
-      ) : active.length === 0 ? (
-        <section className="rule pt-5">
+      ) : !main ? (
+        <section className="card">
           <EmptyState title="Aún no estás leyendo nada">
             <Link className="btn btn-primary mt-3" to="/biblioteca/buscar">
               Buscar un libro
@@ -166,231 +146,230 @@ export function TodayPage() {
           </EmptyState>
         </section>
       ) : (
-        <section className="rule enter pt-4" style={{ '--i': 1 } as CSSProperties} aria-label="Tus lecturas actuales">
+        <section className="enter space-y-3" style={{ '--i': 2 } as CSSProperties} aria-labelledby="tu-lectura">
+          <h2 id="tu-lectura">Tu lectura</h2>
           <CurrentReading
-            reading={active[0]}
-            accent={profile.accent}
+            reading={main}
             sessions={sessions.data ?? []}
             today={today}
-            onRead={() => read(active[0])}
+            ribbons={rooms.some((room) => room.mine.id === main.id) && partner ? [partner.accent, profile.accent] : [profile.accent]}
+            onRead={() => read(main)}
+            onQuote={() => setQuoting(main)}
           />
-          {active.slice(1).map((reading) => (
-            <div key={reading.id} className="rule mt-3 flex min-h-14 items-center gap-3 pt-3">
-              <Link to={`/libro/${reading.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                <Cover book={reading.book} width={32} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-serif text-lg leading-tight">{reading.book.title}</span>
-                  <span className="text-xs text-muted">
-                    {formatPosition(reading)} · {Math.round(progressFraction(reading) * 100)} %
-                  </span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label={`${reading.format === 'audio' ? 'Escuchar' : 'Leer'} «${reading.book.title}»`}
-                onClick={() => read(reading)}
-              >
-                <Play size={16} aria-hidden />
-              </button>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <section
-        className="rule enter space-y-3 pt-4"
-        style={{ '--i': 2 } as CSSProperties}
-        aria-label="Tu racha de lectura"
-      >
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-xs">
-            {dates.has(today)
-              ? 'Hoy ya has leído'
-              : streak === 0
-                ? 'Cuando te apetezca, un ratito'
-                : 'Un ratito para ti, cuando quieras'}
-          </p>
-          {streak > 0 && <span className="folio shrink-0 text-amber-ink">{formatDays(streak)}</span>}
-        </div>
-        {partner && duo > 0 && (
-          <p className="flex items-center gap-1.5 text-xs text-muted">
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${profile.accent === 'blue' ? 'bg-blue' : 'bg-green'}`}
-              aria-hidden
-            />
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${partner.accent === 'blue' ? 'bg-blue' : 'bg-green'}`}
-              aria-hidden
-            />
-            {formatDays(duo)} leyendo los dos este mes
-          </p>
-        )}
-        <div className="grid grid-cols-7 gap-2">
-          {week.map((date, index) => {
-            const done = dates.has(date)
-            const theirs = partnerDates.has(date)
+          {others.map((reading) => {
+            const room = rooms.find((item) => item.mine.id === reading.id)
             return (
-              <div
-                key={date}
-                className="flex flex-col items-center gap-2 text-xs text-muted"
-                aria-label={`${fmt(date, 'EEEE')}: ${
-                  partner
-                    ? done && theirs
-                      ? 'leísteis los dos'
-                      : done
-                        ? 'leíste tú'
-                        : theirs
-                          ? `leyó ${partner.display_name}`
-                          : 'sin sesiones'
-                    : done
-                      ? 'leído'
-                      : 'sin sesión'
-                }`}
-              >
-                <span className="flex h-3 items-end gap-1" aria-hidden>
-                  <span
-                    className={`grow-y h-3 w-1.5 rounded-sm ${
-                      done ? (profile.accent === 'blue' ? 'bg-blue' : 'bg-green') : 'bg-border'
-                    }`}
-                    style={{ animationDelay: `${200 + index * 45}ms` }}
-                  />
-                  {partner && (
-                    <span
-                      className={`grow-y h-3 w-1.5 rounded-sm ${
-                        theirs ? (partner.accent === 'blue' ? 'bg-blue' : 'bg-green') : 'bg-border'
-                      }`}
-                      style={{ animationDelay: `${230 + index * 45}ms` }}
-                    />
-                  )}
-                </span>
-                <span className={date === today ? 'text-ink underline underline-offset-4' : undefined}>
-                  {DAYS[index]}
-                </span>
+              <div key={reading.id} className="flex min-h-16 items-center gap-3 py-1">
+                <Link to={`/libro/${reading.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
+                  <Cover book={reading.book} width={44} ribbons={room && partner ? [partner.accent, profile.accent] : undefined} />
+                  <span className="grid min-w-0 flex-1 gap-1">
+                    <span className="truncate font-extrabold">
+                      {reading.book.title}
+                      {room ? ' · a dúo' : ''}
+                    </span>
+                    {room && partner ? (
+                      <>
+                        <span className="grid gap-[3px]" aria-hidden>
+                          <ProgressBar value={progressFraction(room.theirs)} color={`var(--${partner.accent})`} className="h-1" />
+                          <ProgressBar value={progressFraction(reading)} color={`var(--${profile.accent})`} className="h-1" />
+                        </span>
+                        <span className="text-[13px] text-muted">
+                          Tú p. {reading.current_position} · {name} p. {room.theirs.current_position}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[13px] text-muted">
+                        {formatPosition(reading)} · {Math.round(progressFraction(reading) * 100)} %
+                      </span>
+                    )}
+                  </span>
+                </Link>
+                <button type="button" className="icon-btn" aria-label={`Leer «${reading.book.title}»`} onClick={() => read(reading)}>
+                  <Play size={16} fill="currentColor" aria-hidden />
+                </button>
               </div>
             )
           })}
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section
-        className="rule enter grid grid-cols-2 pt-3"
-        style={{ '--i': 3 } as CSSProperties}
-        aria-label="Resumen de lectura"
-      >
-        <Link
-          to="/perfil"
-          className="min-h-14 pr-4"
-          aria-label={`${finished} de ${goal} libros en ${today.slice(0, 4)}. Editar objetivo`}
-        >
-          <p className="folio text-[28px]">
-            <CountUp value={finished} /> <span className="text-muted">/ {goal}</span>
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            {finished === 1 ? 'libro' : 'libros'} en {today.slice(0, 4)}
-          </p>
-        </Link>
-        <Link
-          to="/stats"
-          className="min-h-14 border-l border-rule pl-5"
-          aria-label={`Esta semana ${weeklyPages} páginas. Ver estadísticas`}
-        >
-          <p className="folio text-[28px]">
-            <CountUp value={weeklyPages} /> <span className="text-base">pág</span>
-          </p>
-          <p className="mt-1 text-xs text-muted">Esta semana</p>
-        </Link>
-      </section>
+      {partner && (
+        <section className="enter space-y-3" style={{ '--i': 3 } as CSSProperties} aria-labelledby="racha">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="racha">Racha de los dos</h2>
+            <span className="pill">
+              <Lamp size={15} className="text-amber-ink" aria-hidden />
+              {formatDays(streak)}
+            </span>
+          </div>
+          <WeekStamps today={today} mine={mine} theirs={theirs} profile={profile} partner={partner} />
+        </section>
+      )}
+
+      {latest && partner && (
+        <section className="enter space-y-3" style={{ '--i': 4 } as CSSProperties} aria-labelledby="de-pareja">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="de-pareja">De {partner.display_name}</h2>
+            <Link to="/citas" className="btn btn-link px-1 text-sm">
+              Ver todas
+            </Link>
+          </div>
+          <QuoteCard quote={latest} compact />
+        </section>
+      )}
+
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+        <span>
+          <b className="font-extrabold text-ink">
+            {finished} de {profile.yearly_goal}
+          </b>{' '}
+          libros en {today.slice(0, 4)}
+        </span>
+        <span aria-hidden>·</span>
+        <span>
+          <b className="font-extrabold text-ink">{weeklyPages}</b> páginas esta semana
+        </span>
+      </p>
       {pending > 0 && (
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted" role="status">
           <CloudUpload size={13} aria-hidden />
           {pending} {pending === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de sincronizar
         </p>
       )}
+      {quoting && (
+        <QuoteSheet
+          open={!!quoting}
+          onClose={() => setQuoting(null)}
+          bookId={quoting.book_id}
+          page={quoting.unit === 'pages' ? quoting.current_position : null}
+        />
+      )}
     </div>
+  )
+}
+
+/** What is happening right now: your running session, or your partner reading under their lamp. */
+function NowCard({
+  active,
+  partnerReadings,
+  onRead,
+}: {
+  active: ReadingWithBook[]
+  partnerReadings: ReadingWithBook[]
+  onRead: (reading: ReadingWithBook) => void
+}) {
+  const { profile, partner } = useMe()
+  const timer = useActiveTimer()
+  const seconds = useElapsedSeconds(timer)
+  const live = isPartnerReading(partner)
+  const liveReading = partnerReadings.find((reading) => reading.id === partner?.reading_now_id)
+  const minutes = useMinutesSince(live ? partner?.reading_now_since : null)
+  if (timer) {
+    const reading = active.find((item) => item.id === timer.readingId)
+    return (
+      <section className="card card-lamp enter space-y-3.5" aria-label="Sesión en marcha">
+        <div className="flex items-center gap-3.5">
+          {live && partner && <Avatar person={partner} size={44} live />}
+          <Avatar person={profile} size={44} live={timer.pausedAt == null} />
+          <div className="min-w-0 flex-1">
+            <p className="font-extrabold">{timer.pausedAt == null ? 'Estás leyendo' : 'Tu sesión, en pausa'}</p>
+            <p className="flex items-center gap-1.5 text-sm text-muted">
+              <span className="tabular-nums">{formatClock(seconds)}</span>
+              {reading && <span className="truncate">· {reading.book.title}</span>}
+            </p>
+          </div>
+        </div>
+        <Link to={`/leer/${timer.readingId}`} className="btn btn-primary w-full">
+          Volver a la sesión
+        </Link>
+      </section>
+    )
+  }
+  if (!live || !partner || !liveReading) return null
+  // Same book when you share it; otherwise your own current reading, side by side.
+  const along = active.find((reading) => reading.book_id === liveReading.book_id) ?? active[0]
+  return (
+    <section className="card card-lamp enter space-y-3.5" aria-label={`${partner.display_name} está leyendo ahora`}>
+      <div className="flex items-center gap-3.5">
+        <Avatar person={partner} size={52} live />
+        <div className="min-w-0 flex-1">
+          <p>
+            <b className="font-extrabold">{partner.display_name}</b> está leyendo
+          </p>
+          <p className="truncate font-extrabold">{liveReading.book.title}</p>
+          <p className="flex items-center gap-1.5 text-[13.5px] text-muted">
+            <span className="live-dot" aria-hidden />
+            {formatPosition(liveReading)} · lleva {minutes} min
+          </p>
+        </div>
+        <Cover book={liveReading.book} width={44} ribbon={partner.accent} />
+      </div>
+      {along && (
+        <button type="button" className="btn btn-primary w-full" onClick={() => onRead(along)}>
+          <Play size={16} fill="currentColor" aria-hidden />
+          Leer a la vez
+        </button>
+      )}
+    </section>
   )
 }
 
 function CurrentReading({
   reading,
-  accent,
   sessions,
   today,
+  ribbons,
   onRead,
+  onQuote,
 }: {
   reading: ReadingWithBook
-  accent: 'blue' | 'green'
   sessions: Session[]
   today: string
+  ribbons: ('blue' | 'green')[]
   onRead: () => void
+  onQuote: () => void
 }) {
-  const pace = pacePerDay(reading, sessions, today)
   const finish = estimatedFinish(reading, sessions, today)
   const fraction = progressFraction(reading)
-  const timer = useActiveTimer()
-  const mine = timer?.readingId === reading.id ? timer : null
-  const seconds = useElapsedSeconds(mine)
   const audio = reading.format === 'audio'
   return (
-    <article className="space-y-3">
-      <div className="flex items-start gap-4">
-        <Link to={`/libro/${reading.id}`} aria-label={`Abrir ${reading.book.title}`}>
-          <Cover book={reading.book} width={80} priority ribbon={accent} />
+    <article className="card grid grid-cols-[auto_1fr] gap-4">
+      <Link to={`/libro/${reading.id}`} aria-label={`Abrir ${reading.book.title}`}>
+        <Cover book={reading.book} width={88} priority ribbons={ribbons} />
+      </Link>
+      <div className="flex min-w-0 flex-col gap-1">
+        <Link to={`/libro/${reading.id}`}>
+          <h3 className="title wrap-anywhere">{reading.book.title}</h3>
         </Link>
-        <div className="min-w-0 flex-1">
-          <Link to={`/libro/${reading.id}`}>
-            <h2 className="title">{reading.book.title}</h2>
-          </Link>
-          <p className="mt-2 text-xs text-muted">{reading.book.authors.join(', ')}</p>
-          <p className="folio mt-4">
-            {reading.unit === 'pages' ? (
-              <>
-                p. {reading.current_position} <span className="text-muted">— {reading.total_units}</span>
-              </>
-            ) : (
-              formatPosition(reading)
-            )}
-          </p>
-          <div className="mt-4">
-            <ProgressBar value={fraction} />
-          </div>
-          <p className="mt-2 text-xs text-muted">
-            <span className="text-accent">{Math.round(fraction * 100)} %</span> ·{' '}
-            {pace === null ? 'Sin ritmo aún' : `${Math.round(pace)} ${reading.unit === 'minutes' ? 'min' : 'pág'}/día`}
-          </p>
-        </div>
+        <p className="truncate text-[13px] text-muted">{reading.book.authors.join(', ')}</p>
+        <p className="folio mt-2">
+          {reading.unit === 'pages' ? (
+            <>
+              p. {reading.current_position} <span className="text-[15px] text-muted">de {reading.total_units}</span>
+            </>
+          ) : (
+            formatPosition(reading)
+          )}
+        </p>
+        <ProgressBar value={fraction} />
+        <p className="text-[13px] text-muted">
+          {Math.round(fraction * 100)} %
+          {finish ? ` · a tu ritmo, lo acabas hacia el ${fmt(finish, "d 'de' MMMM")}` : ''}
+        </p>
       </div>
-      <div className="flex justify-between gap-3 text-xs text-muted">
-        <span>
-          {reading.unit === 'minutes'
-            ? `te quedan ${formatMinutes(reading.total_units - reading.current_position)}`
-            : finish
-              ? `lo acabas hacia el ${fmt(finish, 'd MMM')}`
-              : 'registra para conocer tu ritmo'}
-        </span>
-        <span>{reading.format === 'audio' ? 'Audiolibro' : 'Papel'}</span>
-      </div>
-      <div className="flex gap-3">
-        {mine ? (
-          <Link
-            to={`/leer/${reading.id}`}
-            className="btn btn-primary flex-1"
-            aria-label={`Volver a tu sesión de «${reading.book.title}»`}
-          >
-            {mine.pausedAt == null && <span className="live-dot" aria-hidden />}
-            {mine.pausedAt == null ? (audio ? 'Escuchando' : 'Leyendo') : 'En pausa'} ·{' '}
-            <span className="[font-variant-numeric:lining-nums_tabular-nums]">{formatClock(seconds)}</span>
-          </Link>
-        ) : (
-          <button type="button" className="btn btn-primary flex-1" onClick={onRead}>
-            <Play size={15} fill="currentColor" aria-hidden />
-            {audio ? 'Escuchar' : 'Leer'}
-          </button>
-        )}
-        <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-outline flex-1 whitespace-nowrap px-3">
-          <Plus size={16} aria-hidden />
-          {reading.unit === 'minutes' ? 'Apuntar tiempo' : 'Apuntar páginas'}
+      <div className="col-span-2 grid grid-cols-[1.15fr_1fr_1fr] gap-2">
+        <button type="button" className="btn btn-primary px-2.5" onClick={onRead}>
+          <Play size={15} fill="currentColor" aria-hidden />
+          {audio ? 'Escuchar' : 'Leer'}
+        </button>
+        <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-soft px-2.5">
+          <Plus size={17} aria-hidden />
+          {reading.unit === 'minutes' ? 'Tiempo' : 'Página'}
         </Link>
+        <button type="button" className="btn btn-soft px-2.5" onClick={onQuote}>
+          <QuoteIcon size={16} aria-hidden />
+          Cita
+        </button>
       </div>
     </article>
   )
