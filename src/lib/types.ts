@@ -110,11 +110,11 @@ export interface Message {
   body: string | null
 }
 
-/** ❤️ on a partner's message. */
+/** ❤️ on a partner's quote (or a legacy message). */
 export interface Reaction {
   id: string
   user_id: string
-  target_type: 'message'
+  target_type: 'message' | 'quote'
   target_id: string
   emoji: '❤️'
   created_at: string
@@ -158,5 +158,38 @@ export interface CoupleGoal {
   target: number
   proposed_by: string
   accepted_at: string | null
+  created_at: string
+}
+
+export type QuoteKind = 'cita' | 'nota'
+
+/**
+ * Something kept on a page, read from `quotes_visible`: a sentence from the book (`cita`) or your own words
+ * (`nota`). Shared with the partner by default; when `locked` (they haven't reached `page` in that book yet)
+ * `body` and `comment` come as null.
+ */
+export interface Quote {
+  id: string
+  user_id: string
+  book_id: string
+  page: number | null
+  kind: QuoteKind
+  shared: boolean
+  safe: boolean
+  opened_early: boolean
+  seen_at: string | null
+  created_at: string
+  locked: boolean
+  body: string | null
+  comment: string | null
+  book: Book
+}
+
+export interface QuoteReply {
+  id: string
+  quote_id: string
+  user_id: string
+  body: string
+  seen_at: string | null
   created_at: string
 }

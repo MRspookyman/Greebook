@@ -20,8 +20,8 @@ async function refresh(userId: string) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.sessions(userId) }),
     queryClient.invalidateQueries({ queryKey: qk.readings(userId) }),
-    // New progress can unlock huellas left further ahead in the book.
-    queryClient.invalidateQueries({ queryKey: qk.messages() }),
+    // New progress can open quotes left further ahead in the book.
+    queryClient.invalidateQueries({ queryKey: qk.quotes() }),
   ])
   for (const op of await offlineDb.pendingOps.orderBy('createdAt').toArray()) {
     if (op.payload.session.user_id === userId) apply(op)

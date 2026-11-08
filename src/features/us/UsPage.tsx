@@ -6,15 +6,14 @@ import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { useEntered } from '@/components/motion'
 import { useMe } from '@/features/auth/me'
-import { useInvites, useMessages, useReactions, useReadings, useSessions, useTogether } from '@/lib/data'
+import { useInvites, useQuotes, useReactions, useReadings, useSessions, useTogether } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
 import { formatDays, progressFraction } from '@/lib/units'
 import type { Profile, ReadingWithBook } from '@/lib/types'
 import { CoupleProgress } from './CoupleProgress'
 import { InviteCard } from './InviteCard'
-import { MessageCard } from './MessageCard'
 import { RatitoSheet } from './RatitoSheet'
-import { TraceSheet } from './TraceSheet'
+import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { CoupleGoalCard, GoalProposal, MemoriesCard } from './MemoriesCard'
 import { TogetherCard } from './TogetherCard'
 import { localMonth, monthMemories } from './memories'
@@ -78,7 +77,7 @@ export function UsPage() {
   const theirs = theirsQuery.data ?? []
   const mineSessions = useSessions(userId).data ?? []
   const theirSessions = useSessions(partner?.id).data ?? []
-  const messagesQuery = useMessages()
+  const messagesQuery = useQuotes()
   const messages = messagesQuery.data ?? []
   const invites = useInvites().data ?? []
   const reactions = useReactions().data ?? []
@@ -124,17 +123,13 @@ export function UsPage() {
     ).values(),
   ]
   const linkedId = location.hash.startsWith('#m-') ? location.hash.slice(3) : null
-  const linkedMessage = linkedId ? messages.find((message) => message.id === linkedId) : undefined
-  const linkedAlreadyPending = items.some((item) => item.type === 'message' && item.message.id === linkedId)
   const linkedItem = items.find((item) =>
-    item.type === 'message'
-      ? item.message.id === linkedId
-      : item.type === 'invite'
+    item.type === 'invite'
         ? item.invite.id === linkedId
         : item.type === 'together' && item.item.id === linkedId,
   )
   const prioritizedItems = linkedItem ? [linkedItem, ...items.filter((item) => item !== linkedItem)] : items
-  const previewCount = linkedMessage && !linkedAlreadyPending ? 0 : 1
+  const previewCount = 1
   const visibleItems = showAllPending ? prioritizedItems : prioritizedItems.slice(0, previewCount)
   useEffect(() => {
     if (!linkedId || !messages.length) return
@@ -170,7 +165,7 @@ export function UsPage() {
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className="btn btn-outline" onClick={() => setSheet('trace')}>
             <Feather size={16} aria-hidden />
-            Dejarle algo
+            Guardar una cita
           </button>
           <button type="button" className="btn btn-outline" onClick={() => setSheet('ratito')}>
             <Coffee size={16} aria-hidden />
@@ -178,7 +173,7 @@ export function UsPage() {
           </button>
         </div>
       </header>
-      <TraceSheet open={sheet === 'trace'} onClose={() => setSheet(null)} />
+      <QuoteSheet open={sheet === 'trace'} onClose={() => setSheet(null)} />
       <RatitoSheet open={sheet === 'ratito'} onClose={() => setSheet(null)} />
       {(mineQuery.isPending || theirsQuery.isPending || messagesQuery.isPending) && (
         <p className="text-sm text-muted" role="status">
@@ -190,15 +185,13 @@ export function UsPage() {
           No se ha podido cargar todo el rincón. Vuelve a abrirlo cuando tengas conexión.
         </p>
       )}
-      {(items.length > 0 || linkedMessage) && (
+      {items.length > 0 && (
         <section className="enter space-y-3" style={{ '--i': 1 } as CSSProperties} aria-label="Para ti">
           <h2 className="title">
             Para ti <span className="num ml-1 text-base text-muted">{items.length || ''}</span>
           </h2>
           {visibleItems.map((item) => {
             switch (item.type) {
-              case 'message':
-                return <MessageCard key={`m-${item.message.id}`} message={item.message} preview={!showAllPending} />
               case 'invite':
                 return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} compact />
               case 'together':
@@ -215,7 +208,6 @@ export function UsPage() {
                 )
             }
           })}
-          {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} preview={!showAllPending} />}
           {items.length > previewCount && (
             <button
               className="btn btn-link min-h-11"
@@ -251,10 +243,10 @@ export function UsPage() {
         {rooms.map((room) => {
           const unread = messages.filter(
             (message) =>
-              message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
+              message.book_id === room.book.id && message.user_id !== userId && !message.seen_at && !message.locked,
           ).length
           return (
-            <Link key={room.book.id} to={`/sala/${room.book.id}`} className="rule flex items-center gap-4 py-3">
+            <Link key={room.book.id} to={`/libro/${room.mine.id}`} className="rule flex items-center gap-4 py-3">
               <Cover book={room.book} width={44} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-serif text-xl leading-tight">{room.book.title}</span>

@@ -77,13 +77,11 @@ export function TodayPage() {
       ? (active.find((reading) => reading.book_id === liveReading.book_id) ?? active[0])
       : undefined
   const pendingId = priority
-    ? priority.type === 'message'
-      ? priority.message.id
-      : priority.type === 'invite'
-        ? priority.invite.id
-        : priority.type === 'together'
-          ? priority.item.id
-          : null
+    ? priority.type === 'invite'
+      ? priority.invite.id
+      : priority.type === 'together'
+        ? priority.item.id
+        : null
     : null
 
   return (

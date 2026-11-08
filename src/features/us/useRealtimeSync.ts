@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const TABLES = [
   'message_pings',
+  'quote_replies',
   'invites',
   'together_items',
   'couple_goals',
@@ -29,11 +30,14 @@ export function useRealtimeSync(): void {
           user_id?: string
           month?: string
         }
-        if (table === 'message_pings' || table === 'readings') {
-          void qc.invalidateQueries({ queryKey: qk.messages() })
+        // Progress can open a quote left further ahead; pings say a quote or reply changed.
+        if (table === 'message_pings' || table === 'readings' || table === 'quote_replies') {
+          void qc.invalidateQueries({ queryKey: qk.quotes() })
+          void qc.invalidateQueries({ queryKey: qk.quoteReplies() })
         }
         switch (table) {
           case 'message_pings':
+          case 'quote_replies':
             return
           case 'invites':
             void qc.invalidateQueries({ queryKey: qk.invites() })

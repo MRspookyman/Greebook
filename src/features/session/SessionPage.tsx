@@ -12,13 +12,13 @@ import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
 import { recentReadings } from '@/features/today/recentReadings'
 import { useRooms } from '@/features/us/rooms'
-import { TraceComposer } from '@/features/us/TraceSheet'
-import { useMessages, useReadings, useSessions } from '@/lib/data'
+import { QuoteSheet } from '@/features/quotes/QuoteSheet'
+import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, fromISODate, todayISO, toISODate } from '@/lib/dates'
 import { logSession } from '@/lib/offline/sessionQueue'
 import { currentStreak } from '@/lib/stats/streak'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
-import type { Message, ReadingWithBook } from '@/lib/types'
+import type { Quote, ReadingWithBook } from '@/lib/types'
 import { formatDays, formatMinutes, formatUnitDelta, formatUnitValue, parseHMM, toHMM } from '@/lib/units'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
@@ -43,7 +43,7 @@ type Saved = {
   delta: number
   minutes: number | null
   streak: number
-  unlocking: Message[]
+  unlocking: Quote[]
 }
 
 const MODE_KEY = 'gb.session.mode'
@@ -113,7 +113,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [params] = useSearchParams()
   const online = useOnline()
   const sessions = useSessions(userId).data ?? []
-  const messages = useMessages().data ?? []
+  const quotes = useQuotes().data ?? []
   const room = useRooms().find((item) => item.book.id === reading.book_id)
   const timer = useActiveTimer()
   const mine = timer?.readingId === reading.id ? timer : null
@@ -157,7 +157,6 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [saved, setSaved] = useState<Saved | null>(null)
   const [finished, setFinished] = useState<ReadingWithBook | null>(null)
   const [tracing, setTracing] = useState(false)
-  const [traceDirty, setTraceDirty] = useState(false)
 
   const name = partner?.display_name ?? 'Tu pareja'
   const theirs = room?.theirs
@@ -179,12 +178,12 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     theirs.unit === 'pages' &&
     reading.current_position < theirs.current_position &&
     end >= theirs.current_position
-  // Huellas still ahead of the saved position: this session is what can open them.
+  // Partner quotes still ahead of the saved position: this session is what can open them.
   const waiting = pagesUnit
-    ? messages
+    ? quotes
         .filter(
           (m) =>
-            m.to_user === userId &&
+            m.user_id !== userId &&
             m.book_id === reading.book_id &&
             m.locked &&
             m.page !== null &&
@@ -223,7 +222,6 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   }
   function leave() {
     if (dirty && !window.confirm('¿Salir sin guardar la sesión?')) return
-    if (saved && traceDirty && !window.confirm('¿Descartar la huella que has escrito?')) return
     close()
   }
   function pick(choice: ReadingWithBook) {
@@ -272,9 +270,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const steps = audio ? [5, 10, 15, 30] : [5, 10, 25]
   const actions: ReactNode = saved ? (
     <>
-      {partner && online && !tracing && (
+      {online && (
         <button type="button" className="btn btn-outline min-h-[52px] flex-1" onClick={() => setTracing(true)}>
-          Dejarle algo a {name}
+          Guardar una cita
         </button>
       )}
       <button type="button" className="btn btn-primary min-h-[52px] flex-1 text-[15px]" onClick={leave}>
@@ -330,9 +328,6 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         <SavedPanel
           saved={saved}
           partnerName={name}
-          tracing={tracing && !!partner && online}
-          onTraceClose={close}
-          onTraceDirty={setTraceDirty}
         />
       ) : (
         <>
@@ -585,7 +580,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                     >
                       <LockOpen size={15} aria-hidden />
                       Al guardar se abrirá{' '}
-                      {unlocking.length === 1 ? 'lo que te dejó' : `${unlocking.length} huellas de`} {name}
+                      {unlocking.length === 1 ? 'lo que te dejó' : `${unlocking.length} citas de`} {name}
                     </p>
                   ) : (
                     nextLocked && (
@@ -673,6 +668,12 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         document.body,
       )}
 
+      <QuoteSheet
+        open={tracing}
+        onClose={() => setTracing(false)}
+        bookId={reading.book_id}
+        page={saved && saved.reading.unit === 'pages' ? saved.reading.current_position : null}
+      />
       {finished && <FinishSheet reading={finished} readOn={saved?.date ?? today} onClose={() => setFinished(null)} />}
     </div>
   )
@@ -723,19 +724,7 @@ function DraftBar({
   )
 }
 
-function SavedPanel({
-  saved,
-  partnerName,
-  tracing,
-  onTraceClose,
-  onTraceDirty,
-}: {
-  saved: Saved
-  partnerName: string
-  tracing: boolean
-  onTraceClose: () => void
-  onTraceDirty: (dirty: boolean) => void
-}) {
+function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string }) {
   const { reading } = saved
   const detail = [`+${formatUnitDelta(reading.unit, saved.delta)}`, saved.minutes ? formatMinutes(saved.minutes) : null]
     .filter(Boolean)
@@ -764,7 +753,7 @@ function SavedPanel({
       </section>
       {first && (
         <Link
-          to={`/nosotros#m-${first.id}`}
+          to={`/citas#c-${first.id}`}
           className="rule mt-7 flex min-h-12 items-center gap-3 pt-4 text-left text-sm"
           style={{ animation: 'gb-pop-in 420ms var(--ease) 700ms both' }}
         >
@@ -775,16 +764,6 @@ function SavedPanel({
           </span>
           <ChevronRight size={18} className="shrink-0" aria-hidden />
         </Link>
-      )}
-      {tracing && (
-        <div className="rule mt-7 pt-2">
-          <TraceComposer
-            reading={reading}
-            prefill={{ page: reading.unit === 'pages' ? reading.current_position : null }}
-            onClose={onTraceClose}
-            onDirtyChange={onTraceDirty}
-          />
-        </div>
       )}
     </div>
   )

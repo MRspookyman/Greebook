@@ -1,4 +1,6 @@
-import type { Book, Invite, Message, Reaction, ReadingWithBook, Session } from '@/lib/types'
+import type { Book, Invite, Quote, Reaction, ReadingWithBook, Session } from '@/lib/types'
+
+type Kept = Pick<Quote, 'id' | 'locked' | 'body' | 'created_at'>
 
 export function localMonth(timestamp: string): string {
   const date = new Date(timestamp)
@@ -10,7 +12,7 @@ export interface MonthMemories {
   books: Book[]
   daysTogether: number
   ratitos: number
-  quotes: Message[]
+  quotes: Kept[]
 }
 
 /** Sessions use local diary dates; invitations/messages use the viewer's local calendar. */
@@ -19,7 +21,7 @@ export function monthMemories(
   readings: ReadingWithBook[],
   sessions: Session[],
   invites: Invite[],
-  messages: Message[],
+  messages: Kept[],
   reactions: Reaction[],
   userId: string,
   partnerId: string,

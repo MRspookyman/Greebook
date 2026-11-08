@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
 import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
-import { qk, useMessages, useNotes, useReadings, useSessions, useTogether } from '@/lib/data'
+import { qk, useQuotes, useReadings, useSessions, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
@@ -23,15 +23,14 @@ import { startTimer, useActiveTimer } from '@/features/session/Timer'
 import { useOnline } from '@/features/session/useOnline'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { DualProgressBar } from '@/components/DualProgressBar'
-import { MessageCard } from '@/features/us/MessageCard'
-import { TraceSheet } from '@/features/us/TraceSheet'
+import { QuoteCard } from '@/features/quotes/QuoteCard'
+import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { useRooms } from '@/features/us/rooms'
 import { addTogether } from '@/features/us/together'
 import { isReadingNow } from '@/features/us/CoupleProgress'
-import { Notes } from './Notes'
 
 const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
-type BookTab = 'sessions' | 'notes' | 'joint'
+type BookTab = 'sessions' | 'quotes' | 'joint'
 
 export function BookPage() {
   const { readingId } = useParams()
@@ -66,7 +65,10 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const navigate = useNavigate()
   const own = reading.user_id === userId
   const sessionsQuery = useSessions(reading.user_id)
-  const notesQuery = useNotes(reading.id)
+  const bookQuotes = (useQuotes().data ?? [])
+    .filter((q) => q.book_id === reading.book_id)
+    .sort((a, b) => (a.page ?? 0) - (b.page ?? 0))
+  const [quoting, setQuoting] = useState(false)
   const sessions = (sessionsQuery.data ?? [])
     .filter((s) => s.reading_id === reading.id)
     .sort((a, b) => b.read_on.localeCompare(a.read_on) || b.created_at.localeCompare(a.created_at))
@@ -92,14 +94,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const disabled = !online || busy || pending > 0
   const tabs: { value: BookTab; label: string }[] = [
     { value: 'sessions', label: 'Sesiones' },
-    ...(own
-      ? [
-          {
-            value: 'notes' as const,
-            label: `Notas · ${notesQuery.data?.filter((n) => n.user_id === userId).length ?? 0}`,
-          },
-        ]
-      : []),
+    { value: 'quotes', label: `Citas · ${bookQuotes.length}` },
     { value: 'joint', label: 'Juntos' },
   ]
   async function patch(values: Partial<Reading>) {
@@ -400,7 +395,28 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               )}
             </div>
           )}
-          {tab === 'notes' && own && <Notes readingId={reading.id} />}
+          {tab === 'quotes' && (
+            <div className="space-y-4 pt-3">
+              {own && (
+                <button type="button" className="btn btn-soft w-full" onClick={() => setQuoting(true)}>
+                  <Plus size={17} aria-hidden /> Guardar una cita
+                </button>
+              )}
+              {bookQuotes.length === 0 ? (
+                <p className="py-2 text-sm text-muted">Aún no hay citas ni notas en este libro.</p>
+              ) : (
+                bookQuotes.map((quote) => <QuoteCard key={quote.id} quote={quote} showBook={false} />)
+              )}
+              {own && (
+                <QuoteSheet
+                  open={quoting}
+                  onClose={() => setQuoting(false)}
+                  bookId={reading.book_id}
+                  page={reading.unit === 'pages' ? reading.current_position : null}
+                />
+              )}
+            </div>
+          )}
           {tab === 'joint' && <BookTogether reading={reading} />}
         </div>
       </div>
@@ -484,7 +500,7 @@ function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) {
           </Link>
           {['want', 'reading'].includes(mine.status) && (
             <button type="button" className="btn btn-link px-0 text-sm" onClick={() => setTracing(true)}>
-              Dejarle algo aquí
+              Guardar una cita
             </button>
           )}
         </div>
@@ -506,7 +522,7 @@ function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) {
           Queremos leerlo juntos
         </button>
       )}
-      {mine && <TraceSheet open={tracing} onClose={() => setTracing(false)} reading={mine} />}
+      {mine && <QuoteSheet open={tracing} onClose={() => setTracing(false)} bookId={mine.book_id} />}
     </section>
   )
 }
@@ -514,20 +530,11 @@ function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) {
 function BookTogether({ reading }: { reading: ReadingWithBook }) {
   const { userId, profile, partner } = useMe()
   const room = useRooms().find((item) => item.book.id === reading.book_id)
-  const messages = useMessages()
   const together = useTogether()
-  const myReadings = useReadings(userId)
-  const ownReading =
-    reading.user_id === userId ? reading : myReadings.data?.find((item) => item.book_id === reading.book_id)
-  const [traceOpen, setTraceOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [reasonOpen, setReasonOpen] = useState(false)
   const [reason, setReason] = useState('')
   const listed = together.data?.some((item) => item.book_id === reading.book_id)
-  const recent = (messages.data ?? [])
-    .filter((message) => message.book_id === reading.book_id && message.kind !== 'reply')
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .slice(-2)
 
   async function add() {
     setAdding(true)
@@ -577,12 +584,7 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
               caption: formatUnitValue(room.theirs.unit, room.theirs.current_position),
             }}
           />
-          <Link className="btn btn-outline w-full" to={`/sala/${reading.book_id}`}>
-            Abrir la sala
-          </Link>
-          {recent.map((message) => (
-            <MessageCard key={message.id} message={message} variant="bubble" showBook={false} />
-          ))}
+          <p className="text-sm text-muted">Lo leéis los dos: vuestras citas de este libro están en la pestaña Citas.</p>
         </>
       ) : (
         <>
@@ -625,12 +627,9 @@ function BookTogether({ reading }: { reading: ReadingWithBook }) {
               </div>
             </form>
           )}
-          <button className="btn btn-soft w-full" disabled={!partner} onClick={() => setTraceOpen(true)}>
-            Dejarle algo sobre este libro
-          </button>
+
         </>
       )}
-      <TraceSheet open={traceOpen} onClose={() => setTraceOpen(false)} reading={ownReading ?? reading} />
     </section>
   )
 }

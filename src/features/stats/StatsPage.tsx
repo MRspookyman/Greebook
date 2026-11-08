@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
 import { differenceInCalendarDays } from 'date-fns'
 import { CountUp } from '@/components/CountUp'
 import { Segmented } from '@/components/Segmented'
@@ -87,9 +88,12 @@ export function StatsPage() {
   const failed = readingsQuery.isError || sessionsQuery.isError
 
   return (
-    <div className="flex flex-col gap-6 py-5">
-      <header className="enter flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="display">Estadísticas</h1>
+    <div className="flex flex-col gap-6">
+      <header className="enter flex flex-wrap items-center gap-3">
+        <Link to="/perfil" className="icon-btn" aria-label="Volver al perfil">
+          <ArrowLeft size={20} aria-hidden />
+        </Link>
+        <h1 className="display flex-1">Tus números</h1>
         <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
       </header>
       <Segmented

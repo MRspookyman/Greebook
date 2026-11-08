@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router'
-import { BarChart3, BookOpen, Heart, House, Library, type LucideIcon } from 'lucide-react'
+import { BookOpen, Heart, House, Library, Quote, type LucideIcon } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { usePendingForMe } from '@/features/us/messages'
 import { useActiveTimer, useElapsedSeconds } from '@/features/session/Timer'
 import { formatClock, spokenClock } from '@/lib/timer'
 import { isPartnerReading } from '@/lib/presence'
+import { useUnseenQuotes } from '@/features/quotes/quotes'
 
 interface TabItem {
   to: string
@@ -21,12 +22,12 @@ const TABS: TabItem[] = [
     icon: Library,
     match: (path) => path.startsWith('/biblioteca') || path.startsWith('/libro'),
   },
-  { to: '/stats', label: 'Estadísticas', icon: BarChart3, match: (path) => path.startsWith('/stats') },
+  { to: '/citas', label: 'Citas', icon: Quote, match: (path) => path.startsWith('/citas') },
   {
     to: '/nosotros',
     label: 'Nosotros',
     icon: Heart,
-    match: (path) => path.startsWith('/nosotros') || path.startsWith('/sala'),
+    match: (path) => path.startsWith('/nosotros') || path.startsWith('/stats'),
   },
 ]
 
@@ -91,9 +92,10 @@ function ReadButton() {
   )
 }
 
-/** Inicio · Biblioteca · Leer · … · Nosotros, with a small rose dot under the active tab. */
+/** Inicio · Biblioteca · Leer · Citas · Nosotros, with a small rose dot under the active tab. */
 export function TabBar() {
   const { count: unread } = usePendingForMe()
+  const { count: unseen } = useUnseenQuotes()
   const { pathname } = useLocation()
   const current = TABS.find((tab) => tab.match(pathname))
   return (
@@ -107,7 +109,7 @@ export function TabBar() {
         ))}
         <ReadButton />
         {TABS.slice(2).map((tab) => (
-          <Tab key={tab.to} tab={tab} active={tab === current} badge={tab.to === '/nosotros' ? unread : 0} />
+          <Tab key={tab.to} tab={tab} active={tab === current} badge={tab.to === '/nosotros' ? unread : tab.to === '/citas' ? unseen : 0} />
         ))}
       </div>
     </nav>

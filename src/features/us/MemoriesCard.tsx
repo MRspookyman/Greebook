@@ -10,7 +10,6 @@ import { todayISO } from '@/lib/dates'
 import type { CoupleGoal } from '@/lib/types'
 import { formatDays } from '@/lib/units'
 import { answerGoal, proposeGoal } from './goals'
-import { EMOTIONS } from './messages'
 import type { MonthMemories } from './memories'
 
 const goalText = (goal: Pick<CoupleGoal, 'kind' | 'target'>) =>
@@ -207,7 +206,7 @@ export function MemoriesCard({
             className="min-w-0 flex-1 py-1 font-serif text-xl italic text-accent [overflow-wrap:anywhere]"
             style={{ animation: 'gb-fade-up 360ms var(--ease) both' }}
           >
-            «{quote.body ?? (quote.emotion ? EMOTIONS[quote.emotion].label : 'Un recuerdo vuestro')}»
+            «{quote.body ?? 'Un recuerdo vuestro'}»
           </blockquote>
           {summary.quotes.length > 1 && (
             <button
