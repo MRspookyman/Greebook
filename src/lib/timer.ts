@@ -30,7 +30,7 @@ export function parseTimer(value: unknown): TimerState | null {
     pausedAt: (t.pausedAt as number | null | undefined) ?? null,
     pausedMs: (t.pausedMs as number | undefined) ?? 0,
     draft: Number.isSafeInteger(t.draft) ? (t.draft as number) : null,
-    togetherId: typeof t.togetherId === 'string' ? t.togetherId : null,
+    ...(typeof t.togetherId === 'string' ? { togetherId: t.togetherId } : {}),
   }
 }
 

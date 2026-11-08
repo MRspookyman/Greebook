@@ -66,7 +66,9 @@ export function useLiveTogether(togetherId: string | null | undefined, myPage: n
   const [received, setReceived] = useState(0)
   const channel = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const page = useRef(myPage)
-  page.current = myPage
+  useEffect(() => {
+    page.current = myPage
+  }, [myPage])
 
   useEffect(() => {
     if (!togetherId) return

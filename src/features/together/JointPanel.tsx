@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Heart } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useMe } from '@/features/auth/me'
@@ -23,10 +23,7 @@ export function JointPanel({
   const row = useReadTogether().data?.find((item) => item.id === togetherId)
   const { partnerPage, received, sendBeat } = useLiveTogether(togetherId, myPage)
   const [sent, setSent] = useState(0)
-  const [pulse, setPulse] = useState(0)
-  useEffect(() => {
-    if (received || sent) setPulse((n) => n + 1)
-  }, [received, sent])
+  const pulse = received + sent
   if (!partner) return null
   const live = isPartnerReading(partner)
   const theirReading = theirs.find((r) => r.id === partner.reading_now_id) ?? theirs.find((r) => r.status === 'reading')
