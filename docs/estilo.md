@@ -40,7 +40,7 @@ Usar tokens, no hex locales ni opacidad sobre metadatos. La textura queda detrá
 - Ritmo 4/8/12/16/20/24/32px; agrupar lo relacionado y dejar aire antes de los títulos.
 - `.card`: superficie sin borde, radio 22px y sombra de papel. Sin tarjetas anidadas.
 - Portadas: radio 3px y sombra de libro; mantener título accesible incluso en miniaturas.
-- Botones y chips redondos (999px), objetivos táctiles de al menos 44px.
+- Botones y chips redondos (999px), objetivos táctiles de al menos 44px. Los selectores nativos también deben mantener ese mínimo (`min-h-11`), incluido el año de las estadísticas.
 - `.btn-primary`: ciruela de día, miel de noche; una acción dominante por pantalla.
 - `.btn-outline` / `.btn-secondary`: apoyo con filete; `.btn-soft`: papel hundido.
 - `.icon-btn`: 44×44px. Conservar etiquetas accesibles, estados disabled y foco visible.

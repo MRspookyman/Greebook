@@ -1,5 +1,5 @@
 /* Deploy with --no-verify-jwt; authenticate database webhooks using WEBHOOK_SECRET.
- * notify_partner_webhook() comes from 0004/0006; migrations through 0013 select the kept triggers.
+ * notify_partner_webhook() comes from 0004/0006; migrations through 0015 select the kept triggers.
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendToUser } from '../_shared/push.ts'
@@ -70,6 +70,7 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const actorId = payload.table === 'profiles' ? record.id
     : payload.table === 'read_together' ? record.user_b
     : payload.table === 'together_items' ? record.added_by
+    : payload.table === 'recommendations' ? record.from_user
     : record.user_id
   if (typeof actorId !== 'string') return []
   const actor = await profile(admin, actorId)
@@ -77,6 +78,14 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const name = actor.display_name as string
   const partnerId = actor.partner_id as string
   switch (payload.table) {
+    case 'recommendations': {
+      if (payload.type !== 'INSERT' || record.to_user !== partnerId || record.status !== 'new') return []
+      const title = await book(admin, record.book_id)
+      if (!title) return []
+      return [{ to: partnerId, title: `💬 ${name} te recomienda un libro`,
+        body: `«${title.title}»${record.message ? ` · ${excerpt(record.message)}` : ''}`,
+        url: '/biblioteca?tab=want' }]
+    }
     case 'profiles': {
       // One started-reading push per actor's local day; disabled recipients consume no slot.
       if (payload.type !== 'UPDATE' || old?.reading_now_since || !record.reading_now_since) return []
@@ -196,7 +205,7 @@ Deno.serve(async (request: Request) => {
   }
   if (!payload?.record || (payload.schema && payload.schema !== 'public'))
     return new Response('Invalid payload', { status: 400 })
-  if (!['profiles', 'read_together', 'quotes', 'quote_replies', 'readings', 'together_items'].includes(payload.table))
+  if (!['profiles', 'read_together', 'quotes', 'quote_replies', 'readings', 'together_items', 'recommendations'].includes(payload.table))
     return Response.json({ sent: false })
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {

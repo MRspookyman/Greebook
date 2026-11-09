@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Plus, Search } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
@@ -9,10 +9,12 @@ import { Segmented } from '@/components/Segmented'
 import { FilterChips } from '@/components/FilterChips'
 import { Stars } from '@/components/Stars'
 import { useMe } from '@/features/auth/me'
-import { useReadings } from '@/lib/data'
+import { useBookTags, useReadings } from '@/lib/data'
 import type { Format, ReadingStatus, ReadingWithBook } from '@/lib/types'
 import { formatFinished, formatLabel, formatPosition, progressFraction } from '@/lib/units'
 import { cardFinish, cardReading, cardTarget, finishedGroups, libraryCards, type FinishedSort } from './libraryModel'
+import { Recommendations } from './Recommendations'
+import { ReadingPicker } from './ReadingPicker'
 
 const tabs = [
   { value: 'reading', label: 'Leyendo' },
@@ -45,7 +47,11 @@ export function LibraryPage() {
   const theirsQuery = useReadings(partner?.id)
   const [active, setActive] = useState({ mine: true, theirs: true })
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<ReadingStatus>('reading')
+  const [params, setParams] = useSearchParams()
+  const tabParam = params.get('tab')
+  const view: ReadingStatus = tabs.some((tab) => tab.value === tabParam) ? tabParam as ReadingStatus : 'reading'
+  const tagsQuery = useBookTags()
+  const [tag, setTag] = useState('all')
   const [year, setYear] = useState('all')
   const [format, setFormat] = useState<Format | 'all'>('all')
   const [finishedView, setFinishedView] = useState<'covers' | 'list'>(() => {
@@ -57,7 +63,10 @@ export function LibraryPage() {
     { person: profile, label: 'Tú', active: !partner || active.mine, key: 'mine' as const },
     ...(partner ? [{ person: partner, label: partner.display_name, active: active.theirs, key: 'theirs' as const }] : []),
   ]
-  const selected = all.filter((reading) => people.some(({ person, active }) => active && person.id === reading.user_id))
+  const tagOptions = [...new Set((tagsQuery.data ?? []).map((row) => row.tag))]
+  const selectedTag = tagOptions.includes(tag) ? tag : 'all'
+  const selected = all.filter((reading) => people.some(({ person, active }) => active && person.id === reading.user_id)
+    && (selectedTag === 'all' || tagsQuery.data?.some((row) => row.book_id === reading.book_id && row.tag === selectedTag)))
   const shelves = {
     reading: libraryCards(selected, 'reading', search),
     want: libraryCards(selected, 'want', search),
@@ -127,10 +136,12 @@ export function LibraryPage() {
           ))}
         </div>
       )}
+      {tagOptions.length > 0 && <FilterChips options={[{ value: 'all', label: 'Todas las etiquetas' }, ...tagOptions.map((value) => ({ value, label: value }))]} value={selectedTag} onChange={setTag} aria-label="Etiqueta" />}
+      {tagsQuery.isError && <button className="btn btn-outline" onClick={() => void tagsQuery.refetch()}>Reintentar cargar etiquetas</button>}
       <Segmented<ReadingStatus>
         options={tabs.map((tab) => ({ ...tab, count: shelves[tab.value].length }))}
         value={view}
-        onChange={setView}
+        onChange={(value) => setParams((previous) => { previous.set('tab', value); return previous }, { replace: true })}
         aria-label="Estado de los libros"
       />
       {loading ? (
@@ -150,6 +161,7 @@ export function LibraryPage() {
         </EmptyState>
       ) : (
         <>
+          {view === 'want' && <><Recommendations /><ReadingPicker readings={all} /></>}
           {view === 'finished' && (
             <div className="min-w-0 space-y-2">
               <FilterChips options={[{ value: 'all', label: 'Todos' }, ...years.map((value) => ({ value, label: value }))]} value={selectedYear} onChange={setYear} aria-label="Año de finalización" />
@@ -257,6 +269,10 @@ export function LibraryPage() {
                               </span>
                             ))}
                           </span>
+                          {view === 'abandoned' && card.matches.map((reading) => {
+                            const reason = reading.abandon_reason
+                            return reason ? <p key={reading.id} className="mt-2 text-xs text-muted break-words">{people.find(({ person }) => person.id === reading.user_id)?.label}: {reason}</p> : null
+                          })}
                         </>
                       )}
                     </Link>

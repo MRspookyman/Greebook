@@ -264,9 +264,6 @@ export function UsPage() {
         <section className="space-y-2" aria-labelledby="juntos">
           <div className="flex items-center justify-between">
             <h2 id="juntos">Queremos leer juntos</h2>
-            <Link to="/biblioteca" className="btn btn-link px-1 text-sm">
-              Ver en Biblioteca
-            </Link>
           </div>
           {together
             .filter((item) => !pending.includes(item))

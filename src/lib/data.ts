@@ -205,3 +205,43 @@ export function useReadTogether(enabled = true) {
       ),
   })
 }
+
+export interface BookTag {
+  book_id: string
+  tag: string
+  created_by: string
+  created_at: string
+}
+
+export interface Recommendation {
+  id: string
+  from_user: string
+  to_user: string
+  book_id: string
+  message: string
+  status: 'new' | 'added' | 'dismissed'
+  created_at: string
+  book: ReadingWithBook['book']
+}
+
+export const shelfKeys = {
+  tags: () => ['book-tags'] as const,
+  recommendations: () => ['recommendations'] as const,
+}
+
+export function useBookTags() {
+  return useQuery({
+    queryKey: shelfKeys.tags(),
+    queryFn: () => fetchAll<BookTag>((from, to) =>
+      supabase.from('book_tags').select('*').order('tag').range(from, to)),
+  })
+}
+
+export function useRecommendations() {
+  return useQuery({
+    queryKey: shelfKeys.recommendations(),
+    queryFn: () => fetchAll<Recommendation>((from, to) =>
+      supabase.from('recommendations').select('*, book:books(*)')
+        .order('created_at', { ascending: false }).range(from, to)),
+  })
+}

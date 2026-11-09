@@ -42,7 +42,8 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`, `0003_drop_ebook.sql`,
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
    `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`,
-   `0012_avisos.sql` y `0013_citas_fotos.sql` en ese orden.
+   `0012_avisos.sql`, `0013_citas_fotos.sql`, `0014_libros_editables.sql`, `0015_etiquetas_recomendaciones.sql`,
+   `0016_sesiones_hora.sql` y `0017_abandono.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
@@ -61,6 +62,12 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    Aplícala antes de desplegar el nuevo cliente y vuelve a desplegar `notify-partner`.
    Las fotos se guardan en el bucket privado `quote-photos` (2 MiB, JPEG/WebP); el cliente usa enlaces firmados
    de una hora. Al borrar una cita o quitar su foto se intenta eliminar el archivo asociado.
+   La 0014 deja que los dos editéis los datos de un libro y crea el bucket público `book-covers` para portadas propias.
+   La 0015 añade etiquetas compartidas por libro (`book_tags`) y recomendaciones entre vosotros (`recommendations`,
+   con aviso); vuelve a desplegar `notify-partner`. La 0016 guarda la hora de inicio de cada sesión (`started_at`)
+   para «A qué hora leéis»; solo rellena las antiguas cuando la estimación cae en su mismo día.
+   La 0017 añade el motivo al dejar un libro y la función `edit_reading_units`, que cambia formato/unidad de una
+   lectura convirtiendo sus sesiones en una sola transacción. Aplícalas antes de desplegar el cliente.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.

@@ -7,7 +7,7 @@ import { useOfflineSync } from '@/lib/offline/sessionQueue'
 import { NightContext } from '@/components/night'
 import { useAttachTogether } from '@/features/together/live'
 
-const TAB_ORDER = ['/', '/biblioteca', '/stats', '/nosotros']
+const TAB_ORDER = ['/', '/biblioteca', '/citas', '/nosotros']
 
 /** Index used to pick the slide direction between screens (deeper routes slide in from the right). */
 function depthOf(path: string): number {

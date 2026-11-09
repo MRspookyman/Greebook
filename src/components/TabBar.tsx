@@ -27,7 +27,7 @@ const TABS: TabItem[] = [
     to: '/nosotros',
     label: 'Nosotros',
     icon: Heart,
-    match: (path) => path.startsWith('/nosotros') || path.startsWith('/stats'),
+    match: (path) => path.startsWith('/nosotros'),
   },
 ]
 

@@ -35,7 +35,7 @@ function csvCell(value: string | number | null): string {
 }
 
 function readingsCsv(readings: ReadingWithBook[]): string {
-  const statuses = { want: 'Quiero leer', reading: 'Leyendo', finished: 'Leído', abandoned: 'Abandonado' }
+  const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
   const rows: (string | number | null)[][] = [
     [
       'Título',

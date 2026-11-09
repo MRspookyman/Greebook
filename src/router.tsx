@@ -1,5 +1,4 @@
 import { createBrowserRouter, Navigate } from 'react-router'
-import { RoomRedirect } from '@/features/quotes/RoomRedirect'
 import { CitasPage } from '@/features/quotes/CitasPage'
 import { Layout } from './Layout'
 import { TodayPage } from '@/features/today/TodayPage'
@@ -26,12 +25,9 @@ export const router = createBrowserRouter([
       { path: 'leer', element: <SessionPage /> },
       { path: 'leer/:readingId', element: <SessionPage /> },
       { path: 'stats', element: <StatsPage /> },
-      { path: 'calendario', element: <Navigate to="/stats" replace /> },
       { path: 'nosotros', element: <UsPage /> },
       { path: 'nosotros/racha', element: <RachaPage /> },
       { path: 'citas', element: <CitasPage /> },
-      { path: 'sala/:bookId', element: <RoomRedirect /> },
-      { path: 'club/:bookId', element: <RoomRedirect /> },
       { path: 'perfil', element: <ProfilePage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

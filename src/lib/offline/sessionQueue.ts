@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { toast } from '@/components/toast'
 import { userMessage } from '@/lib/errors'
+import { todayISO } from '@/lib/dates'
 
 function apply(op: PendingSession) {
   const { session, readingPatch } = op.payload
@@ -95,6 +96,7 @@ export async function logSession(input: {
   endPos: number
   minutes: number | null
   togetherId?: string | null
+  startedAt?: string | null
 }): Promise<void> {
   const cached = queryClient.getQueryData<ReadingWithBook[]>(qk.readings(input.reading.user_id))
   const reading = cached?.find((r) => r.id === input.reading.id) ?? input.reading
@@ -103,6 +105,7 @@ export async function logSession(input: {
   await queryClient.cancelQueries({ queryKey: qk.readings(reading.user_id) })
   await queryClient.cancelQueries({ queryKey: qk.sessions(reading.user_id) })
   const id = crypto.randomUUID()
+  const now = Date.now()
   const op: PendingSession = {
     id,
     kind: 'session',
@@ -117,6 +120,10 @@ export async function logSession(input: {
         end_pos: input.endPos,
         minutes: input.minutes,
         created_at: new Date().toISOString(),
+        // Without a timer, «now minus minutes» is only a fair guess when the session is logged the same day.
+        started_at:
+          input.startedAt ??
+          (input.readOn === todayISO() ? new Date(now - (input.minutes ?? 0) * 60_000).toISOString() : null),
         ...(input.togetherId ? { together_id: input.togetherId } : {}),
       },
       readingPatch: {

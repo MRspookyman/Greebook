@@ -252,7 +252,10 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     setError(null)
     try {
       const togetherId = timed ? (mine?.togetherId ?? null) : null
-      await logSession({ reading, readOn, endPos: end, minutes: sessionMinutes, togetherId })
+      await logSession({
+        reading, readOn, endPos: end, minutes: sessionMinutes, togetherId,
+        startedAt: timed && mine ? new Date(mine.startedAt).toISOString() : undefined,
+      })
       if (timed) stopTimer()
       const dates = new Set(sessions.map((session) => session.read_on))
       dates.add(readOn)
@@ -530,7 +533,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               aria-label={pagesUnit ? 'Hasta qué página has llegado' : 'Hasta qué porcentaje has llegado'}
             >
               <div className="flex items-baseline justify-between gap-3">
-                <h2 className="eyebrow">{pagesUnit ? 'He llegado a' : 'He llegado al … %'}</h2>
+                <h2 className="eyebrow">{pagesUnit ? 'He llegado a' : 'He llegado al porcentaje'}</h2>
                 <p className="text-xs text-muted">
                   Empezaste en {formatUnitValue(reading.unit, reading.current_position)}
                 </p>

@@ -14,7 +14,7 @@ import { upsertBook } from '@/lib/books/search'
 import { qk } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
 import { supabase } from '@/lib/supabase'
-import type { BookCandidate, Format, Reading, Unit } from '@/lib/types'
+import type { Book, BookCandidate, Format, Reading, Unit } from '@/lib/types'
 import { formatFinished } from '@/lib/units'
 import { useOnline } from '@/features/session/useOnline'
 
@@ -22,11 +22,14 @@ interface Props {
   candidate: BookCandidate | null
   onClose: () => void
   onBackfilled?: () => void
+  existingBook?: Book
+  onAdded?: (readingId: string) => Promise<void>
+  pendingOnly?: boolean
 }
 
 const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-export function AddReadingSheet({ candidate, onClose, onBackfilled }: Props) {
+export function AddReadingSheet({ candidate, onClose, onBackfilled, existingBook, onAdded, pendingOnly }: Props) {
   return (
     <BottomSheet open={!!candidate} onClose={onClose} title="Añadir a la biblioteca">
       {candidate && (
@@ -35,13 +38,16 @@ export function AddReadingSheet({ candidate, onClose, onBackfilled }: Props) {
           candidate={candidate}
           onClose={onClose}
           onBackfilled={onBackfilled}
+          existingBook={existingBook}
+          onAdded={onAdded}
+          pendingOnly={pendingOnly}
         />
       )}
     </BottomSheet>
   )
 }
 
-function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: BookCandidate }) {
+function ReadingForm({ candidate, onClose, onBackfilled, existingBook, onAdded, pendingOnly }: Props & { candidate: BookCandidate }) {
   const { userId } = useMe()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -91,7 +97,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
     setError('')
     setTotalError('')
     try {
-      const book = await upsertBook(candidate)
+      const book = existingBook ?? await upsertBook(candidate)
       const { data: active, error: activeError } = await supabase
         .from('readings')
         .select('id')
@@ -102,6 +108,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
       if (activeError) throw activeError
       if (active?.[0]) {
         toast('Ya lo tienes en tu biblioteca')
+        if (onAdded) await onAdded(active[0].id)
         navigate(`/libro/${active[0].id}`)
         return
       }
@@ -139,6 +146,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
         .single()
       if (insertError) throw insertError
       await qc.invalidateQueries({ queryKey: qk.readings(userId) })
+      if (onAdded) await onAdded(data.id)
       if (status === 'finished') {
         toast('Añadido a Leídos')
         onClose()
@@ -233,7 +241,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
           {totalError && <p id="reading-total-error" role="alert" className="text-sm text-danger">{totalError}</p>}
         </div>
       )}
-      <div>
+      {!pendingOnly && <div>
         <p className="lbl mb-2">Estado</p>
         <Segmented
           options={[
@@ -245,7 +253,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
           onChange={setStatus}
           aria-label="Estado inicial"
         />
-      </div>
+      </div>}
       {status === 'finished' && (
         <div className="space-y-5">
           <fieldset className="grid grid-cols-2 gap-3">

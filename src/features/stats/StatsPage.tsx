@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { differenceInCalendarDays } from 'date-fns'
 import { CountUp } from '@/components/CountUp'
@@ -16,6 +16,7 @@ import { DaySheet } from './DaySheet'
 import { Insights } from './Insights'
 import { MonthGrid } from './MonthGrid'
 import { PagesChart, type ChartPoint } from './PagesChart'
+import { ReadingPatterns } from './ReadingPatterns'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week', label: 'Semana' },
@@ -86,9 +87,12 @@ export function StatsPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="enter flex flex-wrap items-center gap-3">
-        <Link to="/perfil" className="icon-btn" aria-label="Volver al perfil">
+        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => {
+          if (typeof window.history.state?.idx === 'number' && window.history.state.idx > 0) navigate(-1)
+          else navigate('/perfil', { replace: true })
+        }}>
           <ArrowLeft size={20} aria-hidden />
-        </Link>
+        </button>
         <h1 className="display flex-1">Tus números</h1>
         <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
       </header>
@@ -203,13 +207,14 @@ export function StatsPage() {
                   <span>Más</span>
                 </div>
                 <p className="text-xs text-muted">
-                  Sin número de páginas, cada 1 % de Kindle cuenta como 3 puntos de intensidad, no como páginas leídas.
+                  En Kindle sin número de páginas, los porcentajes colorean el día pero no suman páginas.
                 </p>
               </>
             )}
           </section>
           <CoupleCompare key={period} period={period} today={today} label={PERIOD_LABELS[period]} />
           <Insights readings={readings} sessions={sessions} period={period} today={today} goal={profile.yearly_goal} />
+          <ReadingPatterns range={{ ...range, to: today }} />
         </>
       )}
       <DaySheet

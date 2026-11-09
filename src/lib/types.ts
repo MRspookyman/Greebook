@@ -57,6 +57,7 @@ export interface Reading {
   finished_precision: FinishedPrecision | null
   backfilled: boolean
   rating: number | null
+  abandon_reason?: string | null
   moods: string[]
   created_at: string
   updated_at: string
@@ -76,6 +77,8 @@ export interface Session {
   end_pos: number
   minutes: number | null
   created_at: string
+  /** Start instant; absent only in cached sessions predating migration 0016. */
+  started_at?: string | null
   /** Set when this session was read at the same time as the partner's (`read_together`). */
   together_id?: string | null
 }

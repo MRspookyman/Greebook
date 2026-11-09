@@ -17,8 +17,12 @@ precacheAndRoute(self.__WB_MANIFEST)
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
 
 // Book covers.
+const coverStorageOrigin = new URL(
+  (import.meta as ImportMeta & { env: { VITE_SUPABASE_URL: string } }).env.VITE_SUPABASE_URL,
+).origin
 registerRoute(
-  ({ url }) => url.hostname === 'books.google.com' || url.hostname === 'covers.openlibrary.org',
+  ({ url }) => url.hostname === 'books.google.com' || url.hostname === 'covers.openlibrary.org' ||
+    (url.origin === coverStorageOrigin && url.pathname.startsWith('/storage/v1/object/public/book-covers/')),
   new CacheFirst({
     cacheName: 'covers',
     plugins: [

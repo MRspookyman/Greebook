@@ -5,10 +5,10 @@ import { useMe } from '@/features/auth/me'
 import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
 import { coupleStreak } from '@/lib/stats/streak'
-import { dailySeries, estimatedFinish, weekDays } from '@/lib/stats/insights'
+import { dailySeries, weekDays } from '@/lib/stats/insights'
 import { formatDays, formatLabel, formatPosition, progressFraction } from '@/lib/units'
-import type { ReadingWithBook, Session } from '@/lib/types'
-import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
+import type { ReadingWithBook } from '@/lib/types'
+import { flush, usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { isPartnerReading } from '@/lib/presence'
 import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
@@ -24,6 +24,7 @@ import { recentReadings } from './recentReadings'
 import { joinReading } from '@/features/together/live'
 import { toast } from '@/components/toast'
 import { WeekStamps } from './WeekStamps'
+import { PaceEstimate, TogetherEstimates } from '@/features/book/PaceEstimate'
 
 /** Minutes since a timestamp, refreshed every half minute while shown. */
 function useMinutesSince(iso: string | null | undefined): number {
@@ -158,8 +159,6 @@ export function TodayPage() {
           <h2 id="tu-lectura">Tu lectura</h2>
           <CurrentReading
             reading={main}
-            sessions={sessions.data ?? []}
-            today={today}
             ribbons={
               rooms.some((room) => room.mine.id === main.id) && partner
                 ? [partner.accent, profile.accent]
@@ -167,6 +166,7 @@ export function TodayPage() {
             }
             onRead={() => read(main)}
             onQuote={() => setQuoting(main)}
+            shared={rooms.find((room) => room.mine.id === main.id)?.theirs}
           />
           {others.map((reading) => {
             const room = rooms.find((item) => item.mine.id === reading.id)
@@ -207,6 +207,8 @@ export function TodayPage() {
                         {reading.unit !== 'percent' && ` · ${Math.floor(progressFraction(reading) * 100)} %`}
                       </span>
                     )}
+                    <PaceEstimate reading={reading} />
+                    {room && <TogetherEstimates mine={reading} theirs={room.theirs} />}
                   </span>
                 </Link>
                 <button
@@ -271,6 +273,7 @@ export function TodayPage() {
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted" role="status">
           <CloudUpload size={13} aria-hidden />
           {pending} {pending === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de sincronizar
+          <button type="button" className="btn btn-link min-h-11 px-2 text-xs" onClick={() => void flush().catch(() => toast('No se pudo reintentar la sincronización'))}>Reintentar</button>
         </p>
       )}
       {quoting && (
@@ -371,20 +374,17 @@ function NowCard({
 
 function CurrentReading({
   reading,
-  sessions,
-  today,
+  shared,
   ribbons,
   onRead,
   onQuote,
 }: {
   reading: ReadingWithBook
-  sessions: Session[]
-  today: string
+  shared?: ReadingWithBook
   ribbons: ('blue' | 'green')[]
   onRead: () => void
   onQuote: () => void
 }) {
-  const finish = estimatedFinish(reading, sessions, today)
   const fraction = progressFraction(reading)
   return (
     <article className="card grid grid-cols-[auto_1fr] gap-4">
@@ -406,10 +406,9 @@ function CurrentReading({
           )}
         </p>
         <ProgressBar value={fraction} />
-        <p className="text-[13px] text-muted">
-          {Math.floor(fraction * 100)} %
-          {finish ? ` · a tu ritmo, lo acabas hacia el ${fmt(finish, "d 'de' MMMM")}` : ''}
-        </p>
+        <p className="text-[13px] text-muted">{Math.floor(fraction * 100)} %</p>
+        <PaceEstimate reading={reading} />
+        {shared && <TogetherEstimates mine={reading} theirs={shared} />}
       </div>
       <div className="col-span-2 grid grid-cols-[1.15fr_1fr_1fr] gap-2">
         <button type="button" className="btn btn-primary px-2.5" onClick={onRead}>
