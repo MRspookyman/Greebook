@@ -85,7 +85,9 @@ export function useLiveTogether(togetherId: string | null | undefined, myPage: n
     ch.on('broadcast', { event: 'beat' }, ({ payload }) => {
       if (payload?.from === userId) return
       setReceived((n) => n + 1)
-      if ('vibrate' in navigator) navigator.vibrate([90, 110, 90, 700, 90, 110, 90])
+      // Web vibration has no intensity control: longer pulses are what makes it feel stronger.
+      // Three lub-dubs: short-ish «lub», longer «dub», then a pause.
+      if ('vibrate' in navigator) navigator.vibrate([180, 100, 260, 550, 180, 100, 260, 550, 180, 100, 260])
       toast(`${partner?.display_name ?? 'Tu pareja'} te ha mandado un latido`)
     })
     ch.subscribe((status) => {
