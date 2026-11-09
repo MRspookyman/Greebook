@@ -10,7 +10,9 @@ import '@fontsource/caveat/latin-500.css'
 import '@fontsource/caveat/latin-ext-500.css'
 import '@/styles/theme.css'
 import App from './App'
+import { reportDisplayMode } from './lib/displayMode'
 
+reportDisplayMode()
 registerSW({ immediate: true })
 
 createRoot(document.getElementById('root')!).render(

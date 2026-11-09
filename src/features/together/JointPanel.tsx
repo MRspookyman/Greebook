@@ -66,7 +66,7 @@ export function JointPanel({
             className="absolute top-1/2 left-1/2 grid -translate-x-1/2 -translate-y-1/2 rounded-full bg-bg p-0.5 text-rose"
             style={{ animation: pulse ? 'gb-beat 900ms var(--ease)' : undefined }}
           >
-            <Heart size={18} fill="currentColor" />
+            <Heart size={22} fill="currentColor" />
           </span>
         </div>
         {reader('me')}

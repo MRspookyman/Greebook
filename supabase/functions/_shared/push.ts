@@ -15,6 +15,8 @@ interface NotificationPayload {
   title: string
   body: string
   url: string
+  tag?: string
+  renotify?: boolean
 }
 let server: Promise<ApplicationServer> | undefined
 

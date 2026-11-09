@@ -57,8 +57,9 @@ interface Live {
 }
 
 /**
- * Live side of reading together over a Realtime broadcast channel: each one's page and the «latido», a tap that
- * makes the other phone vibrate softly. Nothing is stored.
+ * Live side of reading together over a Realtime broadcast channel: each one's page and the «latido».
+ * Nothing is stored or pushed: delivery requires this hook's active subscription and can stop when the
+ * browser suspends the app in the background. iOS does not support vibration; the visual pulse remains.
  */
 export function useLiveTogether(togetherId: string | null | undefined, myPage: number): Live {
   const { userId, partner } = useMe()
@@ -84,7 +85,7 @@ export function useLiveTogether(togetherId: string | null | undefined, myPage: n
     ch.on('broadcast', { event: 'beat' }, ({ payload }) => {
       if (payload?.from === userId) return
       setReceived((n) => n + 1)
-      navigator.vibrate?.([30, 60, 30])
+      if ('vibrate' in navigator) navigator.vibrate([90, 110, 90, 700, 90, 110, 90])
       toast(`${partner?.display_name ?? 'Tu pareja'} te ha mandado un latido`)
     })
     ch.subscribe((status) => {
@@ -107,7 +108,7 @@ export function useLiveTogether(togetherId: string | null | undefined, myPage: n
     partnerPage,
     received,
     sendBeat: () => {
-      navigator.vibrate?.(15)
+      if ('vibrate' in navigator) navigator.vibrate(15)
       void channel.current?.send({ type: 'broadcast', event: 'beat', payload: { from: userId } })
     },
   }

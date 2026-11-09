@@ -34,7 +34,8 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 
 1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`, `0003_drop_ebook.sql`,
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
-   `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql` y `0011_avisos_privacidad.sql` en ese orden.
+   `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`
+   y `0012_avisos.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
@@ -45,6 +46,8 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    `npx supabase functions deploy notify-partner --project-ref <project-ref> --no-verify-jwt`
    (conserva los secretos existentes). Despliega también el cliente actualizado; al abrirlo con sesión iniciada
    recupera la suscripción de avisos del dispositivo para esa cuenta, sin volver a pedir permiso.
+   La 0012 retira solo los triggers de avisos obsoletos (sin borrar tablas) e indexa las ráfagas de citas.
+   Tras aplicarla, vuelve a desplegar `notify-partner`, `send-reminders` y el cliente actualizado.
    Configura los marcadores de URL y secretos de los avisos con el paso 5.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
@@ -58,9 +61,14 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    - `node scripts/configurar-avisos.mjs <project-ref>`: sube los secretos, despliega `send-reminders` y
      `notify-partner` y genera `avisos-sql.local` (0002 + 0004 + 0006: cron cada 15 min y webhook
      de pareja que nunca bloquea escrituras, con los secretos ya puestos): pégalo entero en el SQL editor.
-     Conserva los triggers de 0007, 0008 y 0009. Tras cada una, vuelve a desplegar `notify-partner` (avisa de citas, respuestas, de que el otro se ha puesto a leer, como mucho una vez por noche, y de que se ha unido a tu lectura). No hace falta crear «Database Webhooks». Solo se avisa de citas,
-     respuestas, desbloqueos, ratitos, propuestas para leer juntos, retos propuestos y libros terminados;
-     no de sesiones, corazones ni presencia. El recordatorio diario propio es independiente y neutral.
+     No hace falta crear «Database Webhooks». Después de configurar el webhook, aplica también 0012:
+     conserva libros terminados, inicio de lectura (una vez por día), unión a la lectura en vivo,
+     citas/notas compartidas, respuestas, desbloqueos y propuestas/aceptaciones/inicios de leer juntos.
+     Las citas del mismo autor y libro en 30 minutos sustituyen el mismo aviso, sin volver a alertar
+     y sin revelar textos bloqueados. El recordatorio diario usa la «Racha de los dos», incluidos
+     los comodines; no hay horas de silencio ni avisos de ratitos, retos, mensajes o corazones.
+     Los latidos de Leer juntos siguen siendo solo Realtime, sin push ni entrega garantizada en segundo plano.
+     Vibran en navegadores compatibles; iOS Safari/PWA no implementa vibración y conserva el pulso visual.
 6. **Cloudflare Workers**: conecta el repositorio (build `npm run build`, deploy `npx wrangler deploy`;
    `wrangler.jsonc` sirve `dist` como SPA) y añade como *build variables* `VITE_SUPABASE_URL`,
    `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_BOOKS_KEY`, `VITE_VAPID_PUBLIC_KEY` y `NODE_VERSION=22`.

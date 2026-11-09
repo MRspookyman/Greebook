@@ -8,19 +8,8 @@
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendToUser } from '../_shared/push.ts'
-import { localDate } from '../_shared/time.ts'
-
-// UTC arithmetic is only over local ISO dates, never over timezone-offset instants.
-function currentStreak(dates: Set<string>, today: string): number {
-  const day = new Date(`${today}T00:00:00Z`)
-  if (!dates.has(today)) day.setUTCDate(day.getUTCDate() - 1)
-  let count = 0
-  while (dates.has(day.toISOString().slice(0, 10))) {
-    count++
-    day.setUTCDate(day.getUTCDate() - 1)
-  }
-  return count
-}
+import { coupleStreak } from '../_shared/couple-streak.ts'
+import { dailyReminderBody } from '../_shared/daily-reminder.ts'
 
 async function readDates(admin: SupabaseClient, userId: string, today: string): Promise<Set<string>> {
   const dates = new Set<string>()
@@ -35,7 +24,7 @@ async function readDates(admin: SupabaseClient, userId: string, today: string): 
       .range(from, from + 999)
     if (error) throw error
     for (const session of sessions ?? []) dates.add(session.read_on)
-    if (!sessions || sessions.length < 1000 || dates.has(today)) break
+    if (!sessions || sessions.length < 1000) break
   }
   return dates
 }
@@ -51,7 +40,7 @@ Deno.serve(async (request: Request) => {
     })
     const { data: profiles, error } = await admin
       .from('profiles')
-      .select('id, timezone, reminder_time, last_reminded_on')
+      .select('id, partner_id, timezone, reminder_time, last_reminded_on')
       .eq('notify_reminder', true)
     if (error) throw error
     const now = new Date()
@@ -75,10 +64,22 @@ Deno.serve(async (request: Request) => {
         if (profile.last_reminded_on === today || time < profile.reminder_time) continue
         const dates = await readDates(admin, profile.id, today)
         if (dates.has(today)) continue
-        const streak = currentStreak(dates, today)
+        let partnerName: string | null = null
+        let partnerDates = new Set<string>()
+        if (profile.partner_id) {
+          const { data: partner, error: partnerError } = await admin
+            .from('profiles')
+            .select('display_name')
+            .eq('id', profile.partner_id)
+            .maybeSingle()
+          if (partnerError) throw partnerError
+          partnerName = partner?.display_name ?? null
+          partnerDates = await readDates(admin, profile.partner_id, today)
+        }
+        const streak = profile.partner_id ? coupleStreak(dates, partnerDates, today).current : 0
         const message = {
           title: '📖 ¿Un ratito de lectura hoy?',
-          body: streak ? `Tu racha es de ${streak} ${streak === 1 ? 'día' : 'días'}` : 'Cuando te apetezca',
+          body: dailyReminderBody(streak, partnerDates.has(today), partnerName),
           url: '/',
         }
         const devices = await sendToUser(admin, profile.id, message)
@@ -93,44 +94,6 @@ Deno.serve(async (request: Request) => {
       } catch (error) {
         failures.push(error)
         console.error('Reminder failed', profile.id, error)
-      }
-    }
-    const { data: invites, error: inviteError } = await admin
-      .from('invites')
-      .select('id, from_user, to_user, starts_at')
-      .eq('status', 'accepted')
-      .is('start_notified_at', null)
-      .lte('starts_at', now.toISOString())
-      .gte('starts_at', new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString())
-    if (inviteError) throw inviteError
-    for (const invite of invites ?? []) {
-      try {
-        const { data: participants, error: participantError } = await admin
-          .from('profiles')
-          .select('id, timezone, notify_partner')
-          .in('id', [invite.from_user, invite.to_user])
-        if (participantError) throw participantError
-        for (const participant of participants ?? []) {
-          if (
-            !participant.notify_partner ||
-            localDate(new Date(invite.starts_at), participant.timezone) !== localDate(now, participant.timezone)
-          )
-            continue
-          await sendToUser(admin, participant.id, {
-            title: '☕ Es la hora de vuestro ratito',
-            body: 'Un momento para leer juntos',
-            url: `/nosotros#i-${invite.id}`,
-          })
-          sent++
-        }
-        const { error: updateError } = await admin
-          .from('invites')
-          .update({ start_notified_at: now.toISOString() })
-          .eq('id', invite.id)
-        if (updateError) throw updateError
-      } catch (error) {
-        failures.push(error)
-        console.error('Ratito reminder failed', invite.id, error)
       }
     }
     return Response.json({ sent, failed: failures.length }, { status: failures.length ? 500 : 200 })

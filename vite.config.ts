@@ -45,9 +45,11 @@ export default defineConfig({
         short_name: 'Greenbook',
         description: 'Nuestro diario de lectura',
         lang: 'es',
+        id: '/',
         start_url: '/',
         scope: '/',
         display: 'standalone',
+        launch_handler: { client_mode: ['navigate-existing', 'auto'] },
         background_color: '#f8eee9',
         theme_color: '#f8eee9',
         icons: [

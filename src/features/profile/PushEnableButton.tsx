@@ -3,11 +3,11 @@ import { enablePush, getPushState, type PushState } from '@/lib/push'
 import { toast } from '@/components/toast'
 
 const messages: Record<PushState, string> = {
-  enabled: 'En este iPhone: avisos activados',
-  denied: 'En este iPhone: avisos no activados. Permítelos en Ajustes del iPhone.',
-  'needs-install': 'En este iPhone: avisos no activados. Añade Greenbook a tu pantalla de inicio para recibirlos.',
+  enabled: 'En este dispositivo: avisos activados',
+  denied: 'En este dispositivo: avisos no activados. Permítelos en los ajustes del navegador o del dispositivo.',
+  'needs-install': 'En este dispositivo: instala Greenbook y ábrelo desde su icono para activar los avisos.',
   unsupported: 'En este dispositivo: avisos no disponibles. En iPhone necesitas iOS 16.4 o posterior.',
-  default: 'En este iPhone: avisos no activados',
+  default: 'En este dispositivo: avisos no activados',
 }
 
 export function PushEnableButton() {
@@ -50,8 +50,9 @@ export function PushEnableButton() {
       </p>
       {state === 'needs-install' && (
         <p className="text-sm text-muted">
-          Abre Greenbook en Safari, toca Compartir y elige «Añadir a pantalla de inicio». Después abre la app desde su
-          icono.
+          En Android, abre Greenbook en Chrome y elige «Instalar app» (no un acceso directo).
+          En iPhone, ábrelo en Safari, toca Compartir y elige «Añadir a pantalla de inicio».
+          Después abre la app desde su icono.
         </p>
       )}
       {state === 'default' && (
