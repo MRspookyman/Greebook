@@ -27,7 +27,7 @@ todas las pantallas. Los datos son de ejemplo y no toca Supabase.
 | Salas por libro | **Ficha a dúo**: las dos cintas sobre el libro, cada cita marcada en su página y las sesiones de los dos. |
 | Estadísticas | **Nosotros**: horas a la vez, noches juntos, estantería del año, la cita más querida y carta del mes. Los números personales pasan a Perfil. |
 | Racha individual | **Racha de los dos** con 2 comodines al mes, y la de cada uno al lado, sin comparar. |
-| Queremos leer juntos | Se mantiene en Biblioteca y Nosotros. |
+| Queremos leer juntos | Se mantiene en Nosotros. |
 | — | **Valorar a ciegas** cuando terminéis el mismo libro. |
 
 Navegación: **Inicio · Biblioteca · (Leer) · Citas · Nosotros**. El perfil se abre desde los avatares de Inicio. Las
@@ -69,9 +69,11 @@ ticket al sincronizar.
 
 ### 3.4 Biblioteca
 
-Los dos · Míos · De ella. Secciones: Leyendo ahora (cada persona es una cinta de color en la portada), A dúo,
-Queremos leer juntos y Leídos en 2026 como estantería. Fichas: a dúo, tuya y la
-lectura de ella (con «Queremos leerlo juntos»).
+Una tarjeta por libro (en Leídos, una por libro y año), con el estado de cada uno. Arriba: buscador que filtra todas las
+pestañas, un avatar por persona para mostrar u ocultar sus libros, y pestañas Leyendo · Pendientes · Leídos · Dejados con
+contador de libros. Leyendo es una lista con una barra de progreso por persona; el resto, rejillas de portadas con puntos de
+color de quién lo tiene (Leídos con filtros de año y Papel/Kindle). Un libro a dúo se ve con las dos cintas en la portada,
+sin sección aparte. Al tocarlo se abre tu ficha, o la suya si tú no lo tienes.
 
 ### 3.5 Racha de los dos
 
