@@ -6,12 +6,13 @@ interface Props {
   /** Omit for read-only display. */
   onChange?: (v: number) => void
   size?: number
+  color?: string
 }
 
 const ratingFormat = new Intl.NumberFormat('es', { maximumFractionDigits: 1 })
 
 /** Native half-step slider overlays the five stars, supporting touch and arrow keys. */
-export function Stars({ value, onChange, size = 28 }: Props) {
+export function Stars({ value, onChange, size = 28, color }: Props) {
   const id = useId()
   const v = value ?? 0
   const description = value ? `${ratingFormat.format(value)} de 5 estrellas` : 'Sin valorar'
@@ -35,7 +36,7 @@ export function Stars({ value, onChange, size = 28 }: Props) {
                   strokeWidth={0}
                 />
                 <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
-                  <Star aria-hidden size={size} className="text-amber" fill="currentColor" strokeWidth={0} />
+                  <Star aria-hidden size={size} className={color ? undefined : 'text-amber'} style={{ color }} fill="currentColor" strokeWidth={0} />
                 </span>
               </span>
             </span>

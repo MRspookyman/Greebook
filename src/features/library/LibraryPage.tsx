@@ -7,11 +7,12 @@ import { EmptyState } from '@/components/EmptyState'
 import { ProgressBar } from '@/components/ProgressBar'
 import { Segmented } from '@/components/Segmented'
 import { FilterChips } from '@/components/FilterChips'
+import { Stars } from '@/components/Stars'
 import { useMe } from '@/features/auth/me'
 import { useReadings } from '@/lib/data'
 import type { Format, ReadingStatus, ReadingWithBook } from '@/lib/types'
 import { formatFinished, formatLabel, formatPosition, progressFraction } from '@/lib/units'
-import { cardReading, cardTarget, libraryCards } from './libraryModel'
+import { cardFinish, cardReading, cardTarget, finishedGroups, libraryCards, type FinishedSort } from './libraryModel'
 
 const tabs = [
   { value: 'reading', label: 'Leyendo' },
@@ -47,6 +48,10 @@ export function LibraryPage() {
   const [view, setView] = useState<ReadingStatus>('reading')
   const [year, setYear] = useState('all')
   const [format, setFormat] = useState<Format | 'all'>('all')
+  const [finishedView, setFinishedView] = useState<'covers' | 'list'>(() => {
+    try { return localStorage.getItem('gb.library.finishedView') === 'list' ? 'list' : 'covers' } catch { return 'covers' }
+  })
+  const [sort, setSort] = useState<FinishedSort>('average')
   const all = [...(mineQuery.data ?? []), ...(partner ? theirsQuery.data ?? [] : [])]
   const people = [
     { person: profile, label: 'Tú', active: !partner || active.mine, key: 'mine' as const },
@@ -68,6 +73,15 @@ export function LibraryPage() {
     : shelves[view]
   const loading = mineQuery.isPending || (!!partner && theirsQuery.isPending)
   const error = mineQuery.isError || (!!partner && theirsQuery.isError)
+  const sortOptions: { value: FinishedSort; label: string }[] = [
+    { value: 'average', label: 'Mejor valorados' },
+    ...(!partner || active.mine ? [{ value: 'mine' as const, label: 'Tu nota' }] : []),
+    ...(partner && active.theirs ? [{ value: 'partner' as const, label: `Nota de ${partner.display_name}` }] : []),
+    { value: 'recent', label: 'Más recientes' },
+    { value: 'title', label: 'Título' },
+  ]
+  const selectedSort = sortOptions.some((option) => option.value === sort) ? sort : 'average'
+  const groups = finishedGroups(cards, selectedSort, userId, partner?.id)
 
   return (
     <section className="min-w-0 space-y-6">
@@ -98,10 +112,12 @@ export function LibraryPage() {
               key={person.id}
               type="button"
               aria-pressed={on}
-              onClick={() => setActive((previous) => {
+              onClick={() => {
                 const other = key === 'mine' ? 'theirs' : 'mine'
-                return previous[key] && !previous[other] ? previous : { ...previous, [key]: !previous[key] }
-              })}
+                if (active[key] && !active[other]) return
+                if (active[key] && sort === (key === 'mine' ? 'mine' : 'partner')) setSort('average')
+                setActive((previous) => ({ ...previous, [key]: !previous[key] }))
+              }}
               className={`pressable flex min-h-11 min-w-11 max-w-full items-center gap-2 rounded-full border py-1 pr-3 pl-1 ${on ? 'bg-surface' : 'border-rule opacity-60'}`}
               style={{ color: `var(--${person.accent})`, borderColor: on ? `var(--${person.accent})` : undefined }}
             >
@@ -138,6 +154,16 @@ export function LibraryPage() {
             <div className="min-w-0 space-y-2">
               <FilterChips options={[{ value: 'all', label: 'Todos' }, ...years.map((value) => ({ value, label: value }))]} value={selectedYear} onChange={setYear} aria-label="Año de finalización" />
               <FilterChips<Format | 'all'> options={[{ value: 'all', label: 'Todos' }, ...(['paper', 'ebook'] as const).map((value) => ({ value, label: formatLabel(value) }))]} value={format} onChange={setFormat} aria-label="Formato del libro" />
+              <Segmented options={[{ value: 'covers', label: 'Portadas' }, { value: 'list', label: 'Lista' }]} value={finishedView} onChange={(value) => {
+                setFinishedView(value)
+                try { localStorage.setItem('gb.library.finishedView', value) } catch { /* Storage may be unavailable in private browsing. */ }
+              }} aria-label="Vista de los leídos" />
+              <label className="flex min-w-0 items-center gap-3 text-sm text-muted">
+                <span>Ordenar</span>
+                <select className="input min-h-11 min-w-0 flex-1" aria-label="Ordenar leídos" value={selectedSort} onChange={(event) => setSort(event.target.value as FinishedSort)}>
+                  {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
               <p className="lbl">{cards.length} {cards.length === 1 ? 'libro' : 'libros'}</p>
             </div>
           )}
@@ -145,6 +171,50 @@ export function LibraryPage() {
             <EmptyState title={all.length === 0 ? 'Vuestra biblioteca empieza aquí.' : emptyTitles[view]}>
               {all.length === 0 && <Link className="btn btn-primary" to="/biblioteca/buscar">Buscar un libro</Link>}
             </EmptyState>
+          ) : view === 'finished' ? (
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <section key={group.year} className="min-w-0 space-y-3" aria-label={group.year === 'unknown' ? 'Sin fecha' : group.year}>
+                  <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <h2 className="font-serif text-xl">{group.year === 'unknown' ? 'Sin fecha' : group.year}</h2>
+                    <p className="text-xs text-muted">{group.cards.length} {group.cards.length === 1 ? 'libro' : 'libros'}{group.average !== null && ` · media ${group.average.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ★`}</p>
+                  </header>
+                  <ul className={finishedView === 'list' ? 'space-y-3' : 'grid grid-cols-3 gap-x-4 gap-y-6'}>
+                    {group.cards.map((card) => {
+                      const book = card.reading.book
+                      const readers = people.filter(({ active, person }) => active && cardFinish(card, person.id))
+                      const formats = [...new Set(card.matches.map((reading) => formatLabel(reading.format)))].join(' y ')
+                      const date = card.reading.finished_on ? formatFinished(card.reading.finished_on, card.reading.finished_precision) : 'Sin fecha'
+                      return (
+                        <li key={card.key} className="min-w-0">
+                          <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={finishedView === 'list' ? 'pressable flex min-h-11 gap-3 rounded-card border border-rule bg-surface p-3' : 'pressable block min-h-11 min-w-0'}>
+                            <div className="shrink-0"><Cover book={book} width={finishedView === 'list' ? 44 : undefined} /></div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className={`font-serif leading-snug break-words ${finishedView === 'list' ? 'text-base' : 'mt-2 line-clamp-2 text-[13px]'}`}>{book.title}</h3>
+                              {finishedView === 'list' && <p className="mt-1 text-xs text-muted break-words">{book.authors.join(', ')}</p>}
+                              <p className="mt-1 text-xs text-muted">{date}{finishedView === 'list' && ` · ${formats}`}</p>
+                              {finishedView === 'list' ? (
+                                <div className="mt-2 space-y-1">
+                                  {readers.map(({ person, label }) => {
+                                    const rating = cardFinish(card, person.id)!.rating
+                                    return (
+                                      <div key={person.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                                        <span className="font-bold break-words" style={{ color: `var(--${person.accent})` }}>{label}</span>
+                                        {rating === null ? <span className="text-muted">Sin nota</span> : <Stars value={rating} size={16} color={`var(--${person.accent})`} />}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              ) : <span className="mt-2 flex gap-1.5">{readers.map(({ person, label }) => <span key={person.id} className="h-2 w-2 rounded-full" style={{ background: `var(--${person.accent})` }}><span className="sr-only">{label}</span></span>)}</span>}
+                            </div>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
           ) : (
             <ul aria-label={tabs.find((tab) => tab.value === view)?.label} className={view === 'reading' ? 'space-y-3' : 'grid grid-cols-3 gap-x-4 gap-y-6'}>
               {cards.map((card) => {
@@ -187,7 +257,6 @@ export function LibraryPage() {
                               </span>
                             ))}
                           </span>
-                          {view === 'finished' && <p className="mt-1 text-xs text-muted">{card.reading.finished_on ? formatFinished(card.reading.finished_on, card.reading.finished_precision) : 'Sin fecha'}</p>}
                         </>
                       )}
                     </Link>

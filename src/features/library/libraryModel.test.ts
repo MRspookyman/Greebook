@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ReadingWithBook } from '@/lib/types'
-import { cardReading, cardTarget, libraryCards } from './libraryModel'
+import { cardFinish, cardReading, cardTarget, finishedGroups, libraryCards } from './libraryModel'
 
 function reading(id: string, patch: Partial<ReadingWithBook> = {}): ReadingWithBook {
   return {
@@ -64,5 +64,54 @@ describe('libraryCards', () => {
     const cards = libraryCards([reading('unknown', { status: 'finished' })], 'finished')
     expect(cards).toHaveLength(1)
     expect(cards[0].year).toBe('unknown')
+  })
+})
+
+describe('finishedGroups', () => {
+  function finished(id: string, rating: number | null, date = '2026-06-01', user = 'me') {
+    return reading(id, { book_id: id, status: 'finished', finished_on: date, rating, user_id: user })
+  }
+
+  it('puts unrated books last and sorts rated ties by recency', () => {
+    const cards = libraryCards([finished('unrated', null, '2026-12-01'), finished('old', 4, '2026-01-01'), finished('new', 4)], 'finished')
+    expect(finishedGroups(cards, 'average', 'me')[0].cards.map((card) => card.reading.id)).toEqual(['new', 'old', 'unrated'])
+  })
+
+  it('uses only active people and averages all visible personal ratings, not book averages', () => {
+    const mine = finished('shared', 2)
+    const partner = { ...finished('shared', 5, '2026-07-01', 'partner'), id: 'partner' }
+    const other = finished('other', 5)
+    const group = finishedGroups(libraryCards([mine, partner, other], 'finished'), 'average', 'me', 'partner')[0]
+    expect(group.average).toBe(4)
+    const filtered = finishedGroups(libraryCards([mine, other], 'finished'), 'average', 'me', 'partner')[0]
+    expect(filtered.average).toBe(3.5)
+    expect(filtered.cards.map((card) => card.reading.id)).toEqual(['other', 'shared'])
+  })
+
+  it('uses latest same-year finish even if an older reread was edited later', () => {
+    const old = { ...finished('shared', 5, '2026-01-01'), updated_at: '2026-12-01' }
+    const recent = { ...finished('shared', null, '2026-08-01'), id: 'reread' }
+    const card = libraryCards([old, recent], 'finished')[0]
+    expect(cardFinish(card, 'me')).toBe(recent)
+    expect(finishedGroups([card], 'average', 'me')[0].average).toBeNull()
+  })
+
+  it('groups descending years with undated last and personal unrated entries by recency', () => {
+    const items = [finished('2023', 4, '2023-01-01'), finished('2025', 5, '2025-01-01'),
+      finished('old', null, '2026-01-01'), finished('new', null), finished('rated', 1)]
+    items.push(reading('unknown', { book_id: 'unknown', status: 'finished' }))
+    const groups = finishedGroups(libraryCards(items, 'finished'), 'mine', 'me')
+    expect(groups.map((group) => group.year)).toEqual(['2026', '2025', '2023', 'unknown'])
+    expect(groups[0].cards.map((card) => card.reading.id)).toEqual(['rated', 'new', 'old'])
+  })
+
+  it('sorts by partner rating and Spanish title', () => {
+    const a = finished('a', 5)
+    const b = finished('b', 2, '2026-07-01', 'partner')
+    a.book = { ...a.book, title: 'Zorro' }
+    b.book = { ...b.book, title: 'Árbol' }
+    const cards = libraryCards([a, b], 'finished')
+    expect(finishedGroups(cards, 'partner', 'me', 'partner')[0].cards[0].reading.id).toBe('b')
+    expect(finishedGroups(cards, 'title', 'me', 'partner')[0].cards[0].reading.id).toBe('b')
   })
 })

@@ -12,6 +12,11 @@ El tiempo de lectura registrado en cada sesión es independiente del progreso.
 El rediseño «Leer juntos» ya está integrado; referencias de diseño y prototipo en
 [`docs/rediseno`](docs/rediseno/README.md).
 
+En Biblioteca → Leídos puedes alternar **Portadas / Lista** (se recuerda en el dispositivo).
+Ambas vistas agrupan un libro por año y respetan los filtros de personas, búsqueda y formato.
+La lista muestra las notas de ambos sin ocultarlas; en relecturas del mismo año cuenta la última
+finalización de cada persona. Las medias y la ordenación usan solo las personas y formatos visibles.
+
 ## Desarrollo
 
 ```bash
