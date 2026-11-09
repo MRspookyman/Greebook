@@ -34,11 +34,9 @@ export function Cover({ book, width, className = '', children, priority = false,
   // Thumbnails can't hold a legible title: they show the initial, like a spine label.
   const tiny = width !== undefined && width < 64
   const inset = width ? Math.max(6, width * 0.11) : 0
-  // The title flows around the bookmarks (a float the size of the ribbons) instead of losing a whole column to them.
   const ribbonWidth = Math.max(5, Math.round((width ?? 100) * 0.075))
-  const ribbonFloat = width && marks.length
-    ? { width: marks.length * ribbonWidth + (marks.length - 1) * 3 + 4, height: Math.round(width * 0.26) + 2 }
-    : null
+  // With bookmarks the title starts just below them and keeps the full width, so words aren't split to fit a gap.
+  const top = width ? Math.max(6, width * 0.13, marks.length ? width * 0.39 + 3 : 0) : 0
   return (
     <div className={`book-cover bg-border ${className}`} style={size} aria-label={fallback ? book.title : undefined}>
       {fallback ? (
@@ -51,8 +49,8 @@ export function Cover({ book, width, className = '', children, priority = false,
             padding: tiny
               ? 0
               : width
-                ? `${Math.max(6, width * 0.13)}px ${inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
-                : `13% ${marks.length ? `${22 + marks.length * 8}%` : '11%'} 13% 11%`,
+                ? `${top}px ${inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
+                : `${marks.length ? '42%' : '13%'} 11% 13% 11%`,
             justifyContent: tiny ? 'center' : 'space-between',
             alignItems: tiny ? 'center' : 'stretch',
           }}
@@ -67,7 +65,6 @@ export function Cover({ book, width, className = '', children, priority = false,
                   // Only long words split («conver-saciones»); «sombra» moves to the next line whole.
                   style={{ maxHeight: '5.5em', hyphenateLimitChars: '8 4 4' }}
                 >
-                  {ribbonFloat && <span aria-hidden className="float-right" style={ribbonFloat} />}
                   {book.title}
                 </span>
                 <span className="mt-[0.5em] block h-px w-1/3" style={{ background: INK, opacity: 0.45 }} aria-hidden />
