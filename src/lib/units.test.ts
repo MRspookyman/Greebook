@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatFinished, formatLabel, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, unitLabel } from './units'
+import { atLastPage, formatFinished, formatLabel, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, unitLabel } from './units'
 
 describe('reading units', () => {
   it('labels paper and Kindle formats and their units', () => {
@@ -21,6 +21,12 @@ describe('reading units', () => {
     expect(percentOf({ current_position: 589, total_units: 590 })).toBe(99)
     expect(percentOf({ current_position: 590, total_units: 590 })).toBe(100)
     expect(percentOf({ current_position: 5, total_units: 0 })).toBe(0)
+  })
+
+  it('spots a reading left on its last page without being marked as read', () => {
+    expect(atLastPage({ status: 'reading', current_position: 590, total_units: 590 })).toBe(true)
+    expect(atLastPage({ status: 'reading', current_position: 589, total_units: 590 })).toBe(false)
+    expect(atLastPage({ status: 'finished', current_position: 590, total_units: 590 })).toBe(false)
   })
 
   it('preserves recorded reading-time formatting', () => {

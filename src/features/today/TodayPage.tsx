@@ -1,12 +1,12 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { BookOpen, ChevronRight, CloudUpload, Heart, Lamp, Play, Plus, Quote as QuoteIcon } from 'lucide-react'
+import { BookCheck, BookOpen, ChevronRight, CloudUpload, Heart, Lamp, Play, Plus, Quote as QuoteIcon } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { useMe } from '@/features/auth/me'
 import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
 import { coupleStreak } from '@/lib/stats/streak'
 import { dailySeries, weekDays } from '@/lib/stats/insights'
-import { formatDays, formatLabel, formatPosition, progressFraction } from '@/lib/units'
+import { atLastPage, formatDays, formatLabel, formatPosition, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, TogetherItemWithBook } from '@/lib/types'
 import { flush, usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { isPartnerReading } from '@/lib/presence'
@@ -25,6 +25,8 @@ import { joinReading } from '@/features/together/live'
 import { toast } from '@/components/toast'
 import { WeekStamps } from './WeekStamps'
 import { PartnerPace, ProgressLine } from '@/features/book/PaceEstimate'
+import { FinishSheet } from '@/features/session/FinishSheet'
+import { finishDay } from '@/features/session/finishDay'
 
 /** What waits for you in Nosotros, said plainly: a proposal to answer or a shared book without a start date. */
 function pendingLine(items: TogetherItemWithBook[], name: string): string {
@@ -58,6 +60,8 @@ export function TodayPage() {
   const forMe = usePendingForMe()
   const navigate = useNavigate()
   const [quoting, setQuoting] = useState<ReadingWithBook | null>(null)
+  // On the last page «Leer» can't record anything new: finishing is the next step.
+  const [finishing, setFinishing] = useState<ReadingWithBook | null>(null)
   const read = (reading: ReadingWithBook) => {
     if (startTimer(reading)) navigate(`/leer/${reading.id}`)
   }
@@ -172,7 +176,7 @@ export function TodayPage() {
                 ? [partner.accent, profile.accent]
                 : [profile.accent]
             }
-            onRead={() => read(main)}
+            onRead={() => (atLastPage(main) ? setFinishing(main) : read(main))}
             onQuote={() => setQuoting(main)}
             shared={rooms.find((room) => room.mine.id === main.id)?.theirs}
           />
@@ -217,14 +221,25 @@ export function TodayPage() {
                     )}
                   </span>
                 </Link>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label={`Leer «${reading.book.title}»`}
-                  onClick={() => read(reading)}
-                >
-                  <Play size={16} fill="currentColor" aria-hidden />
-                </button>
+                {atLastPage(reading) ? (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={`Terminar «${reading.book.title}»`}
+                    onClick={() => setFinishing(reading)}
+                  >
+                    <BookCheck size={18} aria-hidden />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={`Leer «${reading.book.title}»`}
+                    onClick={() => read(reading)}
+                  >
+                    <Play size={16} fill="currentColor" aria-hidden />
+                  </button>
+                )}
               </div>
             )
           })}
@@ -281,6 +296,13 @@ export function TodayPage() {
           {pending} {pending === 1 ? 'sesión pendiente' : 'sesiones pendientes'} de sincronizar
           <button type="button" className="btn btn-link min-h-11 px-2 text-xs" onClick={() => void flush().catch(() => toast('No se pudo reintentar la sincronización'))}>Reintentar</button>
         </p>
+      )}
+      {finishing && (
+        <FinishSheet
+          reading={finishing}
+          readOn={finishDay(sessions.data ?? [], finishing.id, today)}
+          onClose={() => setFinishing(null)}
+        />
       )}
       {quoting && (
         <QuoteSheet
@@ -415,15 +437,24 @@ function CurrentReading({
         <ProgressLine reading={reading} />
         {shared && <PartnerPace theirs={shared} />}
       </div>
-      <div className="col-span-2 grid grid-cols-[1.15fr_1fr_1fr] gap-2">
-        <button type="button" className="btn btn-primary px-2.5" onClick={onRead}>
-          <Play size={15} fill="currentColor" aria-hidden />
-          Leer
-        </button>
-        <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-soft px-2.5">
-          <Plus size={17} aria-hidden />
-          {reading.unit === 'percent' ? 'Porcentaje' : 'Página'}
-        </Link>
+      <div className={`col-span-2 grid gap-2 ${atLastPage(reading) ? 'grid-cols-[2.15fr_1fr]' : 'grid-cols-[1.15fr_1fr_1fr]'}`}>
+        {atLastPage(reading) ? (
+          <button type="button" className="btn btn-primary px-2.5" onClick={onRead}>
+            <BookCheck size={17} aria-hidden />
+            Terminar libro
+          </button>
+        ) : (
+          <>
+            <button type="button" className="btn btn-primary px-2.5" onClick={onRead}>
+              <Play size={15} fill="currentColor" aria-hidden />
+              Leer
+            </button>
+            <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-soft px-2.5">
+              <Plus size={17} aria-hidden />
+              {reading.unit === 'percent' ? 'Porcentaje' : 'Página'}
+            </Link>
+          </>
+        )}
         <button type="button" className="btn btn-soft px-2.5" onClick={onQuote}>
           <QuoteIcon size={16} aria-hidden />
           Cita

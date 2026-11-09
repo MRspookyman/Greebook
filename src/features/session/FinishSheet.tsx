@@ -17,11 +17,14 @@ export function FinishSheet({
   reading,
   readOn,
   onClose,
+  onFinished,
   showToast = true,
 }: {
   reading: ReadingWithBook
   readOn: string
   onClose: () => void
+  /** Called once the reading is marked finished (not when the sheet is just dismissed). */
+  onFinished?: () => void
   showToast?: boolean
 }) {
   const [rating, setRating] = useState(reading.rating ?? 0)
@@ -54,8 +57,10 @@ export function FinishSheet({
         .eq('id', reading.id)
         .eq('user_id', reading.user_id)
       if (error) throw error
-      await queryClient.invalidateQueries({ queryKey: qk.readings(reading.user_id) })
       if (showToast) toast('Un libro más en tu historia', reading.book.title)
+      // Leave the screen before the refreshed list drops this reading from it.
+      onFinished?.()
+      await queryClient.invalidateQueries({ queryKey: qk.readings(reading.user_id) })
       close()
     } catch (error) {
       toast('No se pudo terminar el libro', error instanceof TypeError

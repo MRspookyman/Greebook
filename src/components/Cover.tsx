@@ -62,8 +62,8 @@ export function Cover({ book, width, className = '', children, priority = false,
               <span className="block">
                 <span
                   className="block overflow-hidden break-words hyphens-auto"
-                  // Only long words split («conver-saciones»); «sombra» moves to the next line whole.
-                  style={{ maxHeight: '5.5em', hyphenateLimitChars: '8 4 4' }}
+                  // Words split at a syllable («Proyec-to») only when they can't fit whole on the line.
+                  style={{ maxHeight: '5.5em', hyphenateLimitChars: '6 3 2' }}
                 >
                   {book.title}
                 </span>

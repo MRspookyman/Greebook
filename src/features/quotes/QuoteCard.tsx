@@ -322,7 +322,7 @@ export function QuoteCard({
             className={`flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-sm font-extrabold transition-colors duration-150 ${liked ? 'text-rose' : 'text-muted'}`}
             onClick={() => {
               if (!liked) setBeat(true)
-              void act(() => toggleQuoteHeart(quote.id), 'No se pudo guardar el corazón')
+              void act(() => toggleQuoteHeart(quote.id, userId), 'No se pudo guardar el corazón')
             }}
           >
             <Heart

@@ -4,7 +4,6 @@ import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Quote, QuoteKind, Reaction, ReadingWithBook } from '@/lib/types'
 import { formatPosition, physicalPagePosition } from '@/lib/units'
-import { coupleIdentity } from '@/features/us/messages'
 
 export async function saveQuote(input: {
   bookId: string
@@ -87,9 +86,8 @@ export async function markQuotesSeen(ids: string[]): Promise<void> {
   ])
 }
 
-/** ❤️ on/off on a partner's quote, optimistic. */
-export async function toggleQuoteHeart(quoteId: string): Promise<void> {
-  const { userId } = await coupleIdentity()
+/** ❤️ on/off on a partner's quote, optimistic: it shows at once, without asking the server who you are first. */
+export async function toggleQuoteHeart(quoteId: string, userId: string): Promise<void> {
   await queryClient.cancelQueries({ queryKey: qk.reactions() })
   const before = queryClient.getQueryData<Reaction[]>(qk.reactions()) ?? []
   const existing = before.find((r) => r.user_id === userId && r.target_id === quoteId)

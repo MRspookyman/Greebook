@@ -49,7 +49,7 @@ describe('shared couple streak for reminders', () => {
 
 describe('dailyReminderBody', () => {
   it('mentions only the couple streak when it is positive', () => {
-    expect(dailyReminderBody(1, false, 'Ana')).toBe('Lleváis 1 días seguidos leyendo los dos')
+    expect(dailyReminderBody(1, false, 'Ana')).toBe('Lleváis 1 día leyendo los dos')
     expect(dailyReminderBody(5, true, 'Ana')).toBe('Lleváis 5 días seguidos leyendo los dos')
   })
 

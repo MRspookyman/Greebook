@@ -2,7 +2,7 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { addDays } from 'date-fns'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { ChevronRight, Lock, LockOpen, Pause, Play, X } from 'lucide-react'
+import { BookCheck, ChevronRight, Lock, LockOpen, Pause, Play, X } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
 import { RollingNumber } from '@/components/RollingNumber'
@@ -20,7 +20,9 @@ import { logSession } from '@/lib/offline/sessionQueue'
 import { currentStreak } from '@/lib/stats/streak'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
 import type { Quote, ReadingWithBook } from '@/lib/types'
-import { formatDays, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, progressFraction } from '@/lib/units'
+import { atLastPage, formatDays, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, progressFraction } from '@/lib/units'
+import { isPartnerReading } from '@/lib/presence'
+import { finishDay } from './finishDay'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
 import { JointPanel } from '@/features/together/JointPanel'
@@ -53,7 +55,8 @@ type Saved = {
 }
 
 const MODE_KEY = 'gb.session.mode'
-const LIVE_MS = 2 * 60 * 60 * 1000
+/** Past this, a running timer was probably forgotten: ask how long the reading really was. */
+const LONG_MINUTES = 180
 
 function storedMode(): Mode {
   try {
@@ -150,7 +153,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [dateChoice, setDateChoice] = useState<DateChoice>(
     initialDate === today ? 'today' : initialDate === yesterday ? 'yesterday' : 'other',
   )
-  const [error, setError] = useState<{ field: 'position' | 'date'; message: string } | null>(null)
+  const [error, setError] = useState<{ field: 'position' | 'date' | 'minutes'; message: string } | null>(null)
+  const [realMinutes, setRealMinutes] = useState('')
+  const [finishingLast, setFinishingLast] = useState(false)
   const [busy, setBusy] = useState(false)
   const [picker, setPicker] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
@@ -159,9 +164,21 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [tracing, setTracing] = useState(false)
 
   const name = partner?.display_name ?? 'Tu pareja'
+  // On the last page there's nothing left to record: the next step is marking it as read.
+  const lastPage = atLastPage(reading) && !saved
+  const elapsedMinutes = mine ? Math.max(1, Math.round(seconds / 60)) : 0
+  const longTimer = !!mine && elapsedMinutes >= LONG_MINUTES
+  // A night reading that crosses midnight belongs to the day it started (and to that day's streak).
+  const timerDay = mine ? (toISODate(new Date(mine.startedAt)) < today ? toISODate(new Date(mine.startedAt)) : today) : today
+  const startLabel = mine
+    ? timerDay === today
+      ? `las ${fmt(new Date(mine.startedAt), 'HH:mm')}`
+      : timerDay === yesterday
+        ? `ayer a las ${fmt(new Date(mine.startedAt), 'HH:mm')}`
+        : fmt(new Date(mine.startedAt), "EEEE d 'a las' HH:mm")
+    : ''
   const theirs = room?.theirs
-  const since = partner?.reading_now_since ? new Date(partner.reading_now_since).getTime() : 0
-  const partnerLive = !!since && Date.now() - since >= 0 && Date.now() - since < LIVE_MS
+  const partnerLive = isPartnerReading(partner)
   const partnerHere = partnerLive && !!theirs && partner?.reading_now_id === theirs.id
   const partnerLine = !partner
     ? null
@@ -219,11 +236,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     setError(null)
     if (mine) setTimerDraft(reading.id, value)
   }
-  function fail(field: 'position' | 'date', message: string) {
+  function fail(field: 'position' | 'date' | 'minutes', message: string) {
     setError({ field, message })
-    requestAnimationFrame(() =>
-      document.getElementById(field === 'position' ? 'session-position' : 'session-date')?.focus(),
-    )
+    requestAnimationFrame(() => document.getElementById(`session-${field === 'date' ? 'date' : field}`)?.focus())
   }
   function leave() {
     if (dirty && !window.confirm('¿Salir sin guardar la sesión?')) return
@@ -241,8 +256,11 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   async function save() {
     if (busy || saved) return
     const timed = !!mine
-    const readOn = timed ? today : date
-    const sessionMinutes = mine ? timerMinutes(mine, Date.now()) : minutes
+    const readOn = timed ? timerDay : date
+    const typed = longTimer && /^\d+$/.test(realMinutes.trim()) ? Number(realMinutes.trim()) : null
+    if (mine && longTimer && realMinutes.trim() && (typed === null || typed < 1 || typed > timerMinutes(mine, Date.now())))
+      return fail('minutes', `Escribe entre 1 y ${timerMinutes(mine, Date.now())} minutos`)
+    const sessionMinutes = mine ? (typed ?? timerMinutes(mine, Date.now())) : minutes
     if (!Number.isInteger(end) || end <= reading.current_position)
       return fail('position', pagesUnit ? 'Indica hasta qué página has llegado' : 'Indica a qué porcentaje has llegado')
     if (end > reading.total_units)
@@ -289,6 +307,27 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       )}
       <button type="button" className="btn btn-primary min-h-[52px] flex-1 text-[15px]" onClick={leave}>
         Listo
+      </button>
+    </>
+  ) : lastPage ? (
+    <>
+      {mine && (
+        <button type="button" className="btn btn-outline min-h-[52px] flex-1" onClick={discardTimer}>
+          Descartar el tiempo
+        </button>
+      )}
+      <button
+        type="button"
+        className="btn btn-primary min-h-[52px] flex-[1.4] text-[15px]"
+        disabled={!online}
+        onClick={() => {
+          // Time without new pages can't be stored; finishing closes this session.
+          if (mine) discardTimer()
+          setFinishingLast(true)
+        }}
+      >
+        <BookCheck size={17} aria-hidden />
+        Terminar libro
       </button>
     </>
   ) : timing && !mine ? (
@@ -354,9 +393,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                 partnerAccent={partner?.accent}
               />
               <p className="mt-2 text-xs text-muted">
-                {formatUnitValue(reading.unit, reading.current_position)} de{' '}
-                {reading.total_units}{pagesUnit ? '' : ' %'} ·{' '}
-                {pct(reading.current_position)} %
+                {pagesUnit
+                  ? `p. ${reading.current_position} de ${reading.total_units} · ${pct(reading.current_position)} %`
+                  : `${reading.current_position} % leído`}
               </p>
             </div>
             {choices.length > 1 && (
@@ -430,7 +469,18 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
             </button>
           )}
 
-          {!mine && (
+          {lastPage && (
+            <section className="mt-8 space-y-2 text-center" aria-label="Libro en la última página">
+              <BookCheck size={30} className="mx-auto text-accent" aria-hidden />
+              <h2 className="title">Ya estás en la última página</h2>
+              <p className="text-sm text-muted">
+                Márcalo como terminado y pasará a vuestra estantería.
+                {mine ? ' El tiempo sin páginas nuevas no se puede guardar.' : ''}
+              </p>
+            </section>
+          )}
+
+          {!mine && !lastPage && (
             <Segmented<Mode>
               className="mt-5"
               variant="underline"
@@ -444,7 +494,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
             />
           )}
 
-          {timing && (
+          {timing && !lastPage && (
             <section className="py-7 text-center" aria-label="Cronómetro">
               <p
                 role="timer"
@@ -460,13 +510,43 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                   ) : (
                     <>
                       <span className="live-dot text-accent" aria-hidden />
-                      En marcha desde las {fmt(new Date(mine.startedAt), 'HH:mm')}
+                      En marcha desde {startLabel}
                     </>
                   )
                 ) : (
                   'El tiempo se guarda solo al terminar'
                 )}
               </p>
+              {longTimer && (
+                <div className="mx-auto mt-5 max-w-sm rounded-[18px] bg-sunk p-4 text-left" role="group" aria-labelledby="long-timer">
+                  <p id="long-timer" className="font-extrabold">¿Se te olvidó pararlo?</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Lleva {formatMinutes(elapsedMinutes)}. Si leíste menos, escribe cuánto y se guardará eso.
+                  </p>
+                  <label className="mt-3 flex items-center gap-3 text-sm">
+                    <input
+                      id="session-minutes"
+                      className="input w-24 bg-surface text-center"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      placeholder={String(elapsedMinutes)}
+                      value={realMinutes}
+                      aria-invalid={error?.field === 'minutes'}
+                      onChange={(event) => {
+                        setRealMinutes(event.target.value.replace(/\D/g, '').slice(0, 4))
+                        setError(null)
+                      }}
+                    />
+                    minutos leídos
+                  </label>
+                  {error?.field === 'minutes' && (
+                    <p role="alert" className="mt-2 text-sm text-danger">
+                      {error.message}
+                    </p>
+                  )}
+                </div>
+              )}
               {!mine && !timer && (
                 <p className="mt-6 text-sm text-muted">
                   {readToday
@@ -525,7 +605,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
             </section>
           )}
 
-          {(!timing || mine) && (
+          {(!timing || mine) && !lastPage && (
             <section
               className={`space-y-4 ${timing ? 'rule pt-5' : 'pt-6'}`}
               aria-label={pagesUnit ? 'Hasta qué página has llegado' : 'Hasta qué porcentaje has llegado'}
@@ -622,7 +702,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
             </section>
           )}
 
-          {!timing && (
+          {!timing && !lastPage && (
             <>
               <section className="rule mt-6 space-y-3 pt-5" aria-label="Tiempo leyendo">
                 <h2 className="eyebrow">¿Cuánto rato? · opcional</h2>
@@ -702,6 +782,14 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         page={saved && saved.reading.unit === 'pages' ? saved.reading.current_position : null}
       />
       {finished && <FinishSheet reading={finished} readOn={saved?.date ?? today} onClose={() => setFinished(null)} />}
+      {finishingLast && (
+        <FinishSheet
+          reading={reading}
+          readOn={finishDay(sessions, reading.id, today)}
+          onClose={() => setFinishingLast(false)}
+          onFinished={close}
+        />
+      )}
     </div>
   )
 }

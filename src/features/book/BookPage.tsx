@@ -3,14 +3,14 @@ import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
-import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
+import { ArrowLeft, BookCheck, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useQuotes, useReadings, useSessions } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { formatDays, formatFinished, formatLabel, formatMinutes, percentOf, progressFraction } from '@/lib/units'
+import { atLastPage, formatDays, formatFinished, formatLabel, formatMinutes, percentOf, progressFraction } from '@/lib/units'
 import { readingPace } from './readingPace'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -32,6 +32,8 @@ import { BookTags } from '@/features/library/BookTags'
 import { RecommendButton } from '@/features/library/RecommendButton'
 import { QuoteCard } from '@/features/quotes/QuoteCard'
 import { QuoteSheet } from '@/features/quotes/QuoteSheet'
+import { FinishSheet } from '@/features/session/FinishSheet'
+import { finishDay } from '@/features/session/finishDay'
 
 const statuses = { want: 'Pendiente', reading: 'Leyendo', finished: 'Leído', abandoned: 'Dejado' }
 type BookTab = 'sessions' | 'quotes' | 'joint'
@@ -95,6 +97,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [editingReading, setEditingReading] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [abandoning, setAbandoning] = useState(false)
+  const [finishing, setFinishing] = useState(false)
   const [readingPending, setReadingPending] = useState<number | null>(null)
   useEffect(() => {
     const subscription = liveQuery(() =>
@@ -537,6 +540,11 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               <button className="btn btn-primary w-full" disabled={disabled} onClick={() => void reread()}>
                 Volver a leer
               </button>
+            ) : atLastPage(reading) ? (
+              <button className="btn btn-primary w-full" disabled={disabled} onClick={() => setFinishing(true)}>
+                <BookCheck size={17} aria-hidden />
+                Terminar libro
+              </button>
             ) : (
               <>
                 {timing ? (
@@ -581,6 +589,9 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       {editing && <SessionEditor reading={reading} session={editing} onClose={() => setEditing(null)} />}
       {editingReading && (
         <ReadingEditor reading={reading} disabled={disabled} onSave={patch} onClose={() => setEditingReading(false)} />
+      )}
+      {finishing && (
+        <FinishSheet reading={reading} readOn={finishDay(sessions, reading.id, today)} onClose={() => setFinishing(false)} />
       )}
       {abandoning && <AbandonSheet reading={reading} disabled={disabled} onSave={patch} onClose={() => setAbandoning(false)} />}
     </div>

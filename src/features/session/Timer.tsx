@@ -84,19 +84,24 @@ export function attachTogether(togetherId: string): void {
   if (timer && timer.togetherId !== togetherId) setTimer({ ...timer, togetherId })
 }
 
+/** A paused timer is not «leyendo ahora»: your partner stops seeing the lamp until you resume. */
 export function pauseTimer(): void {
-  if (timer) setTimer(pauseTimerState(timer, Date.now()))
+  if (!timer || timer.pausedAt != null) return
+  setTimer(pauseTimerState(timer, Date.now()))
+  void setReadingNow(null)
 }
 
 export function resumeTimer(): void {
-  if (timer) setTimer(resumeTimerState(timer, Date.now()))
+  if (!timer || timer.pausedAt == null) return
+  setTimer(resumeTimerState(timer, Date.now()))
+  void setReadingNow(timer.readingId)
 }
 
 /** Keeps the elapsed time but moves it to another book (started on the wrong one). */
 export function transferTimer(readingId: string): void {
   if (!timer || timer.readingId === readingId) return
   setTimer({ ...timer, readingId, draft: null })
-  void setReadingNow(readingId)
+  if (timer.pausedAt == null) void setReadingNow(readingId)
 }
 
 /** Remembers the position chosen while timing, until the session is saved or discarded. */
