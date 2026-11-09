@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatFinished, formatLabel, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, unitLabel } from './units'
+import { formatFinished, formatLabel, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, physicalPagePosition, unitLabel } from './units'
 
 describe('reading units', () => {
   it('labels paper and Kindle formats and their units', () => {
@@ -18,6 +18,25 @@ describe('reading units', () => {
 
   it('preserves recorded reading-time formatting', () => {
     expect(formatMinutes(190)).toBe('3 h 10 min')
+    expect(formatMinutes(60)).toBe('1 h')
+    expect(formatMinutes(25)).toBe('25 min')
+    expect(formatMinutes(0)).toBe('0 min')
+  })
+})
+
+describe('physical quote pages', () => {
+  it('keeps page positions unchanged', () => {
+    expect(physicalPagePosition({ unit: 'pages', current_position: 72, total_units: 340, book: { page_count: null } })).toBe(72)
+  })
+
+  it('estimates Kindle pages without opening a quote before its page is reached', () => {
+    expect(physicalPagePosition({ unit: 'percent', current_position: 25, total_units: 100, book: { page_count: 301 } })).toBe(75)
+    expect(physicalPagePosition({ unit: 'percent', current_position: 100, total_units: 100, book: { page_count: 301 } })).toBe(301)
+  })
+
+  it('does not invent a page when the Kindle page count is unknown', () => {
+    expect(physicalPagePosition({ unit: 'percent', current_position: 45, total_units: 100, book: { page_count: null } })).toBeNull()
+    expect(physicalPagePosition({ unit: 'percent', current_position: 45, total_units: 0, book: { page_count: 300 } })).toBeNull()
   })
 })
 

@@ -1,5 +1,5 @@
 /* Deploy with --no-verify-jwt; authenticate database webhooks using WEBHOOK_SECRET.
- * Migrations 0004/0006 define notify_partner_webhook(), and 0007 installs the Rincón triggers.
+ * Migrations 0004/0006 define notify_partner_webhook(); 0007 and 0008 install the triggers (0008: citas).
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendToUser } from '../_shared/push.ts'
@@ -74,7 +74,11 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const record = payload.record!
   const old = payload.old_record
   const actorId =
-    payload.table === 'readings'
+    payload.table === 'profiles'
+      ? record.id
+      : payload.table === 'read_together'
+        ? record.user_b
+        : payload.table === 'readings' || payload.table === 'quotes' || payload.table === 'quote_replies'
       ? record.user_id
       : payload.table === 'together_items'
         ? record.added_by
@@ -87,6 +91,44 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const name = actor.display_name as string
   const partnerId = actor.partner_id as string
   switch (payload.table) {
+    case 'profiles': {
+      // Started reading: one gentle push per night at most.
+      if (payload.type !== 'UPDATE' || old?.reading_now_since || !record.reading_now_since) return []
+      const today = localDate(new Date(), String(actor.timezone ?? 'Europe/Madrid'))
+      if (record.live_notified_on === today) return []
+      const reading = record.reading_now_id
+        ? await checked(admin.from('readings').select('book_id').eq('id', String(record.reading_now_id)).maybeSingle())
+        : null
+      const title = reading ? await book(admin, reading.book_id) : null
+      const { error } = await admin.from('profiles').update({ live_notified_on: today }).eq('id', actorId)
+      if (error) throw error
+      return [
+        {
+          to: partnerId,
+          body: `${name} se ha puesto a leer${title ? ` «${title.title}»` : ''}. ¿Te unes?`,
+          url: '/',
+        },
+      ]
+    }
+    case 'read_together': {
+      if (payload.type !== 'INSERT' || record.user_a !== partnerId) return []
+      return [{ to: partnerId, body: `${name} se ha unido a tu lectura`, url: '/leer' }]
+    }
+    case 'quotes': {
+      if (payload.type !== 'INSERT' || !record.shared) return []
+      const title = await book(admin, record.book_id)
+      if (!title) return []
+      const isLocked = locked(record, await openReadings(admin, partnerId, String(record.book_id)), title.page_count)
+      const what = record.kind === 'nota' ? 'una nota' : 'una cita'
+      const body = isLocked
+        ? `${name} te ha dejado ${what} en la p. ${record.page} de «${title.title}». Se abre cuando llegues.`
+        : `${name} ha guardado ${what} de «${title.title}»: «${excerpt(record.body)}»`
+      return [{ to: partnerId, body, url: `/citas#c-${record.id}` }]
+    }
+    case 'quote_replies': {
+      if (payload.type !== 'INSERT') return []
+      return [{ to: partnerId, body: `${name} te ha respondido: «${excerpt(record.body)}»`, url: `/citas#c-${record.quote_id}` }]
+    }
     case 'messages': {
       if (payload.type !== 'INSERT' || record.to_user !== partnerId) return []
       const title = await book(admin, record.book_id)
@@ -120,10 +162,11 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
       if (Number(record.current_position) <= Number(old.current_position)) return pushes
       const messages = await checked(
         admin
-          .from('messages')
+          .from('quotes')
           .select('id, page, book_id, opened_early')
-          .eq('to_user', actorId)
-          .eq('from_user', partnerId)
+          .eq('user_id', partnerId)
+          .eq('shared', true)
+          .eq('safe', false)
           .eq('book_id', String(record.book_id))
           .is('unlock_notified_at', null)
           .eq('opened_early', false)
@@ -142,7 +185,7 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
         pushes.push({
           to: actorId,
           body: `Ya puedes abrir lo que te dejó ${partner?.display_name ?? 'tu pareja'} en «${title.title}»`,
-          url: `/nosotros#m-${unlocked[0].id}`,
+          url: `/citas#c-${unlocked[0].id}`,
           unlockedIds: unlocked.map((message) => message.id),
         })
       }
@@ -241,7 +284,11 @@ Deno.serve(async (request: Request) => {
   }
   if (!payload?.record || (payload.schema && payload.schema !== 'public'))
     return new Response('Invalid payload', { status: 400 })
-  if (!['messages', 'readings', 'invites', 'together_items', 'couple_goals'].includes(payload.table))
+  if (
+    !['profiles', 'read_together', 'messages', 'quotes', 'quote_replies', 'readings', 'invites', 'together_items', 'couple_goals'].includes(
+      payload.table,
+    )
+  )
     return Response.json({ sent: false })
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -256,7 +303,7 @@ Deno.serve(async (request: Request) => {
       }
       if (push.unlockedIds) {
         const { error } = await admin
-          .from('messages')
+          .from('quotes')
           .update({ unlock_notified_at: new Date().toISOString() })
           .in('id', push.unlockedIds)
         if (error) throw error

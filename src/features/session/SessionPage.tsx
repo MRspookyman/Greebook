@@ -12,16 +12,20 @@ import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
 import { recentReadings } from '@/features/today/recentReadings'
 import { useRooms } from '@/features/us/rooms'
-import { TraceComposer } from '@/features/us/TraceSheet'
-import { useMessages, useReadings, useSessions } from '@/lib/data'
+import { QuoteSheet } from '@/features/quotes/QuoteSheet'
+import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, fromISODate, todayISO, toISODate } from '@/lib/dates'
 import { logSession } from '@/lib/offline/sessionQueue'
 import { currentStreak } from '@/lib/stats/streak'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
-import type { Message, ReadingWithBook } from '@/lib/types'
-import { formatDays, formatMinutes, formatUnitDelta, formatUnitValue } from '@/lib/units'
+import type { Quote, ReadingWithBook } from '@/lib/types'
+import { formatDays, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, physicalPagePosition, progressFraction } from '@/lib/units'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
+import { JointPanel } from '@/features/together/JointPanel'
+import { joinReading } from '@/features/together/live'
+import { Avatar } from '@/components/Avatar'
+import { TicketPanel } from '@/features/together/TicketPanel'
 import {
   discardTimer,
   pauseTimer,
@@ -43,7 +47,8 @@ type Saved = {
   delta: number
   minutes: number | null
   streak: number
-  unlocking: Message[]
+  unlocking: Quote[]
+  togetherId: string | null
 }
 
 const MODE_KEY = 'gb.session.mode'
@@ -113,7 +118,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [params] = useSearchParams()
   const online = useOnline()
   const sessions = useSessions(userId).data ?? []
-  const messages = useMessages().data ?? []
+  const quotes = useQuotes().data ?? []
   const room = useRooms().find((item) => item.book.id === reading.book_id)
   const timer = useActiveTimer()
   const mine = timer?.readingId === reading.id ? timer : null
@@ -151,7 +156,6 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [saved, setSaved] = useState<Saved | null>(null)
   const [finished, setFinished] = useState<ReadingWithBook | null>(null)
   const [tracing, setTracing] = useState(false)
-  const [traceDirty, setTraceDirty] = useState(false)
 
   const name = partner?.display_name ?? 'Tu pareja'
   const theirs = room?.theirs
@@ -164,30 +168,30 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       ? `${name} también está leyendo este libro ahora`
       : partnerLive
         ? `${name} está leyendo ahora`
-        : theirs && pagesUnit
-          ? `${name} va por la p. ${theirs.current_position}`
+        : theirs
+          ? `${name} va por ${formatPosition(theirs)}`
           : null
   const caughtUp =
     !!theirs &&
-    pagesUnit &&
-    theirs.unit === 'pages' &&
-    reading.current_position < theirs.current_position &&
-    end >= theirs.current_position
-  // Huellas still ahead of the saved position: this session is what can open them.
-  const waiting = pagesUnit
-    ? messages
+    progressFraction(reading) < progressFraction(theirs) &&
+    progressFraction({ ...reading, current_position: end }) >= progressFraction(theirs)
+  const currentPage = physicalPagePosition(reading)
+  const endPage = physicalPagePosition({ ...reading, current_position: end })
+  // Partner quotes still ahead of the saved position: this session is what can open them.
+  const waiting = currentPage !== null
+    ? quotes
         .filter(
           (m) =>
-            m.to_user === userId &&
+            m.user_id !== userId &&
             m.book_id === reading.book_id &&
             m.locked &&
             m.page !== null &&
-            m.page > reading.current_position,
+            m.page > currentPage,
         )
         .sort((a, b) => (a.page ?? 0) - (b.page ?? 0))
     : []
-  const unlocking = waiting.filter((m) => (m.page ?? 0) <= end)
-  const nextLocked = waiting.find((m) => (m.page ?? 0) > end)
+  const unlocking = waiting.filter((m) => endPage !== null && (m.page ?? 0) <= endPage)
+  const nextLocked = waiting.find((m) => endPage === null || (m.page ?? 0) > endPage)
   const other = timer && !mine ? choices.find((choice) => choice.id === timer.readingId) : undefined
   const pct = (value: number) => (reading.total_units > 0 ? Math.round((value / reading.total_units) * 100) : 0)
   const readDates = new Set(sessions.map((session) => session.read_on))
@@ -217,7 +221,6 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   }
   function leave() {
     if (dirty && !window.confirm('¿Salir sin guardar la sesión?')) return
-    if (saved && traceDirty && !window.confirm('¿Descartar la huella que has escrito?')) return
     close()
   }
   function pick(choice: ReadingWithBook) {
@@ -242,7 +245,8 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     setBusy(true)
     setError(null)
     try {
-      await logSession({ reading, readOn, endPos: end, minutes: sessionMinutes })
+      const togetherId = timed ? (mine?.togetherId ?? null) : null
+      await logSession({ reading, readOn, endPos: end, minutes: sessionMinutes, togetherId })
       if (timed) stopTimer()
       const dates = new Set(sessions.map((session) => session.read_on))
       dates.add(readOn)
@@ -253,6 +257,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         minutes: sessionMinutes,
         streak: currentStreak(dates, today),
         unlocking,
+        togetherId,
       })
       navigator.vibrate?.(12)
       if (end === reading.total_units) setFinished({ ...reading, current_position: end })
@@ -266,9 +271,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const steps = pagesUnit ? [5, 10, 25] : [1, 5, 10]
   const actions: ReactNode = saved ? (
     <>
-      {partner && online && !tracing && (
+      {online && (
         <button type="button" className="btn btn-outline min-h-[52px] flex-1" onClick={() => setTracing(true)}>
-          Dejarle algo a {name}
+          Guardar una cita
         </button>
       )}
       <button type="button" className="btn btn-primary min-h-[52px] flex-1 text-[15px]" onClick={leave}>
@@ -321,15 +326,10 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       </header>
 
       {saved ? (
-        <SavedPanel
-          saved={saved}
-          partnerName={name}
-          tracing={tracing && !!partner && online}
-          onTraceClose={close}
-          onTraceDirty={setTraceDirty}
-        />
+        <SavedPanel saved={saved} partnerName={name} />
       ) : (
         <>
+          {mine?.togetherId && <JointPanel togetherId={mine.togetherId} reading={reading} myPage={end} />}
           <section className="mt-6 flex items-start gap-4" aria-label="Libro de esta sesión">
             <Cover book={reading.book} width={64} priority />
             <div className="min-w-0 flex-1">
@@ -339,7 +339,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                 from={reading.current_position}
                 to={end}
                 total={reading.total_units}
-                partnerAt={theirs && theirs.unit === reading.unit ? theirs.current_position : null}
+                partnerAt={theirs ? progressFraction(theirs) * reading.total_units : null}
                 partnerAccent={partner?.accent}
               />
               <p className="mt-2 text-xs text-muted">
@@ -398,6 +398,28 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               {partnerLine}
             </p>
           )}
+          {partnerLive && !mine && !timer && (
+            <button
+              type="button"
+              className="card card-lamp mt-4 flex min-h-14 w-full items-center gap-3 py-3 text-left"
+              onClick={() => {
+                void joinReading()
+                  .then((row) => {
+                    if (startTimer(reading, row.id)) setMode('crono')
+                  })
+                  .catch(() => toast('No se pudo unir a su lectura', 'Inténtalo de nuevo con conexión.'))
+              }}
+            >
+              {partner && <Avatar person={partner} size={36} live />}
+              <span className="flex-1 text-sm">
+                <b className="font-extrabold">{name}</b> está leyendo. Leed a la vez: os veréis la página y os podréis
+                mandar latidos.
+              </span>
+              <span className="btn btn-primary min-h-10 px-3.5 text-sm" aria-hidden>
+                Unirme
+              </span>
+            </button>
+          )}
 
           {!mine && (
             <Segmented<Mode>
@@ -405,7 +427,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               variant="underline"
               options={[
                 { value: 'crono', label: 'Cronómetro' },
-                { value: 'paginas', label: 'Solo páginas' },
+                { value: 'paginas', label: pagesUnit ? 'Solo páginas' : 'Solo porcentaje' },
               ]}
               value={mode}
               onChange={setMode}
@@ -448,7 +470,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               {!mine && !timer && nextLocked && (
                 <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted">
                   <Lock size={14} aria-hidden />
-                  {name} te dejó algo en la p. {nextLocked.page} · te faltan {(nextLocked.page ?? 0) - end}
+                  {name} te dejó algo en la p. {nextLocked.page} · te faltan {(nextLocked.page ?? 0) - (endPage ?? 0)} páginas
                 </p>
               )}
               {mine &&
@@ -573,14 +595,16 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                       style={{ animation: 'gb-pop-in 360ms var(--ease) both' }}
                     >
                       <LockOpen size={15} aria-hidden />
-                      Al guardar se abrirá{' '}
-                      {unlocking.length === 1 ? 'lo que te dejó' : `${unlocking.length} huellas de`} {name}
+                      Al guardar se abrirá {unlocking.length === 1
+                        ? 'lo que te dejó'
+                        : `${unlocking.length} citas de`}{' '}
+                      {name}
                     </p>
                   ) : (
                     nextLocked && (
                       <p className="flex items-center justify-center gap-1.5 text-muted">
                         <Lock size={14} aria-hidden />
-                        {name} te dejó algo en la p. {nextLocked.page} · te faltan {(nextLocked.page ?? 0) - end}
+                        {name} te dejó algo en la p. {nextLocked.page} · te faltan {(nextLocked.page ?? 0) - (endPage ?? 0)} páginas
                       </p>
                     )
                   )}
@@ -651,7 +675,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
 
       {createPortal(
         <div
-          className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-xl gap-2 border-t border-rule bg-bg px-[26px] pt-3"
+          className="night fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-xl gap-2 border-t border-rule px-5 pt-3"
           style={{
             paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
             animation: 'gb-sheet-up 420ms var(--ease) both',
@@ -662,6 +686,12 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         document.body,
       )}
 
+      <QuoteSheet
+        open={tracing}
+        onClose={() => setTracing(false)}
+        bookId={reading.book_id}
+        page={saved && saved.reading.unit === 'pages' ? saved.reading.current_position : null}
+      />
       {finished && <FinishSheet reading={finished} readOn={saved?.date ?? today} onClose={() => setFinished(null)} />}
     </div>
   )
@@ -712,19 +742,7 @@ function DraftBar({
   )
 }
 
-function SavedPanel({
-  saved,
-  partnerName,
-  tracing,
-  onTraceClose,
-  onTraceDirty,
-}: {
-  saved: Saved
-  partnerName: string
-  tracing: boolean
-  onTraceClose: () => void
-  onTraceDirty: (dirty: boolean) => void
-}) {
+function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string }) {
   const { reading } = saved
   const detail = [`+${formatUnitDelta(reading.unit, saved.delta)}`, saved.minutes ? formatMinutes(saved.minutes) : null]
     .filter(Boolean)
@@ -738,22 +756,27 @@ function SavedPanel({
   const first = saved.unlocking[0]
   return (
     <div className="pt-4">
-      <section role="status" className="flex flex-col items-center text-center">
-        <SessionStamp date={saved.date} detail={detail} />
-        <h1 className="display enter mt-5" style={{ '--i': 4 } as CSSProperties}>
-          Sesión <span className="display-italic">guardada</span>
-        </h1>
-        <p className="folio enter mt-3" style={{ '--i': 5 } as CSSProperties}>
-          {detail}
-        </p>
-        <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
-          {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del libro
-          {pace !== null && ` · ${pace} págs/hora`}
-        </p>
-      </section>
+      {saved.togetherId ? (
+        <TicketPanel togetherId={saved.togetherId} reading={reading} delta={saved.delta} minutes={saved.minutes} />
+      ) : (
+        <section role="status" className="flex flex-col items-center text-center">
+          <SessionStamp date={saved.date} detail={detail} />
+          <h1 className="display enter mt-5" style={{ '--i': 4 } as CSSProperties}>
+            Sesión <span className="display-italic">guardada</span>
+          </h1>
+          <p className="folio enter mt-3" style={{ '--i': 5 } as CSSProperties}>
+            {detail}
+          </p>
+          <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
+            {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del
+            libro
+            {pace !== null && ` · ${pace} págs/hora`}
+          </p>
+        </section>
+      )}
       {first && (
         <Link
-          to={`/nosotros#m-${first.id}`}
+          to={`/citas#c-${first.id}`}
           className="rule mt-7 flex min-h-12 items-center gap-3 pt-4 text-left text-sm"
           style={{ animation: 'gb-pop-in 420ms var(--ease) 700ms both' }}
         >
@@ -764,16 +787,6 @@ function SavedPanel({
           </span>
           <ChevronRight size={18} className="shrink-0" aria-hidden />
         </Link>
-      )}
-      {tracing && (
-        <div className="rule mt-7 pt-2">
-          <TraceComposer
-            reading={reading}
-            prefill={{ page: reading.unit === 'pages' ? reading.current_position : null }}
-            onClose={onTraceClose}
-            onDirtyChange={onTraceDirty}
-          />
-        </div>
       )}
     </div>
   )

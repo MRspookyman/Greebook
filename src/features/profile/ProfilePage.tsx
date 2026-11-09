@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, BarChart3, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { Avatar } from '@/components/Avatar'
 import { Stepper } from '@/components/Stepper'
@@ -31,7 +31,7 @@ export function ProfilePage() {
   return (
     <div className="flex flex-col gap-8 py-5">
       <header className="enter flex flex-wrap items-center gap-3">
-        <Link to="/" className="icon-btn" aria-label="Volver a Hoy">
+        <Link to="/" className="icon-btn" aria-label="Volver a Inicio">
           <ArrowLeft size={20} />
         </Link>
         <Avatar person={profile} size={44} />
@@ -78,6 +78,14 @@ export function ProfilePage() {
           </p>
         )}
       </section>
+      <Link to="/stats" className="card flex min-h-16 items-center gap-3">
+        <BarChart3 size={22} aria-hidden className="text-muted" />
+        <span className="flex-1">
+          <span className="block font-extrabold">Tus números</span>
+          <span className="block text-sm text-muted">Páginas, tiempo y días de lectura, solo tuyos</span>
+        </span>
+        <ChevronRight size={20} aria-hidden />
+      </Link>
       <NotificationsSection />
       <DataSection />
       <SettingsSection />

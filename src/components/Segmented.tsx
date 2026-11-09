@@ -11,35 +11,28 @@ interface Props<T extends string> {
   onChange: (value: T) => void
   'aria-label': string
   className?: string
+  /** Kept for callers; both render as the same soft pill. */
   variant?: 'pill' | 'underline'
 }
 
-/** Equal-width choices with a quiet moving selection or an editorial underline. */
-export function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-  className = '',
-  variant = 'pill',
-  ...rest
-}: Props<T>) {
+/** Equal-width choices on a soft pill; the selection slides to the chosen one. */
+export function Segmented<T extends string>({ options, value, onChange, className = '', ...rest }: Props<T>) {
   const index = Math.max(
     0,
     options.findIndex((o) => o.value === value),
   )
-  const underline = variant === 'underline'
   return (
     <div
       role="group"
       aria-label={rest['aria-label']}
-      className={`relative grid ${underline ? 'border-b border-rule' : 'rounded-[6px] bg-soft p-[3px]'} ${className}`}
+      className={`relative grid rounded-full bg-sunk p-1 ${className}`}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       <div
         aria-hidden
-        className={`absolute ${underline ? 'bottom-[-1px] left-0 h-[2px] bg-accent' : 'top-[3px] bottom-[3px] left-[3px] rounded-[4px] bg-surface'}`}
+        className="absolute top-1 bottom-1 left-1 rounded-full bg-surface shadow-[0_2px_8px_-4px_rgb(0_0_0/0.35)]"
         style={{
-          width: underline ? `${100 / options.length}%` : `calc((100% - 6px) / ${options.length})`,
+          width: `calc((100% - 8px) / ${options.length})`,
           transform: `translateX(${index * 100}%)`,
           transition: 'transform var(--dur-move) var(--ease)',
         }}
@@ -52,10 +45,10 @@ export function Segmented<T extends string>({
             type="button"
             aria-pressed={on}
             onClick={() => onChange(o.value)}
-            className={`relative z-[1] flex min-h-11 items-center justify-center gap-1 px-1 text-[13px] transition-colors duration-150 ${on ? 'font-medium text-ink' : 'text-muted'}`}
+            className={`relative z-[1] flex min-h-10 items-center justify-center gap-1 rounded-full px-1 text-[14px] font-extrabold transition-colors duration-150 ${on ? 'text-ink' : 'text-muted'}`}
           >
             {o.label}
-            {o.count !== undefined && <span className="num text-xs">{o.count}</span>}
+            {o.count !== undefined && <span className="text-xs font-bold tabular-nums">{o.count}</span>}
           </button>
         )
       })}

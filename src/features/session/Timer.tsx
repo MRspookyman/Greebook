@@ -1,9 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { ReadingWithBook } from '@/lib/types'
 import { setReadingNow } from '@/lib/presence'
-import { useMe } from '@/features/auth/me'
-import { useInvites, useReadings } from '@/lib/data'
-import { isInviteExpired } from '@/features/us/ratito'
 import { elapsedMs, parseTimer, pauseTimerState, resumeTimerState, timerMinutes, type TimerState } from '@/lib/timer'
 
 export type { TimerState }
@@ -68,37 +65,23 @@ export function useElapsedSeconds(state: TimerState | null): number {
   return state ? Math.floor(elapsedMs(state, Math.max(now, state.startedAt)) / 1000) : 0
 }
 
-/** An intentional «Ahora» acceptance starts the sender's timer too, once per device. */
-export function useRatitoTimer(): void {
-  const { userId } = useMe()
-  const invites = useInvites()
-  const readings = useReadings(userId)
-  useEffect(() => {
-    const reading = readings.data
-      ?.filter((item) => item.status === 'reading')
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
-    if (!reading) return
-    for (const invite of invites.data ?? []) {
-      if (invite.status !== 'accepted' || invite.starts_at || isInviteExpired(invite)) continue
-      const key = `gb.ratito.${userId}.${invite.id}`
-      if (localStorage.getItem(key)) continue
-      localStorage.setItem(key, 'started')
-      if (!timer) startTimer(reading)
-    }
-  }, [invites.data, readings.data, userId])
-}
-
 /** Starts timing a reading; asks before replacing a timer that belongs to another book. */
-export function startTimer(reading: ReadingWithBook): boolean {
+export function startTimer(reading: ReadingWithBook, togetherId: string | null = null): boolean {
   if (timer?.readingId === reading.id) {
     if (timer.pausedAt != null) resumeTimer()
+    if (togetherId && timer.togetherId !== togetherId) setTimer({ ...timer, togetherId })
     return true
   }
   if (timer && !window.confirm('Ya hay un cronómetro en marcha con otro libro. ¿Lo descartas y empiezas este?'))
     return false
-  setTimer({ readingId: reading.id, startedAt: Date.now(), pausedAt: null, pausedMs: 0 })
+  setTimer({ readingId: reading.id, startedAt: Date.now(), pausedAt: null, pausedMs: 0, togetherId })
   void setReadingNow(reading.id)
   return true
+}
+
+/** Links the running timer to a «lectura a la vez» (your partner joined you). */
+export function attachTogether(togetherId: string): void {
+  if (timer && timer.togetherId !== togetherId) setTimer({ ...timer, togetherId })
 }
 
 export function pauseTimer(): void {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { pagesEquivalent, sessionScore } from './aggregate'
 import { level } from './intensity'
-import { bestStreak, currentStreak } from './streak'
+import { bestStreak, coupleStreak, currentStreak, sharedStreak } from './streak'
 
 describe('currentStreak', () => {
   const today = '2026-03-10'
@@ -55,5 +55,59 @@ describe('aggregate', () => {
     const reading = { unit: 'percent' as const, book: { page_count: null } }
     expect(pagesEquivalent(s, reading)).toBe(0)
     expect(sessionScore(s, reading)).toBe(0)
+  })
+})
+
+describe('sharedStreak', () => {
+  it('counts only days both read, and waits for today', () => {
+    const me = new Set(['2026-03-08', '2026-03-09'])
+    const you = new Set(['2026-03-07', '2026-03-08', '2026-03-09', '2026-03-10'])
+    expect(sharedStreak(me, you, '2026-03-10')).toBe(2)
+    me.add('2026-03-10')
+    expect(sharedStreak(me, you, '2026-03-10')).toBe(3)
+  })
+  it('breaks on a day only one read', () => {
+    expect(
+      sharedStreak(
+        new Set(['2026-03-08', '2026-03-10']),
+        new Set(['2026-03-08', '2026-03-09', '2026-03-10']),
+        '2026-03-10',
+      ),
+    ).toBe(1)
+  })
+})
+
+describe('coupleStreak', () => {
+  const days = (...list: string[]) => new Set(list)
+  it('covers a day only one read with a wildcard, two per month', () => {
+    const me = days('2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05')
+    const you = days('2026-03-01', '2026-03-04', '2026-03-05')
+    const s = coupleStreak(me, you, '2026-03-05')
+    expect(s.current).toBe(5)
+    expect([...s.wildcards]).toEqual(['2026-03-02', '2026-03-03'])
+    expect(s.wildcardsThisMonth).toBe(2)
+  })
+  it('breaks when the wildcards run out or nobody reads', () => {
+    const me = days('2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05')
+    const you = days('2026-03-01', '2026-03-05')
+    expect(coupleStreak(me, you, '2026-03-05').current).toBe(1)
+    expect(coupleStreak(days('2026-03-01', '2026-03-03'), days('2026-03-01', '2026-03-03'), '2026-03-03').current).toBe(
+      1,
+    )
+  })
+  it('keeps today pending without breaking', () => {
+    const s = coupleStreak(
+      days('2026-03-01', '2026-03-02'),
+      days('2026-03-01', '2026-03-02', '2026-03-03'),
+      '2026-03-03',
+    )
+    expect(s.current).toBe(2)
+    expect(s.todayPending).toBe(true)
+    expect(s.best).toBe(2)
+  })
+  it('wildcards renew each month', () => {
+    const me = days('2026-03-30', '2026-03-31', '2026-04-01', '2026-04-02')
+    const you = days('2026-03-30', '2026-04-02')
+    expect(coupleStreak(me, you, '2026-04-02').current).toBe(4)
   })
 })

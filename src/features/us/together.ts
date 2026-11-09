@@ -34,6 +34,6 @@ export async function startTogether(id: string, startDate: string): Promise<void
     queryClient.invalidateQueries({ queryKey: qk.together() }),
     queryClient.invalidateQueries({ queryKey: qk.readings(userId) }),
     queryClient.invalidateQueries({ queryKey: qk.readings(partnerId) }),
-    queryClient.invalidateQueries({ queryKey: qk.messages() }),
+    queryClient.invalidateQueries({ queryKey: qk.quotes() }),
   ])
 }

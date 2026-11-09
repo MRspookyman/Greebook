@@ -20,8 +20,8 @@ async function refresh(userId: string) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: qk.sessions(userId) }),
     queryClient.invalidateQueries({ queryKey: qk.readings(userId) }),
-    // New progress can unlock huellas left further ahead in the book.
-    queryClient.invalidateQueries({ queryKey: qk.messages() }),
+    // New progress can open quotes left further ahead in the book.
+    queryClient.invalidateQueries({ queryKey: qk.quotes() }),
   ])
   for (const op of await offlineDb.pendingOps.orderBy('createdAt').toArray()) {
     if (op.payload.session.user_id === userId) apply(op)
@@ -93,6 +93,7 @@ export async function logSession(input: {
   readOn: string
   endPos: number
   minutes: number | null
+  togetherId?: string | null
 }): Promise<void> {
   const cached = queryClient.getQueryData<ReadingWithBook[]>(qk.readings(input.reading.user_id))
   const reading = cached?.find((r) => r.id === input.reading.id) ?? input.reading
@@ -115,6 +116,7 @@ export async function logSession(input: {
         end_pos: input.endPos,
         minutes: input.minutes,
         created_at: new Date().toISOString(),
+        ...(input.togetherId ? { together_id: input.togetherId } : {}),
       },
       readingPatch: {
         current_position: input.endPos,

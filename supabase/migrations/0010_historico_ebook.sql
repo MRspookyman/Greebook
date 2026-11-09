@@ -1,4 +1,4 @@
--- Greenbook: histórico de libros y Kindle. Aplicar manualmente en el SQL editor después de 0007_rincon.sql.
+-- Greenbook: histórico de libros y Kindle. Aplicar manualmente en el SQL editor después de 0009_leer_juntos.sql.
 begin;
 
 alter table public.readings add column if not exists finished_precision text;
@@ -15,7 +15,7 @@ create policy readings_delete on public.readings for delete to authenticated
   using (user_id = auth.uid());
 
 -- Los destinos polimórficos no tienen FK. Definer permite limpiar también reacciones de la pareja.
--- Desde 0007 solo se crean reacciones a mensajes; esto también cubre datos anteriores.
+-- Desde 0008 se crean reacciones a mensajes y citas; esto también cubre datos anteriores.
 create or replace function public.cleanup_reading_reactions() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -41,12 +41,15 @@ create trigger sessions_cleanup_reactions after delete on public.sessions
   for each row execute function public.cleanup_session_reactions();
 
 -- sessions y notes ya tienen ON DELETE CASCADE; profiles.reading_now_id tiene SET NULL.
--- messages/huellas, together_items y couple_goals no referencian lecturas ni sesiones:
--- los mensajes y la lista compartida se vinculan al libro y se conservan.
+-- quotes (y sus quote_replies), messages/huellas y together_items se vinculan al libro:
+-- se conservan al borrar una lectura, igual que couple_goals.
+-- sessions.together_id apunta a read_together, no al revés: borrar sesiones no borra
+-- el recuerdo compartido ni las sesiones de la pareja.
 alter table public.readings drop constraint if exists readings_format_check;
 alter table public.readings drop constraint if exists readings_unit_check;
 
 -- El redondeo puede colapsar sesiones cortas: borrarlas antes de actualizar para respetar end > start.
+-- sessions.minutes sigue siendo la duración real y no se convierte.
 delete from public.sessions s using public.readings r
 where s.reading_id = r.id and r.format = 'audio'
   and least(100, greatest(0, round(s.end_pos * 100.0 / r.total_units)))

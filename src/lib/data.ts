@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import type {
   CoupleGoal,
+  ReadTogether,
+  Quote,
+  QuoteReply,
   Invite,
-  Message,
-  Note,
   Profile,
   Reaction,
   ReadingWithBook,
@@ -22,16 +23,18 @@ export const qk = {
   readings: (userId: string) => ['readings', userId] as const,
   /** Every session of a user. */
   sessions: (userId: string) => ['sessions', userId] as const,
-  /** My private notes for one reading. */
-  notes: (readingId: string) => ['notes', readingId] as const,
   /** Every ❤️ visible to me (mine + partner's). */
   reactions: () => ['reactions'] as const,
-  /** Every couple message (huellas, sala, respuestas) via `messages_visible`. */
-  messages: () => ['messages'] as const,
   /** Ratito invitations sent or received. */
   invites: () => ['invites'] as const,
   /** «Queremos leer juntos» list. */
   together: () => ['together'] as const,
+  /** Quotes and notes visible to me (mine + partner's shared) via `quotes_visible`. */
+  quotes: () => ['quotes'] as const,
+  /** Replies on visible quotes. */
+  quoteReplies: () => ['quote-replies'] as const,
+  /** Times we read at the same time, newest first. */
+  readTogether: () => ['read-together'] as const,
   /** Cooperative goal for a month ('yyyy-MM'). */
   coupleGoal: (month: string) => ['couple-goal', month] as const,
 }
@@ -111,40 +114,12 @@ export function useSessions(userId: string | null | undefined) {
   })
 }
 
-export function useNotes(readingId: string | null | undefined) {
-  return useQuery({
-    queryKey: qk.notes(readingId ?? ''),
-    enabled: !!readingId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('reading_id', readingId!)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return data as Note[]
-    },
-  })
-}
-
 export function useReactions() {
   return useQuery({
     queryKey: qk.reactions(),
     queryFn: () =>
       fetchAll<Reaction>((from, to) =>
         supabase.from('reactions').select('*').order('created_at', { ascending: false }).range(from, to),
-      ),
-  })
-}
-
-/** All couple messages, oldest first. Locked ones come without body/emotion. */
-export function useMessages(enabled = true) {
-  return useQuery({
-    queryKey: qk.messages(),
-    enabled,
-    queryFn: () =>
-      fetchAll<Message>((from, to) =>
-        supabase.from('messages_visible').select('*').order('created_at', { ascending: true }).range(from, to),
       ),
   })
 }
@@ -189,5 +164,44 @@ export function useCoupleGoal(month: string, enabled = true) {
       if (error) throw error
       return data as CoupleGoal | null
     },
+  })
+}
+
+/** Every quote I can see, newest first. Locked ones come without body/comment. */
+export function useQuotes(enabled = true) {
+  return useQuery({
+    queryKey: qk.quotes(),
+    enabled,
+    queryFn: () =>
+      fetchAll<Quote>((from, to) =>
+        supabase
+          .from('quotes_visible')
+          .select('*, book:books(*)')
+          .order('created_at', { ascending: false })
+          .range(from, to),
+      ),
+  })
+}
+
+export function useQuoteReplies(enabled = true) {
+  return useQuery({
+    queryKey: qk.quoteReplies(),
+    enabled,
+    queryFn: () =>
+      fetchAll<QuoteReply>((from, to) =>
+        supabase.from('quote_replies').select('*').order('created_at', { ascending: true }).range(from, to),
+      ),
+  })
+}
+
+/** Our «lecturas a la vez», newest first. */
+export function useReadTogether(enabled = true) {
+  return useQuery({
+    queryKey: qk.readTogether(),
+    enabled,
+    queryFn: () =>
+      fetchAll<ReadTogether>((from, to) =>
+        supabase.from('read_together').select('*').order('started_at', { ascending: false }).range(from, to),
+      ),
   })
 }

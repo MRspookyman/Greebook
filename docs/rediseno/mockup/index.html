@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Greenbook · nuevo flujo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Literata:ital,opsz,wght@0,7..72,400..600;1,7..72,400..600&family=Nunito:ital,wght@0,400..800;1,400..800&family=Young+Serif&display=swap"
+    />
+    <link rel="stylesheet" href="estilos.css" />
+  </head>
+  <body>
+    <div class="shell" id="shell">
+      <header class="mbar">
+        <span>Greenbook · prototipo</span>
+        <button type="button" data-menu aria-expanded="false" aria-controls="guide">Pasos y notas</button>
+      </header>
+
+      <aside class="guide" id="guide" aria-label="Guía del prototipo">
+        <div>
+          <p class="guide__brand"><span class="guide__mark" aria-hidden="true">G</span> Greenbook · propuesta de rediseño</p>
+          <h1>Leer juntos, con más cariño</h1>
+          <p class="guide__lead">
+            Prototipo navegable del nuevo flujo. Toca dentro del móvil o sigue los pasos. Los datos son de ejemplo.
+          </p>
+        </div>
+        <div class="controls">
+          <fieldset class="control">
+            <legend>Ver como</legend>
+            <div class="toggle">
+              <label><input type="radio" name="como" value="el" checked />Javier</label>
+              <label><input type="radio" name="como" value="ella" />Laura</label>
+            </div>
+          </fieldset>
+          <fieldset class="control">
+            <legend>Ambiente</legend>
+            <div class="toggle">
+              <label><input type="radio" name="ambiente" value="tarde" />Tarde</label>
+              <label><input type="radio" name="ambiente" value="noche" />Noche</label>
+            </div>
+          </fieldset>
+          <fieldset class="control">
+            <legend>Vista</legend>
+            <div class="toggle">
+              <label><input type="radio" name="vista" value="proto" checked />Prototipo</label>
+              <label><input type="radio" name="vista" value="mapa" />Todas</label>
+            </div>
+          </fieldset>
+        </div>
+        <div class="guide__notes" id="notes-in-guide" aria-live="polite"></div>
+        <nav class="steps" aria-label="Pasos del flujo"><ol id="steps"></ol></nav>
+      </aside>
+
+      <main class="stage" id="stage">
+        <div class="device-wrap" id="device-wrap">
+          <div class="device">
+            <div class="app" id="app" role="region" aria-label="Greenbook en el móvil"></div>
+          </div>
+        </div>
+      </main>
+
+      <aside class="notes" id="notes" aria-live="polite" aria-label="Qué hay en esta pantalla"></aside>
+
+      <section class="map" id="map" hidden aria-label="Todas las pantallas"></section>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

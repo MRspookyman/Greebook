@@ -1,11 +1,13 @@
--- Greenbook: datos de ejemplo para ver la app llena (Gordita y Gordito).
+-- Greenbook: datos de ejemplo para ver la app llena (Laura y Javier).
 -- Ejecutar completo en Supabase → SQL Editor.
 -- BORRA antes los datos de lectura y pareja; conserva cuentas y perfiles.
--- Requiere las migraciones hasta 0007. Para vaciar después: supabase/reset.sql.
+-- Requiere las migraciones hasta 0010. Para vaciar después: supabase/reset.sql.
 
 begin;
 
 delete from reactions;
+delete from quote_replies;
+delete from quotes;
 delete from messages;
 delete from message_pings;
 delete from invites;
@@ -14,6 +16,7 @@ delete from couple_goals;
 update profiles set reading_now_id = null, reading_now_since = null;
 delete from notes;
 delete from sessions;
+delete from read_together;
 delete from readings;
 delete from books;
 delete from surprises_seen;
@@ -21,9 +24,11 @@ delete from surprises_seen;
 -- Perfiles (solo si aún no existen).
 insert into profiles (id, display_name, accent, partner_id, is_gift_recipient, onboarded_at)
 values
-  ('0ef9b6d1-cfba-4921-8850-e98390566181', 'Gordita', 'blue', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', true, now()),
-  ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'Gordito', 'green', '0ef9b6d1-cfba-4921-8850-e98390566181', false, now())
+  ('0ef9b6d1-cfba-4921-8850-e98390566181', 'Laura', 'blue', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', true, now()),
+  ('834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'Javier', 'green', '0ef9b6d1-cfba-4921-8850-e98390566181', false, now())
 on conflict (id) do nothing;
+update profiles set display_name = 'Laura' where id = '0ef9b6d1-cfba-4921-8850-e98390566181';
+update profiles set display_name = 'Javier' where id = '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e';
 
 insert into books (id, google_id, isbn13, title, authors, cover_url, page_count, published_year, description, created_by) values ('d66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 'kh5fAAAAMAAJ', null, 'La sombra del viento', array['Carlos Ruiz Zafón']::text[], 'https://books.google.com/books/content?id=kh5fAAAAMAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api', 590, 2001, 'Un amanecer de 1945, un muchacho es conducido por su padre a un misterioso lugar oculto en el corazón de la ciudad vieja: El Cementerio de los Libros Olvidados. Allí, Daniel Sempere encuentra un libro maldito que cambia el rumbo de su vida y le arrastra a un laberinto de intrigas y secretos enterrados en el alma oscura de la ciudad.', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e');
 insert into books (id, google_id, isbn13, title, authors, cover_url, page_count, published_year, description, created_by) values ('2fa65266-bc9a-4e1a-9e03-ff6d188a4a40', 'TunBEQAAQBAJ', '9788410466494', 'Proyecto Hail Mary', array['Andy Weir']::text[], 'https://books.google.com/books/content?id=TunBEQAAQBAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api', 646, 2021, 'Nueva edición de la obra maestra de Andy Weir, con las 2 ilustra ciones de Marc Simonetti incluidas en la versión de Subterranean Press. MÁS DE 5 MILLONES DE LECTORES EN TODO EL MUNDO. UNA GRAN PELÍCULA PROTAGONIZADA POR RYAN GOSLING. «La mejor obra de Andy Weir hasta la fecha». BRANDON SANDERSON «Este libro tiene todo lo que les gusta alos aficionados de la ciencia ficción clásica (como yo)». GEORGE R. R. MARTIN «Uno de los viajes más originales, emocionantes y divertidos que he hecho.» ERNEST CLINE UN ÚNICO ASTRONAUTA. UNA MISIÓN IMPOSIBLE. Y UN ALIADO QUE JAMÁS HABRÍA IMAGINADO. Ryland Grac', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e');
@@ -167,16 +172,16 @@ insert into sessions (id, reading_id, user_id, read_on, start_pos, end_pos, minu
   ('78f6d0db-2625-4c0b-9732-693359e376a6', 'f94ae4a0-a8bb-429c-be64-91e28df0e7ec', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 4, 215, 244, 42),
   ('e4f967fd-3db4-4233-a765-699aec116f38', 'f94ae4a0-a8bb-429c-be64-91e28df0e7ec', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 2, 244, 272, 44),
   ('cbf722a1-f606-4e4e-a54b-b6cd7f783d96', 'f94ae4a0-a8bb-429c-be64-91e28df0e7ec', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 1, 272, 300, 55);
-insert into readings (id, user_id, book_id, format, unit, total_units, current_position, status, started_on, finished_on, rating, moods) values ('2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '2fa65266-bc9a-4e1a-9e03-ff6d188a4a40', 'audio', 'minutes', 975, 520, 'reading', current_date - 12, null, null, array[]::text[]);
+insert into readings (id, user_id, book_id, format, unit, total_units, current_position, status, started_on, finished_on, rating, moods) values ('2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '2fa65266-bc9a-4e1a-9e03-ff6d188a4a40', 'ebook', 'percent', 100, 53, 'reading', current_date - 12, null, null, array[]::text[]);
 insert into sessions (id, reading_id, user_id, read_on, start_pos, end_pos, minutes) values
-  ('ca6059bb-8ce8-4e88-a8bd-28bacd57ab38', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 12, 0, 55, 55),
-  ('e17c8a25-aaef-484d-9822-7241f07c1ad6', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 11, 55, 98, 43),
-  ('2c1e5dd8-25dc-435f-887e-739a20c15c59', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 10, 98, 141, 43),
-  ('d48850af-409c-4ba3-98b6-e60b34374fd7', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 6, 141, 187, 46),
-  ('8fc9867a-f18f-4941-ade2-a729bcd0c8d3', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 5, 187, 268, 81),
-  ('4ef2bdfd-e549-41f2-a33e-f9346449950b', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 3, 268, 339, 71),
-  ('84e5f492-7c81-4f16-af3b-564e2c2ec988', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 2, 339, 432, 93),
-  ('cbcb958e-1702-48d6-a262-a77d4094d36b', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 1, 432, 520, 88);
+  ('ca6059bb-8ce8-4e88-a8bd-28bacd57ab38', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 12, 0, 6, 55),
+  ('e17c8a25-aaef-484d-9822-7241f07c1ad6', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 11, 6, 10, 43),
+  ('2c1e5dd8-25dc-435f-887e-739a20c15c59', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 10, 10, 14, 43),
+  ('d48850af-409c-4ba3-98b6-e60b34374fd7', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 6, 14, 19, 46),
+  ('8fc9867a-f18f-4941-ade2-a729bcd0c8d3', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 5, 19, 27, 81),
+  ('4ef2bdfd-e549-41f2-a33e-f9346449950b', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 3, 27, 35, 71),
+  ('84e5f492-7c81-4f16-af3b-564e2c2ec988', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 2, 35, 44, 93),
+  ('cbcb958e-1702-48d6-a262-a77d4094d36b', '2219fb16-4c74-41ff-bb32-0232a404f411', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 1, 44, 53, 88);
 insert into readings (id, user_id, book_id, format, unit, total_units, current_position, status, started_on, finished_on, rating, moods) values ('a232f40c-1886-4cea-8814-e2d631532ab4', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', '3d08954e-7d11-497d-b2a2-73e44a577f3d', 'paper', 'pages', 805, 805, 'finished', current_date - 95, current_date - 45, 4, array['emocionante','inspirador']::text[]);
 insert into sessions (id, reading_id, user_id, read_on, start_pos, end_pos, minutes) values
   ('e51283db-045b-4764-ab42-811c2470e142', 'a232f40c-1886-4cea-8814-e2d631532ab4', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', current_date - 95, 0, 22, 42),
@@ -247,7 +252,7 @@ insert into notes (reading_id, user_id, kind, body, page) values
   ('db512234-3a10-44f9-b099-7b789ea1b7c2', '0ef9b6d1-cfba-4921-8850-e98390566181', 'note', 'Me ha dejado tocada. Tienes que leerlo.', null),
   ('a232f40c-1886-4cea-8814-e2d631532ab4', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'quote', 'Es la pregunta, no la respuesta, lo que nos hace crecer.', 512);
 
--- Huellas: la de la página 330 sigue bloqueada para Gordito (va por la 300).
+-- Huellas: la de la página 330 sigue bloqueada para Javier (va por la 300).
 insert into messages (id, from_user, to_user, kind, book_id, page, emotion, body, created_at) values
   ('10000000-0000-4000-8000-000000000001', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 120, 'love', 'Esta frase me ha recordado a ti.', now() - interval '2 days'),
   ('10000000-0000-4000-8000-000000000002', '0ef9b6d1-cfba-4921-8850-e98390566181', '834328eb-f2f7-42bc-8e9c-c2f1ca5edb7e', 'trace', 'd66f22c0-2ee5-4df9-b281-3927fa4c3e0e', 330, 'twist', 'Cuando llegues aquí necesito que hablemos de este giro.', now() - interval '1 hour'),

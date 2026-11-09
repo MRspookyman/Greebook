@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
 import { differenceInCalendarDays } from 'date-fns'
 import { CountUp } from '@/components/CountUp'
 import { Segmented } from '@/components/Segmented'
@@ -9,7 +10,7 @@ import { fmt, fromISODate, todayISO } from '@/lib/dates'
 import { activityByDay, summarize, timeSpent } from '@/lib/stats/aggregate'
 import { dailySeries, monthlySeries, pctChange, periodRange, previousRange, type Period } from '@/lib/stats/insights'
 import { level, levelColor } from '@/lib/stats/intensity'
-import { formatDays } from '@/lib/units'
+import { formatDays, formatMinutes } from '@/lib/units'
 import { CoupleCompare } from './CoupleCompare'
 import { DaySheet } from './DaySheet'
 import { Insights } from './Insights'
@@ -25,10 +26,6 @@ const PERIOD_LABELS = { week: 'esta semana', month: 'este mes', year: 'este año
 const PREVIOUS_LABELS = { week: 'la semana pasada', month: 'el mes pasado', year: 'el año pasado' }
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const MONTHS = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
-const formatTime = (value: number) => {
-  const minutes = Math.round(value)
-  return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}` : `${minutes} min`
-}
 const formatNumber = (value: number) => Math.round(value).toLocaleString('es')
 
 export function StatsPage() {
@@ -54,7 +51,7 @@ export function StatsPage() {
       label: 'Tiempo',
       value: timeSpent(sessions, { ...range, to: today }),
       previous: timeSpent(sessions, previousRange(period, today)),
-      format: formatTime,
+      format: formatMinutes,
     },
     {
       label: 'Días con lectura',
@@ -87,9 +84,12 @@ export function StatsPage() {
   const failed = readingsQuery.isError || sessionsQuery.isError
 
   return (
-    <div className="flex flex-col gap-6 py-5">
-      <header className="enter flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="display">Estadísticas</h1>
+    <div className="flex flex-col gap-6">
+      <header className="enter flex flex-wrap items-center gap-3">
+        <Link to="/perfil" className="icon-btn" aria-label="Volver al perfil">
+          <ArrowLeft size={20} aria-hidden />
+        </Link>
+        <h1 className="display flex-1">Tus números</h1>
         <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
       </header>
       <Segmented

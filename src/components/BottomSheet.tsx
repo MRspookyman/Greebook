@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
+import { useNight } from './night'
 
 interface Props {
   open: boolean
@@ -41,6 +43,7 @@ function syncLayers() {
 
 /** Focus-contained modal sheet. Nested sheets leave only the top layer interactive. */
 export function BottomSheet({ open, onClose, title, dirty = false, children, 'aria-label': label }: Props) {
+  const night = useNight()
   const titleId = useId()
   const confirmId = useId()
   const [mounted, setMounted] = useState(open)
@@ -172,7 +175,7 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
 
   const translate = drag !== null ? `translateY(${drag}px)` : shown ? 'translateY(0)' : 'translateY(105%)'
   return createPortal(
-    <div ref={layer} className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div ref={layer} className={`fixed inset-0 z-50 flex flex-col justify-end ${night ? 'night bg-transparent' : ''}`}>
       <button
         type="button"
         tabIndex={-1}
@@ -188,14 +191,14 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : (label ?? 'Opciones')}
         tabIndex={-1}
-        className="relative mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-[8px] bg-surface pb-safe shadow-xl"
+        className="relative mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-[28px] bg-surface pb-safe shadow-[0_-12px_40px_-12px_rgb(0_0_0/0.35)]"
         style={{
           transform: translate,
           transition: drag !== null ? 'none' : `transform ${EXIT_MS}ms var(--ease)`,
         }}
       >
         <div
-          className="mb-4 flex flex-none items-start gap-3 border-b border-rule px-[18px] pt-2.5 pb-3"
+          className="mb-3 flex flex-none items-start gap-3 px-5 pt-2.5 pb-1"
           inert={confirming}
         >
           <div
@@ -207,9 +210,9 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
             onLostPointerCapture={cancelDrag}
             style={{ WebkitUserSelect: 'none' }}
           >
-            <div className="mx-auto mb-2 h-[3px] w-10 rounded bg-rule" aria-hidden />
+            <div className="mx-auto mb-2 h-[5px] w-10 rounded-full bg-rule" aria-hidden />
             {title && (
-              <div id={titleId} className="title wrap-anywhere pt-1">
+              <div id={titleId} className="wrap-anywhere pt-1 font-serif text-[23px] leading-tight">
                 {title}
               </div>
             )}
@@ -217,14 +220,15 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
           <button
             ref={closeButton}
             type="button"
-            className="min-h-11 min-w-11 px-1 text-xs font-medium text-muted"
+            className="icon-btn mt-3"
+            aria-label="Cerrar"
             onClick={requestClose}
           >
-            Cerrar
+            <X size={20} aria-hidden />
           </button>
         </div>
         {confirming && (
-          <div className="px-[18px] pb-5" role="alertdialog" aria-modal="true" aria-labelledby={confirmId}>
+          <div className="px-5 pb-5" role="alertdialog" aria-modal="true" aria-labelledby={confirmId}>
             <h2 id={confirmId} className="mb-4">
               ¿Descartar lo que has escrito?
             </h2>
@@ -243,7 +247,7 @@ export function BottomSheet({ open, onClose, title, dirty = false, children, 'ar
             </div>
           </div>
         )}
-        <div className="overflow-y-auto overscroll-contain px-[18px] pb-7" inert={confirming} hidden={confirming}>
+        <div className="overflow-y-auto overscroll-contain px-5 pb-7" inert={confirming} hidden={confirming}>
           {children}
         </div>
       </div>

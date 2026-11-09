@@ -47,6 +47,15 @@ export function formatPosition(r: Pick<Reading, 'unit' | 'current_position' | 't
   }
 }
 
+/** Physical page reached, estimated for Kindle percentages; unknown without a page count. */
+export function physicalPagePosition(
+  reading: Pick<Reading, 'unit' | 'current_position' | 'total_units'> & { book: { page_count: number | null } },
+): number | null {
+  if (reading.unit === 'pages') return reading.current_position
+  if (!reading.book.page_count || reading.total_units <= 0) return null
+  return Math.floor((reading.current_position / reading.total_units) * reading.book.page_count)
+}
+
 export function progressFraction(r: Pick<Reading, 'current_position' | 'total_units'>): number {
   if (r.total_units <= 0) return 0
   return Math.min(1, Math.max(0, r.current_position / r.total_units))

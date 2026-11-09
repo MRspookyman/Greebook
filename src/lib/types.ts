@@ -76,6 +76,8 @@ export interface Session {
   end_pos: number
   minutes: number | null
   created_at: string
+  /** Set when this session was read at the same time as the partner's (`read_together`). */
+  together_id?: string | null
 }
 
 /** Private diary note/quote of one reading (only its author sees it). */
@@ -113,11 +115,11 @@ export interface Message {
   body: string | null
 }
 
-/** ❤️ on a partner's message. */
+/** ❤️ on a partner's quote (or a legacy message). */
 export interface Reaction {
   id: string
   user_id: string
-  target_type: 'message'
+  target_type: 'message' | 'quote'
   target_id: string
   emoji: '❤️'
   created_at: string
@@ -162,4 +164,48 @@ export interface CoupleGoal {
   proposed_by: string
   accepted_at: string | null
   created_at: string
+}
+
+export type QuoteKind = 'cita' | 'nota'
+
+/**
+ * Something kept on a page, read from `quotes_visible`: a sentence from the book (`cita`) or your own words
+ * (`nota`). Shared with the partner by default; when `locked` (they haven't reached `page` in that book yet)
+ * `body` and `comment` come as null.
+ */
+export interface Quote {
+  id: string
+  user_id: string
+  book_id: string
+  /** Physical book page, never the reading's Kindle percentage. */
+  page: number | null
+  kind: QuoteKind
+  shared: boolean
+  safe: boolean
+  opened_early: boolean
+  seen_at: string | null
+  created_at: string
+  locked: boolean
+  body: string | null
+  comment: string | null
+  book: Book
+}
+
+export interface QuoteReply {
+  id: string
+  quote_id: string
+  user_id: string
+  body: string
+  seen_at: string | null
+  created_at: string
+}
+
+/** A «lectura a la vez»: user_a was reading, user_b joined; closed when both have saved their part. */
+export interface ReadTogether {
+  id: string
+  user_a: string
+  user_b: string
+  started_at: string
+  ended_at: string | null
+  note: string | null
 }

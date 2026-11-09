@@ -32,18 +32,18 @@ export function Toaster() {
   )
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 z-[60] flex flex-col items-center gap-2 px-[18px]"
-      style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
+      className="pointer-events-none fixed inset-x-0 z-[60] flex flex-col items-center gap-2 px-4"
+      style={{ bottom: 'calc(var(--tabbar-h) + 26px + env(safe-area-inset-bottom))' }}
       aria-live="polite"
     >
       {list.map((t) => (
         <div
           key={t.id}
-          className="wrap-anywhere w-full max-w-sm rounded-[8px] border border-rule bg-surface px-4 py-3 text-sm text-ink shadow-[var(--paper-shadow)]"
-          style={{ animation: 'gb-fade-up 150ms var(--ease)' }}
+          className="wrap-anywhere w-full max-w-sm rounded-[18px] bg-ink px-4 py-3 text-sm text-bg shadow-[0_14px_30px_-14px_rgb(0_0_0/0.5)]"
+          style={{ animation: 'gb-fade-up 220ms var(--spring)' }}
         >
-          <p className="font-semibold">{t.message}</p>
-          {t.detail && <p className="mt-0.5 break-words text-muted">{t.detail}</p>}
+          <p className="font-extrabold">{t.message}</p>
+          {t.detail && <p className="mt-0.5 break-words opacity-90">{t.detail}</p>}
         </div>
       ))}
     </div>

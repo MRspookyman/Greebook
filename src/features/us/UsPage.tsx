@@ -1,414 +1,367 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useLocation } from 'react-router'
-import { Coffee, Feather } from 'lucide-react'
-import { Avatar } from '@/components/Avatar'
+import { useState, type CSSProperties } from 'react'
+import { Link } from 'react-router'
+import { BookOpen, ChevronRight, Coffee, Heart, Lamp, Library, Lock, Mail, Moon } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
-import { useEntered } from '@/components/motion'
+import { Spine } from '@/components/Spine'
 import { useMe } from '@/features/auth/me'
-import { useInvites, useMessages, useReactions, useReadings, useSessions, useTogether } from '@/lib/data'
-import { todayISO } from '@/lib/dates'
-import { formatDays, progressFraction } from '@/lib/units'
-import type { Profile, ReadingWithBook } from '@/lib/types'
-import { CoupleProgress } from './CoupleProgress'
-import { InviteCard } from './InviteCard'
-import { MessageCard } from './MessageCard'
-import { RatitoSheet } from './RatitoSheet'
-import { TraceSheet } from './TraceSheet'
-import { CoupleGoalCard, GoalProposal, MemoriesCard } from './MemoriesCard'
+import { QuoteCard } from '@/features/quotes/QuoteCard'
+import { WeekStamps } from '@/features/today/WeekStamps'
+import { useTogether } from '@/lib/data'
+import { fmt } from '@/lib/dates'
+import { pagesEquivalent } from '@/lib/stats/aggregate'
+import type { Accent, ReadingWithBook } from '@/lib/types'
+import { formatDays } from '@/lib/units'
+import { BlindRating } from './BlindRating'
 import { TogetherCard } from './TogetherCard'
-import { localMonth, monthMemories } from './memories'
-import { usePendingForMe } from './messages'
-import { useRooms } from './rooms'
-import { isInviteExpired } from './ratito'
-import { addTogether } from './together'
+import { lovedQuote, milestones, monthLetter, monthName, type Milestone } from './together-stats'
+import { useCouple } from './useCouple'
 
-function monthLabel(month: string) {
-  const date = new Date(`${month}-01T12:00:00`)
-  const name = new Intl.DateTimeFormat('es', { month: 'long' }).format(date)
-  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${date.getFullYear()}`
+const NIGHTS_GOAL = 10
+const ICONS: Record<Milestone['icon'], typeof Moon> = {
+  moon: Moon,
+  lamp: Lamp,
+  heart: Heart,
+  cup: Coffee,
+  book: BookOpen,
+  books: Library,
 }
 
-/** Two hairlines, one per reader, so a shared book shows at a glance who is where. */
-function PairBars({
-  mine,
-  theirs,
-  myAccent,
-  partnerAccent,
-}: {
-  mine: number
-  theirs: number
-  myAccent: string
-  partnerAccent: string
-}) {
-  const entered = useEntered()
-  const bar = (value: number, accent: string, delay: string) => (
-    <span className="relative block h-[2px] overflow-hidden bg-rule">
-      <span
-        className="absolute inset-0 origin-left"
-        style={{
-          background: `var(--${accent})`,
-          transform: `scaleX(${entered ? Math.min(1, Math.max(0, value)) : 0})`,
-          transition: `transform var(--dur-fill) var(--ease) ${delay}`,
-        }}
-      />
-    </span>
-  )
-  return (
-    <span className="mt-2 block space-y-[3px]" aria-hidden>
-      {bar(mine, myAccent, '0ms')}
-      {bar(theirs, partnerAccent, '80ms')}
-    </span>
-  )
-}
-
-/** Where each of you is, in the book's own unit. */
-function gapText(mine: ReadingWithBook, theirs: ReadingWithBook, partner: Profile): string {
-  if (mine.unit === 'pages' && theirs.unit === 'pages')
-    return `Tú p. ${mine.current_position} · ${partner.display_name} p. ${theirs.current_position}`
-  return `Tú ${Math.round(progressFraction(mine) * 100)} % · ${partner.display_name} ${Math.round(progressFraction(theirs) * 100)} %`
-}
-
+/** Nosotros: not statistics, what you share. Hours side by side, your shelf, your streak, your favourite words. */
 export function UsPage() {
   const { userId, profile, partner } = useMe()
-  const location = useLocation()
-  const mineQuery = useReadings(userId)
-  const theirsQuery = useReadings(partner?.id)
-  const mine = mineQuery.data ?? []
-  const theirs = theirsQuery.data ?? []
-  const mineSessions = useSessions(userId).data ?? []
-  const theirSessions = useSessions(partner?.id).data ?? []
-  const messagesQuery = useMessages()
-  const messages = messagesQuery.data ?? []
-  const invites = useInvites().data ?? []
-  const reactions = useReactions().data ?? []
-  const together = useTogether().data ?? []
-  const { items } = usePendingForMe()
-  const pendingTogetherIds = new Set(items.flatMap((item) => (item.type === 'together' ? [item.item.id] : [])))
-  const listedTogether = together.filter((item) => !pendingTogetherIds.has(item.id))
-  const goalPendingAbove = items.some((item) => item.type === 'goal')
-  const rooms = useRooms()
-  const [adding, setAdding] = useState(false)
-  const [sheet, setSheet] = useState<'trace' | 'ratito' | null>(null)
-  const [showAllPending, setShowAllPending] = useState(false)
-  const [bookId, setBookId] = useState('')
-  const [reason, setReason] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const month = todayISO().slice(0, 7)
-  const readings = [...mine, ...theirs]
-  const sessions = [...mineSessions, ...theirSessions]
-  const summarize = (value: string) =>
-    monthMemories(value, readings, sessions, invites, messages, reactions, userId, partner?.id ?? '')
-  const summary = summarize(month)
-  const previousMonths = [
-    ...new Set([
-      ...sessions.map((session) => session.read_on.slice(0, 7)),
-      ...readings.flatMap((reading) => (reading.finished_on ? [reading.finished_on.slice(0, 7)] : [])),
-      ...invites
-        .filter((invite) => invite.status === 'accepted')
-        .map((invite) => localMonth(invite.starts_at ?? invite.created_at)),
-      ...messages
-        .filter((message) => reactions.some((reaction) => reaction.target_id === message.id))
-        .map((message) => localMonth(message.created_at)),
-    ]),
-  ]
-    .filter((value) => value < month)
-    .sort()
-    .reverse()
-  const candidates = [
-    ...new Map(
-      readings
-        .filter((reading) => reading.status === 'want' && !together.some((item) => item.book_id === reading.book_id))
-        .map((reading) => [reading.book_id, reading.book]),
-    ).values(),
-  ]
-  const linkedId = location.hash.startsWith('#m-') ? location.hash.slice(3) : null
-  const linkedMessage = linkedId ? messages.find((message) => message.id === linkedId) : undefined
-  const linkedAlreadyPending = items.some((item) => item.type === 'message' && item.message.id === linkedId)
-  const linkedItem = items.find((item) =>
-    item.type === 'message'
-      ? item.message.id === linkedId
-      : item.type === 'invite'
-        ? item.invite.id === linkedId
-        : item.type === 'together' && item.item.id === linkedId,
-  )
-  const prioritizedItems = linkedItem ? [linkedItem, ...items.filter((item) => item !== linkedItem)] : items
-  const previewCount = linkedMessage && !linkedAlreadyPending ? 0 : 1
-  const visibleItems = showAllPending ? prioritizedItems : prioritizedItems.slice(0, previewCount)
-  useEffect(() => {
-    if (!linkedId || !messages.length) return
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(`m-${linkedId}`)?.scrollIntoView({ block: 'center', behavior: 'auto' })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [linkedId, messages])
-
+  const c = useCouple()
+  const together = useTogether(!!partner).data ?? []
+  const [letterOpen, setLetterOpen] = useState(false)
   if (!partner)
     return (
       <section className="space-y-4">
-        <h1 className="display">
-          Rincón <span className="display-italic block">de los dos</span>
-        </h1>
+        <h1 className="display">Nosotros</h1>
         <p>Vuestro rincón estará aquí al vincular las dos cuentas.</p>
       </section>
     )
+  const year = c.today.slice(0, 4)
+  const month = c.today.slice(0, 7)
+  const previous = (() => {
+    const d = new Date(Number(year), Number(month.slice(5, 7)) - 2, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })()
+  const yearMinutes = c.rows
+    .filter((r) => r.started_at.startsWith(year))
+    .reduce((sum, r) => sum + (c.minutes.get(r.id) ?? 0), 0)
+  const hours = yearMinutes / 60
+  const monthNights = c.rows.filter((r) => r.started_at.startsWith(month) && c.minutes.has(r.id)).length
+  const monthPages = c.sessions
+    .filter((s) => s.read_on.startsWith(month))
+    .reduce((sum, s) => {
+      const reading = c.mineReadings.find((r) => r.id === s.reading_id) ?? c.theirReadings.find((r) => r.id === s.reading_id)
+      return sum + (reading ? pagesEquivalent(s, reading) : 0)
+    }, 0)
+  const monthQuotes = c.quotes.filter((q) => q.created_at.startsWith(month) && q.shared).length
+  const loved = lovedQuote(c.quotes, c.reactions, c.replies)
+  // The year's shelf, one spine per book with a dot for each reader.
+  const shelf = new Map<string, { reading: ReadingWithBook; readers: Accent[] }>()
+  for (const [readings, accent] of [
+    [c.theirReadings, partner.accent],
+    [c.mineReadings, profile.accent],
+  ] as const)
+    for (const reading of readings)
+      if (reading.status === 'finished' && reading.finished_on?.startsWith(year)) {
+        const entry = shelf.get(reading.book_id)
+        if (entry) entry.readers.push(accent)
+        else shelf.set(reading.book_id, { reading, readers: [accent] })
+      }
+  const shelfBooks = [...shelf.values()].sort((a, b) =>
+    (a.reading.finished_on ?? '').localeCompare(b.reading.finished_on ?? ''),
+  )
+  const readsThisYear = [...c.mineReadings, ...c.theirReadings].filter(
+    (r) => r.status === 'finished' && r.finished_on?.startsWith(year),
+  ).length
+  const bothFinished = c.mineReadings
+    .filter((r) => r.status === 'finished')
+    .map((mine) => ({
+      mine,
+      theirs: c.theirReadings.find((t) => t.book_id === mine.book_id && t.status === 'finished'),
+    }))
+    .filter((pair): pair is { mine: ReadingWithBook; theirs: ReadingWithBook } => !!pair.theirs)
+  const toRate = bothFinished.filter((pair) => pair.mine.rating === null || pair.theirs.rating === null)
+  const goals = milestones({
+    nightsTogether: c.minutes.size,
+    hoursTogether: c.rows.reduce((sum, r) => sum + (c.minutes.get(r.id) ?? 0), 0) / 60,
+    bestStreak: c.streak.best,
+    duoFinished: bothFinished.length > 0,
+    booksThisYear: readsThisYear,
+    year,
+  })
+  const pending = together.filter(
+    (item) => (!item.partner_answer && item.partner_id === userId) || (item.partner_answer === 'yes' && !item.start_on),
+  )
+  const firstDate = [...c.rows.map((r) => r.started_at.slice(0, 10)), ...c.sessions.map((s) => s.read_on)].sort()[0]
+  const [first, second] = partner.is_gift_recipient ? [partner, profile] : [profile, partner]
+  const letter = monthLetter({
+    month: previous,
+    me: profile,
+    partner,
+    sessions: c.sessions,
+    readings: [...c.mineReadings, ...c.theirReadings],
+    rows: c.rows,
+    minutes: c.minutes,
+    quotes: c.quotes,
+    reactions: c.reactions,
+    replies: c.replies,
+  })
 
   return (
     <div className="space-y-8 pb-4">
-      <header className="enter space-y-4">
-        <h1 className="display">
-          Rincón <span className="display-italic block">de los dos</span>
+      <header className="card enter relative px-5 py-6 text-center">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-2 rounded-[18px] border-[1.5px] border-[color-mix(in_oklab,var(--plum)_30%,transparent)]"
+        />
+        <p className="text-xs font-extrabold tracking-[0.2em] text-muted uppercase">Ex libris</p>
+        <p className="my-1 font-serif text-[52px] leading-tight" aria-hidden>
+          <span style={{ color: `var(--${first.accent})` }}>{first.display_name.charAt(0)}</span>
+          <span className="font-[family-name:var(--font-book)] text-rose italic">&amp;</span>
+          <span style={{ color: `var(--${second.accent})` }}>{second.display_name.charAt(0)}</span>
+        </p>
+        <h1 className="text-[21px]">
+          {first.display_name} y {second.display_name}
         </h1>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2">
-            <Avatar person={profile} size={28} />
-            <Avatar person={partner} size={28} />
-          </div>
-          <p className="text-xs text-muted">{formatDays(summary.daysTogether)} leyendo los dos este mes</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" className="btn btn-outline" onClick={() => setSheet('trace')}>
-            <Feather size={16} aria-hidden />
-            Dejarle algo
-          </button>
-          <button type="button" className="btn btn-outline" onClick={() => setSheet('ratito')}>
-            <Coffee size={16} aria-hidden />
-            Un ratito juntos
-          </button>
-        </div>
+        {firstDate && <p className="text-sm text-muted">Leyendo juntos desde {fmt(firstDate, "MMMM 'de' yyyy")}</p>}
       </header>
-      <TraceSheet open={sheet === 'trace'} onClose={() => setSheet(null)} />
-      <RatitoSheet open={sheet === 'ratito'} onClose={() => setSheet(null)} />
-      {(mineQuery.isPending || theirsQuery.isPending || messagesQuery.isPending) && (
-        <p className="text-sm text-muted" role="status">
-          Abriendo vuestro rincón…
-        </p>
-      )}
-      {(mineQuery.isError || theirsQuery.isError || messagesQuery.isError) && (
-        <p className="text-sm text-danger" role="alert">
-          No se ha podido cargar todo el rincón. Vuelve a abrirlo cuando tengas conexión.
-        </p>
-      )}
-      {(items.length > 0 || linkedMessage) && (
-        <section className="enter space-y-3" style={{ '--i': 1 } as CSSProperties} aria-label="Para ti">
-          <h2 className="title">
-            Para ti <span className="num ml-1 text-base text-muted">{items.length || ''}</span>
-          </h2>
-          {visibleItems.map((item) => {
-            switch (item.type) {
-              case 'message':
-                return <MessageCard key={`m-${item.message.id}`} message={item.message} preview={!showAllPending} />
-              case 'invite':
-                return <InviteCard key={`i-${item.invite.id}`} invite={item.invite} compact />
-              case 'together':
-                return (
-                  <div className="rule py-4" key={`t-${item.item.id}`}>
-                    <TogetherCard item={item.item} />
-                  </div>
-                )
-              case 'goal':
-                return (
-                  <div className="rule py-4" key={`g-${item.goal.month}`}>
-                    <GoalProposal goal={item.goal} />
-                  </div>
-                )
-            }
-          })}
-          {linkedMessage && !linkedAlreadyPending && <MessageCard message={linkedMessage} preview={!showAllPending} />}
-          {items.length > previewCount && (
-            <button
-              className="btn btn-link min-h-11"
-              aria-expanded={showAllPending}
-              onClick={() => setShowAllPending(!showAllPending)}
-            >
-              {showAllPending ? 'Ver menos' : `Ver ${items.length - previewCount} más`}
-            </button>
-          )}
+
+      {pending.length > 0 && (
+        <section className="space-y-3" aria-labelledby="para-ti">
+          <h2 id="para-ti">Para ti</h2>
+          {pending.map((item) => (
+            <div key={item.id} className="card">
+              <TogetherCard item={item} />
+            </div>
+          ))}
         </section>
       )}
-      <div className="enter space-y-2" style={{ '--i': 2 } as CSSProperties}>
-        <CoupleProgress />
-        {invites
-          .filter(
-            (invite) =>
-              !isInviteExpired(invite) &&
-              (invite.status === 'accepted' || (invite.from_user === userId && invite.status === 'pending')),
-          )
-          .map((invite) => (
-            <InviteCard key={invite.id} invite={invite} />
-          ))}
-      </div>
-      <section className="enter space-y-1" style={{ '--i': 3 } as CSSProperties} aria-labelledby="rooms-title">
-        <h2 id="rooms-title" className="title mb-2">
-          Leyendo juntos
-        </h2>
-        {rooms.length === 0 && (
-          <p className="text-sm text-muted">
-            Cuando los dos tengáis el mismo libro en «Leyendo», aquí se abre su sala.
-          </p>
-        )}
-        {rooms.map((room) => {
-          const unread = messages.filter(
-            (message) =>
-              message.book_id === room.book.id && message.to_user === userId && !message.read_at && !message.locked,
-          ).length
-          return (
-            <Link key={room.book.id} to={`/sala/${room.book.id}`} className="rule flex items-center gap-4 py-3">
-              <Cover book={room.book} width={44} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-serif text-xl leading-tight">{room.book.title}</span>
-                <PairBars
-                  mine={progressFraction(room.mine)}
-                  theirs={progressFraction(room.theirs)}
-                  myAccent={profile.accent}
-                  partnerAccent={partner.accent}
-                />
-                <span className="mt-1.5 block text-xs text-muted">{gapText(room.mine, room.theirs, partner)}</span>
-              </span>
-              <span className="shrink-0 text-xs text-accent underline underline-offset-4">
-                {unread ? `${unread} por abrir` : 'Entrar'}
-              </span>
-            </Link>
-          )
-        })}
-      </section>
-      <section className="rule enter space-y-3 pt-5" style={{ '--i': 4 } as CSSProperties} aria-labelledby="goal-title">
-        <h2 id="goal-title" className="title">
-          Propósito de {monthLabel(month).split(' ')[0].toLocaleLowerCase('es')}
-        </h2>
-        <CoupleGoalCard summary={summary} goalPendingAbove={goalPendingAbove} />
-      </section>
-      <section className="rule space-y-4 pt-5" aria-label="Vuestros recuerdos">
-        <h2 className="title">Vuestros recuerdos</h2>
-        <div className="space-y-3">
-          <h3 className="text-xs text-muted">{monthLabel(month)}</h3>
-          <MemoriesCard summary={summary} withGoal={false} />
-        </div>
-        {previousMonths.length > 0 && (
-          <details className="rule">
-            <summary className="min-h-11 cursor-pointer py-3 text-sm">
-              Meses anteriores ({previousMonths.length})
-            </summary>
-            <div className="space-y-3">
-              {previousMonths.map((value) => {
-                const past = summarize(value)
-                return (
-                  <details key={value}>
-                    <summary className="min-h-11 cursor-pointer py-3 text-sm">
-                      {monthLabel(value)} · {past.books.length} {past.books.length === 1 ? 'libro' : 'libros'} ·{' '}
-                      {formatDays(past.daysTogether)} juntos
-                    </summary>
-                    <MemoriesCard summary={past} />
-                  </details>
-                )
-              })}
-            </div>
-          </details>
-        )}
-      </section>
-      <section className="rule space-y-4 pt-5" aria-label="Queremos leer juntos">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="title">Queremos leer juntos</h2>
-          <button className="btn btn-link shrink-0" onClick={() => setAdding(true)}>
-            + Añadir
-          </button>
-        </div>
-        {!together.length && (
-          <p className="text-sm text-muted">Un libro que os apetezca compartir, para cuando llegue el momento.</p>
-        )}
-        {pendingTogetherIds.size > 0 && (
-          <p className="text-sm text-muted">{pendingTogetherIds.size} esperando vuestra respuesta arriba</p>
-        )}
-        {listedTogether.slice(0, 1).map((item) => (
-          <TogetherCard key={item.id} item={item} />
-        ))}
-        {listedTogether.length > 1 && (
-          <details>
-            <summary className="min-h-11 cursor-pointer py-3 text-sm">
-              Ver {listedTogether.length - 1} {listedTogether.length === 2 ? 'libro' : 'libros'} más
-            </summary>
-            <div className="space-y-5">
-              {listedTogether.slice(1).map((item) => (
-                <TogetherCard key={item.id} item={item} />
-              ))}
-            </div>
-          </details>
-        )}
-      </section>
-      <BottomSheet
-        open={adding}
-        onClose={() => setAdding(false)}
-        title="Queremos leer juntos"
-        dirty={!!bookId || !!reason.trim()}
+
+      <section
+        className="card enter grid gap-1.5"
+        style={{ '--i': 1 } as CSSProperties}
+        aria-label="Horas leyendo a la vez"
       >
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!bookId) return
-            setBusy(true)
-            setError('')
-            void addTogether(bookId, reason)
-              .then(() => {
-                setAdding(false)
-                setBookId('')
-                setReason('')
-              })
-              .catch((cause: unknown) => {
-                setError(cause instanceof Error ? cause.message : 'No se pudo añadir el libro')
-              })
-              .finally(() => setBusy(false))
+        <p className="font-serif text-[50px] leading-none tabular-nums">
+          {Math.floor(hours)} <span className="text-[22px]">{Math.floor(hours) === 1 ? 'hora' : 'horas'}</span>
+        </p>
+        <p className="font-extrabold">leyendo a la vez en {year}</p>
+        <p className="text-sm text-muted">
+          {hours >= 1
+            ? `${Math.round(yearMinutes)} minutos con un libro cada uno y el otro al lado.`
+            : 'Cuando uno lea y el otro se una, las horas se irán sumando aquí.'}
+        </p>
+      </section>
+
+      <section className="card space-y-3" aria-labelledby="racha">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="racha">Racha de los dos</h2>
+          <Link
+            to="/nosotros/racha"
+            className="pill min-h-11"
+            aria-label={`Ver la racha: ${formatDays(c.streak.current)}`}
+          >
+            <Lamp size={15} className="text-amber-ink" aria-hidden /> {formatDays(c.streak.current)}
+            <ChevronRight size={15} aria-hidden />
+          </Link>
+        </div>
+        <WeekStamps
+          today={c.today}
+          mine={c.mineDates}
+          theirs={c.theirDates}
+          profile={profile}
+          partner={partner}
+          wildcards={c.streak.wildcards}
+        />
+      </section>
+
+      <section className="space-y-3" aria-labelledby="mes">
+        <h2 id="mes">{monthName(month).charAt(0).toUpperCase() + monthName(month).slice(1)}, de momento</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            [monthNights, monthNights === 1 ? 'noche leyendo a la vez' : 'noches leyendo a la vez'],
+            [monthPages, 'páginas entre los dos'],
+            [monthQuotes, monthQuotes === 1 ? 'cita compartida' : 'citas compartidas'],
+          ].map(([value, label]) => (
+            <div key={label} className="card grid content-start gap-0.5 p-3">
+              <b className="font-serif text-2xl font-normal tabular-nums">{value}</b>
+              <span className="text-[12.5px] leading-snug text-muted">{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {shelfBooks.length > 0 && (
+        <section className="space-y-3" aria-labelledby="estanteria">
+          <h2 id="estanteria">Vuestra estantería de {year}</h2>
+          <div className="shelf" role="list" aria-label={`Estantería de ${year}`}>
+            {shelfBooks.map(({ reading, readers }) => (
+              <Spine key={reading.book_id} reading={reading} readers={readers} />
+            ))}
+          </div>
+          <p className="flex flex-wrap gap-x-4 text-[13px] font-bold text-muted">
+            <span className="flex items-center gap-1.5">
+              <i className="h-2.5 w-2.5 rounded-full" style={{ background: `var(--${partner.accent})` }} />
+              {partner.display_name}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <i className="h-2.5 w-2.5 rounded-full" style={{ background: `var(--${profile.accent})` }} />
+              Tú
+            </span>
+            <span>
+              {readsThisYear} {readsThisYear === 1 ? 'lectura' : 'lecturas'}, {shelfBooks.length}{' '}
+              {shelfBooks.length === 1 ? 'libro' : 'libros'}
+            </span>
+          </p>
+        </section>
+      )}
+
+      {toRate.length > 0 && (
+        <section className="space-y-3" aria-labelledby="ciegas">
+          <h2 id="ciegas">Valorad a ciegas</h2>
+          {toRate.slice(0, 2).map(({ mine, theirs }) => (
+            <article key={mine.id} className="card space-y-3">
+              <div className="flex items-center gap-3">
+                <Cover book={mine.book} width={44} ribbons={[partner.accent, profile.accent]} />
+                <p>
+                  <b className="font-extrabold">{mine.book.title}</b>
+                  <br />
+                  <span className="text-sm text-muted">Lo habéis terminado los dos</span>
+                </p>
+              </div>
+              <BlindRating mine={mine} theirs={theirs} />
+            </article>
+          ))}
+        </section>
+      )}
+
+      {loved && (
+        <section className="space-y-3" aria-labelledby="querida">
+          <h2 id="querida">La cita más querida</h2>
+          <QuoteCard quote={loved} compact />
+        </section>
+      )}
+
+      <section className="card space-y-3" aria-labelledby="reto">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="reto">Reto de {monthName(month)}</h2>
+          <span className="pill">
+            {Math.min(monthNights, NIGHTS_GOAL)} de {NIGHTS_GOAL}
+          </span>
+        </div>
+        <p className="text-sm text-muted">
+          Leer a la vez {NIGHTS_GOAL} noches. Vale cualquier noche en la que os juntéis, aunque sea un rato.
+        </p>
+        <div className="grid grid-cols-10 gap-1.5" role="img" aria-label={`${monthNights} de ${NIGHTS_GOAL} noches`}>
+          {Array.from({ length: NIGHTS_GOAL }, (_, i) => (
+            <i
+              key={i}
+              className="h-3 rounded-full"
+              style={{
+                background:
+                  i < monthNights
+                    ? `linear-gradient(90deg, var(--${partner.accent}), var(--${profile.accent}))`
+                    : 'var(--sunk)',
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3" aria-labelledby="hitos">
+        <h2 id="hitos">Hitos</h2>
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+          {goals.map((goal, index) => {
+            const Icon = goal.done ? ICONS[goal.icon] : Lock
+            return (
+              <div
+                key={goal.title}
+                className="grid justify-items-center gap-1.5 text-center text-[12.5px] font-extrabold leading-tight"
+              >
+                <span
+                  className={`grid h-[70px] w-[70px] place-items-center rounded-full ${goal.done ? 'text-rose' : 'bg-sunk text-muted'}`}
+                  style={
+                    goal.done
+                      ? {
+                          background: 'color-mix(in oklab, var(--rose) 10%, var(--surface))',
+                          boxShadow:
+                            'inset 0 0 0 1.5px var(--rose), inset 0 0 0 5px color-mix(in oklab, var(--rose) 10%, var(--surface)), inset 0 0 0 6px color-mix(in oklab, var(--rose) 50%, transparent)',
+                          rotate: `${[-8, 6, -4, 7, -3, 5][index]}deg`,
+                        }
+                      : { boxShadow: 'inset 0 0 0 1.5px var(--rule)' }
+                  }
+                  aria-hidden
+                >
+                  <Icon size={26} fill={goal.done && goal.icon === 'heart' ? 'currentColor' : 'none'} />
+                </span>
+                {goal.title}
+                <small className="font-bold text-muted">{goal.detail}</small>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <button
+        type="button"
+        className="card flex min-h-[84px] w-full items-center gap-4 text-left"
+        onClick={() => setLetterOpen(true)}
+      >
+        <span
+          className="grid h-[50px] w-[72px] flex-none place-items-center rounded-md bg-[color-mix(in_oklab,var(--amber)_30%,var(--surface))] text-rose"
+          aria-hidden
+        >
+          <Mail size={26} />
+        </span>
+        <span className="grid flex-1 gap-0.5">
+          <b className="font-extrabold">Vuestra carta de {monthName(previous)}</b>
+          <span className="text-[13.5px] text-muted">Lo que vivisteis leyendo el mes pasado.</span>
+        </span>
+        <ChevronRight size={20} aria-hidden />
+      </button>
+      <BottomSheet open={letterOpen} onClose={() => setLetterOpen(false)} title={`Carta de ${monthName(previous)}`}>
+        <article
+          className="grid gap-3 rounded-md px-5 py-6 font-[family-name:var(--font-book)] text-[16.5px] leading-relaxed"
+          style={{
+            background:
+              'repeating-linear-gradient(transparent 0 31px, color-mix(in oklab, var(--rule) 80%, transparent) 31px 32px), color-mix(in oklab, var(--amber) 7%, var(--surface))',
           }}
         >
-          {candidates.length > 0 ? (
-            <label className="lbl">
-              Un libro de vuestras listas
-              <select
-                className="input min-h-11 w-full"
-                name="book"
-                autoComplete="off"
-                required
-                value={bookId}
-                onChange={(event) => setBookId(event.target.value)}
-              >
-                <option value="">Elegid un libro…</option>
-                {candidates.map((book) => (
-                  <option key={book.id} value={book.id}>
-                    {book.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <p className="text-sm text-muted">Añadid un libro a «Pendientes» para encontrarlo aquí.</p>
-          )}
-          <label className="lbl">
-            ¿Por qué este? (opcional)
-            <textarea
-              className="min-h-20 w-full"
-              maxLength={300}
-              name="reason"
-              autoComplete="off"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
-          {error && (
-            <p role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button className="btn btn-primary" disabled={busy || !bookId}>
-              {busy ? 'Añadiendo…' : 'Añadir a juntos'}
-            </button>
-            <Link to="/biblioteca/buscar" className="btn btn-ghost" onClick={() => setAdding(false)}>
-              Buscar otro libro
+          {letter.map((line, index) => (
+            <p key={index}>{line}</p>
+          ))}
+          <p className="hand text-right text-[26px] text-rose">Greenbook</p>
+        </article>
+      </BottomSheet>
+
+      {together.filter((item) => !pending.includes(item)).length > 0 && (
+        <section className="space-y-2" aria-labelledby="juntos">
+          <div className="flex items-center justify-between">
+            <h2 id="juntos">Queremos leer juntos</h2>
+            <Link to="/biblioteca" className="btn btn-link px-1 text-sm">
+              Ver en Biblioteca
             </Link>
           </div>
-        </form>
-      </BottomSheet>
+          {together
+            .filter((item) => !pending.includes(item))
+            .map((item) => (
+              <div
+                key={item.id}
+                className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2 first-of-type:border-0"
+              >
+                <Cover book={item.book} width={44} />
+                <p className="min-w-0">
+                  <b className="font-serif text-[17px] font-normal">{item.book.title}</b>
+                  {item.reason && <span className="block text-[13px] text-muted">{item.reason}</span>}
+                </p>
+              </div>
+            ))}
+        </section>
+      )}
     </div>
   )
 }

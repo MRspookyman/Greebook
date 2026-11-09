@@ -1,4 +1,6 @@
-import { createBrowserRouter, Navigate, useParams } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
+import { RoomRedirect } from '@/features/quotes/RoomRedirect'
+import { CitasPage } from '@/features/quotes/CitasPage'
 import { Layout } from './Layout'
 import { TodayPage } from '@/features/today/TodayPage'
 import { LibraryPage } from '@/features/library/LibraryPage'
@@ -6,15 +8,11 @@ import { SearchPage } from '@/features/library/SearchPage'
 import { BookPage } from '@/features/book/BookPage'
 import { StatsPage } from '@/features/stats/StatsPage'
 import { UsPage } from '@/features/us/UsPage'
-import { SalaPage } from '@/features/us/SalaPage'
+import { RachaPage } from '@/features/us/RachaPage'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { WelcomePage } from '@/features/onboarding/WelcomePage'
 import { SessionPage } from '@/features/session/SessionPage'
 
-function ClubRedirect() {
-  const { bookId } = useParams()
-  return <Navigate to={`/sala/${bookId}`} replace />
-}
 
 export const router = createBrowserRouter([
   { path: '/bienvenida', element: <WelcomePage /> },
@@ -30,8 +28,10 @@ export const router = createBrowserRouter([
       { path: 'stats', element: <StatsPage /> },
       { path: 'calendario', element: <Navigate to="/stats" replace /> },
       { path: 'nosotros', element: <UsPage /> },
-      { path: 'sala/:bookId', element: <SalaPage /> },
-      { path: 'club/:bookId', element: <ClubRedirect /> },
+      { path: 'nosotros/racha', element: <RachaPage /> },
+      { path: 'citas', element: <CitasPage /> },
+      { path: 'sala/:bookId', element: <RoomRedirect /> },
+      { path: 'club/:bookId', element: <RoomRedirect /> },
       { path: 'perfil', element: <ProfilePage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
