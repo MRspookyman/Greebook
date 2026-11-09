@@ -188,6 +188,7 @@ export interface Quote {
   locked: boolean
   body: string | null
   comment: string | null
+  photo_path: string | null
   book: Book
 }
 

@@ -14,6 +14,16 @@ describe('quote notifications', () => {
       tag: 'quotes:laura:patria', renotify: false,
     })
   })
+  it('describes a photo-only quote without exposing its storage path', () => {
+    const result = quoteNotification({ ...quote, body: null, photoPath: 'owner/quote.jpg' })
+    expect(result.title).toBe('✍️ Laura te ha dejado una foto de «Patria»')
+    expect(result.body).not.toContain('owner/quote.jpg')
+  })
+  it('keeps a locked photo-only quote spoiler-safe', () => {
+    const result = quoteNotification({ ...quote, body: null, photoPath: 'owner/quote.jpg', locked: true })
+    expect(result.body).toBe('«Patria» · p. 42. Se abre cuando llegues.')
+    expect(result.body).not.toContain('owner/quote.jpg')
+  })
   it('never exposes a locked quote', () => {
     const result = quoteNotification({ ...quote, locked: true })
     expect(result.body).toBe('«Patria» · p. 42. Se abre cuando llegues.')

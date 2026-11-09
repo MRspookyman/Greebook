@@ -7,6 +7,7 @@ import { useQuotes } from '@/lib/data'
 import { QuoteCard } from './QuoteCard'
 import { QuoteSheet } from './QuoteSheet'
 import { markQuotesSeen, useUnseenQuotes } from './quotes'
+import { normalizeQuoteSearch } from './search'
 
 type Filter = 'all' | 'theirs' | 'mine' | `book:${string}`
 
@@ -17,16 +18,18 @@ export function CitasPage() {
   const quotes = query.data ?? []
   const [filter, setFilter] = useState<Filter>('all')
   const [composing, setComposing] = useState(false)
+  const [search, setSearch] = useState('')
   const location = useLocation()
   const unseen = useUnseenQuotes()
   const marking = useRef(new Set<string>())
-  const books = [...new Map(quotes.map((q) => [q.book_id, q.book] as const)).values()].slice(0, 4)
+  const books = [...new Map(quotes.map((q) => [q.book_id, q.book] as const)).values()]
+  const needle = normalizeQuoteSearch(search)
   const visible = quotes.filter(
-    (q) =>
-      filter === 'all' ||
+    (q) => (filter === 'all' ||
       (filter === 'theirs' && q.user_id !== userId) ||
       (filter === 'mine' && q.user_id === userId) ||
-      filter === `book:${q.book_id}`,
+      filter === `book:${q.book_id}`) &&
+      (!needle || normalizeQuoteSearch([q.body, q.comment, q.book.title].filter(Boolean).join(' ')).includes(needle)),
   )
 
   // Opening the wall is reading it: what's new from your partner stops being new.
@@ -72,6 +75,11 @@ export function CitasPage() {
         </div>
         <p className="text-muted">Las frases y notas que os dejáis, cada una en su página.</p>
       </header>
+      <div>
+        <label className="sr-only" htmlFor="quotes-search">Buscar citas</label>
+        <input id="quotes-search" type="search" className="input" placeholder="Buscar frase, comentario o libro"
+          value={search} onChange={(event) => setSearch(event.target.value)} />
+      </div>
       {quotes.length > 0 && (
         <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5" role="group" aria-label="Filtrar citas">
           {chip('all', 'Todas')}

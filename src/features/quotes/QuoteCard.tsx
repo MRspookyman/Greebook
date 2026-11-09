@@ -1,18 +1,29 @@
 import { useState } from 'react'
-import { formatDistanceToNowStrict } from 'date-fns'
+import { format, formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Heart, Lock, LockOpen, Reply, Trash2 } from 'lucide-react'
+import { Heart, Lock, LockOpen, Pencil, Reply, Share2, Trash2 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { BottomSheet } from '@/components/BottomSheet'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
 import { useQuoteReplies, useReactions, useReadings } from '@/lib/data'
 import type { Quote } from '@/lib/types'
-import { deleteQuote, myReadingOf, openQuoteEarly, pagesUntil, replyToQuote, toggleQuoteHeart } from './quotes'
+import {
+  deleteQuote, deleteQuoteReply, myReadingOf, openQuoteEarly, pagesUntil, replyToQuote,
+  toggleQuoteHeart, updateQuoteReply,
+} from './quotes'
+import { useQuotePhoto } from './photos'
+import { QuoteSheet } from './QuoteSheet'
+import { shareQuoteImage } from './shareImage'
 
-const ago = (iso: string) =>
-  Date.now() - new Date(iso).getTime() < 60_000
-    ? 'ahora'
-    : formatDistanceToNowStrict(new Date(iso), { addSuffix: true, locale: es })
+const ago = (iso: string) => {
+  const date = new Date(iso)
+  const elapsed = Date.now() - date.getTime()
+  if (elapsed < 60_000) return 'ahora'
+  return elapsed > 7 * 24 * 60 * 60 * 1000
+    ? format(date, "d 'de' MMMM 'de' yyyy", { locale: es })
+    : formatDistanceToNowStrict(date, { addSuffix: true, locale: es })
+}
 
 /**
  * One quote or note on its page, with the author's ribbon. A partner's quote that would be a spoiler stays closed
@@ -40,6 +51,12 @@ export function QuoteCard({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
+  const [editingReply, setEditingReply] = useState<string | null>(null)
+  const [replyDraft, setReplyDraft] = useState('')
+  const [deletingReply, setDeletingReply] = useState<string | null>(null)
+  const photo = useQuotePhoto(quote.locked ? null : quote.photo_path)
   if (!author) return null
   const color = `var(--${author.accent})`
   const fresh = !mine && !quote.locked && !quote.seen_at
@@ -79,6 +96,11 @@ export function QuoteCard({
   )
 
   if (quote.locked) {
+    const reading = (readings.data ?? []).find(
+      (r) => r.book_id === quote.book_id && (r.status === 'want' || r.status === 'reading') &&
+        r.unit === 'percent' && !r.book.page_count,
+    )
+    const waitsForFinish = quote.page !== null && !!reading
     const left = pagesUntil(quote, myReadingOf(readings.data, quote.book_id))
     return (
       <article
@@ -93,11 +115,17 @@ export function QuoteCard({
         {ribbon}
         {meta}
         <p className="flex items-center gap-2 font-extrabold">
-          <Lock size={18} aria-hidden /> Se abre en la p. {quote.page}
+          <Lock size={18} aria-hidden /> {waitsForFinish ? 'Se abre al terminar el libro' : `Se abre en la p. ${quote.page}`}
         </p>
         <p className="text-sm text-muted">
-          {left !== null ? `Te faltan ${left} ${left === 1 ? 'página' : 'páginas'}. ` : ''}
-          {author.display_name} te lo dejó para cuando llegues.
+          {waitsForFinish ? (
+            'Llevas esta lectura en porcentaje y el libro no tiene número de páginas. Esta cita con página se abrirá al marcar la lectura como terminada, o puedes abrirla antes.'
+          ) : (
+            <>
+              {left !== null ? `Te faltan ${left} ${left === 1 ? 'página' : 'páginas'}. ` : ''}
+              {author.display_name} te lo dejó para cuando llegues.
+            </>
+          )}
         </p>
         <div className="-mx-2 flex flex-wrap items-center gap-x-3 border-t border-dashed border-rule pt-1">
           {confirmOpen ? (
@@ -131,10 +159,31 @@ export function QuoteCard({
     >
       {ribbon}
       {meta}
-      {quote.kind === 'cita' ? (
+      {quote.body && (quote.kind === 'cita' ? (
         <p className="quote-text wrap-anywhere">«{quote.body}»</p>
       ) : (
         <p className="hand wrap-anywhere text-[25px]">{quote.body}</p>
+      ))}
+      {quote.photo_path && (
+        photo.data ? (
+          <button
+            type="button"
+            className="block w-full overflow-hidden rounded-[14px]"
+            aria-label="Ver foto de la cita a tamaño completo"
+            onClick={() => setPhotoOpen(true)}
+          >
+            <img src={photo.data} alt={`Foto guardada de ${quote.book.title}`} className="max-h-80 w-full object-contain" />
+          </button>
+        ) : (
+          <p className="text-sm text-muted" role="status">
+            {photo.isError ? 'No se pudo cargar la foto.' : 'Cargando foto…'}
+            {photo.isError && (
+              <button type="button" className="btn btn-link text-sm" onClick={() => void photo.refetch()}>
+                Reintentar
+              </button>
+            )}
+          </p>
+        )
       )}
       {quote.comment && (
         <p className="hand wrap-anywhere" style={{ color }}>
@@ -150,10 +199,67 @@ export function QuoteCard({
           const who = r.user_id === userId ? profile : partner
           if (!who) return null
           return (
-            <p key={r.id} className="flex items-start gap-2 rounded-[14px] bg-sunk px-3 py-2 text-sm">
+            <div key={r.id} className="flex items-start gap-2 rounded-[14px] bg-sunk px-3 py-2 text-sm">
               <Avatar person={who} size={22} />
-              <span className="wrap-anywhere">{r.body}</span>
-            </p>
+              <div className="min-w-0 flex-1">
+                {r.user_id === userId && editingReply === r.id ? (
+                  <form onSubmit={(event) => {
+                    event.preventDefault()
+                    if (!replyDraft.trim()) return
+                    void act(async () => {
+                      await updateQuoteReply(r.id, replyDraft.trim())
+                      setEditingReply(null)
+                    }, 'No se pudo guardar la respuesta')
+                  }}>
+                    <label className="sr-only" htmlFor={`edit-reply-${r.id}`}>Editar tu respuesta</label>
+                    <textarea
+                      id={`edit-reply-${r.id}`}
+                      className="input min-h-12 w-full resize-none"
+                      value={replyDraft}
+                      maxLength={1000}
+                      onChange={(event) => setReplyDraft(event.target.value)}
+                      autoFocus
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button className="btn btn-link text-sm" disabled={busy || !replyDraft.trim()}>Guardar</button>
+                      <button type="button" className="btn btn-link text-sm" disabled={busy} onClick={() => setEditingReply(null)}>Cancelar</button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <p className="wrap-anywhere">{r.body}</p>
+                    {r.user_id === userId && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {deletingReply === r.id ? (
+                          <>
+                            <span>¿Borrar tu respuesta?</span>
+                            <button
+                              type="button"
+                              className="btn btn-link text-sm text-danger"
+                              disabled={busy}
+                              onClick={() => void act(async () => {
+                                await deleteQuoteReply(r.id)
+                                setDeletingReply(null)
+                              }, 'No se pudo borrar la respuesta')}
+                            >Borrar</button>
+                            <button type="button" className="btn btn-link text-sm" disabled={busy} onClick={() => setDeletingReply(null)}>No</button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" className="btn btn-link text-sm" disabled={busy} onClick={() => {
+                              setEditingReply(r.id)
+                              setReplyDraft(r.body)
+                              setDeletingReply(null)
+                            }}>Editar</button>
+                            <button type="button" className="btn btn-link text-sm text-muted" disabled={busy} onClick={() => setDeletingReply(r.id)}>Borrar</button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           )
         })}
       {compact && replies.length > 0 && (
@@ -226,13 +332,45 @@ export function QuoteCard({
             <Reply size={18} aria-hidden /> Responder
           </button>
         )}
+        {(quote.body || quote.photo_path) && (
+          <button
+            type="button"
+            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold"
+            disabled={busy || (!quote.body && !photo.data)}
+            onClick={() => void act(async () => {
+              const result = await shareQuoteImage({
+                body: quote.body,
+                photoUrl: photo.data,
+                title: quote.book.title,
+                authors: quote.book.authors,
+                savedBy: author.display_name,
+                accent: author.accent,
+                page: quote.page,
+                kind: quote.kind,
+              })
+              if (result === 'downloaded') toast('Imagen descargada')
+            }, 'No se pudo compartir la imagen')}
+          >
+            <Share2 size={18} aria-hidden /> Compartir
+          </button>
+        )}
+        {mine && (
+          <button
+            type="button"
+            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold"
+            disabled={busy}
+            onClick={() => setEditing(true)}
+          >
+            <Pencil size={17} aria-hidden /> Editar
+          </button>
+        )}
         {mine &&
           (confirmDelete ? (
             <span className="ml-auto flex items-center">
               <button
                 className="btn btn-link px-2 text-sm text-danger"
                 disabled={busy}
-                onClick={() => void act(() => deleteQuote(quote.id), 'No se pudo borrar')}
+                onClick={() => void act(() => deleteQuote(quote.id, quote.photo_path), 'No se pudo borrar')}
               >
                 Borrar
               </button>
@@ -251,6 +389,16 @@ export function QuoteCard({
             </button>
           ))}
       </div>
+      {mine && <QuoteSheet open={editing} onClose={() => setEditing(false)} quote={quote} />}
+      <BottomSheet open={photoOpen} onClose={() => setPhotoOpen(false)} title="Foto de la cita">
+        {photo.data && (
+          <img
+            src={photo.data}
+            alt={`Foto guardada de ${quote.book.title}`}
+            className="mx-auto max-h-[78dvh] w-full rounded-[14px] object-contain"
+          />
+        )}
+      </BottomSheet>
     </article>
   )
 }

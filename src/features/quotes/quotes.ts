@@ -8,21 +8,27 @@ import { coupleIdentity } from '@/features/us/messages'
 
 export async function saveQuote(input: {
   bookId: string
+  id?: string
   page: number | null
   kind: QuoteKind
   body: string
   comment?: string | null
   shared: boolean
+  safe?: boolean
+  photoPath?: string | null
 }): Promise<string> {
   const { data, error } = await supabase
     .from('quotes')
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       book_id: input.bookId,
       page: input.page,
       kind: input.kind,
-      body: input.body.trim(),
-      comment: input.comment?.trim() || null,
+      body: input.body.trim() || null,
+      comment: input.kind === 'cita' ? input.comment?.trim() || null : null,
       shared: input.shared,
+      safe: input.safe ?? false,
+      photo_path: input.photoPath ?? null,
     })
     .select('id')
     .single()
@@ -33,21 +39,34 @@ export async function saveQuote(input: {
 
 export async function updateQuote(
   id: string,
-  patch: Partial<{ page: number | null; kind: QuoteKind; body: string; comment: string | null; shared: boolean }>,
+  patch: Partial<{ page: number | null; kind: QuoteKind; body: string | null; comment: string | null; shared: boolean; safe: boolean; photo_path: string | null }>,
 ): Promise<void> {
   const { error } = await supabase.from('quotes').update(patch).eq('id', id)
   if (error) throw error
   await queryClient.invalidateQueries({ queryKey: qk.quotes() })
 }
 
-export async function deleteQuote(id: string): Promise<void> {
+export async function deleteQuote(id: string, photoPath?: string | null): Promise<void> {
   const { error } = await supabase.from('quotes').delete().eq('id', id)
   if (error) throw error
+  if (photoPath) await supabase.storage.from('quote-photos').remove([photoPath])
   await queryClient.invalidateQueries({ queryKey: qk.quotes() })
 }
 
 export async function replyToQuote(quoteId: string, body: string): Promise<void> {
   const { error } = await supabase.from('quote_replies').insert({ quote_id: quoteId, body: body.trim() })
+  if (error) throw error
+  await queryClient.invalidateQueries({ queryKey: qk.quoteReplies() })
+}
+
+export async function updateQuoteReply(id: string, body: string): Promise<void> {
+  const { error } = await supabase.from('quote_replies').update({ body: body.trim() }).eq('id', id)
+  if (error) throw error
+  await queryClient.invalidateQueries({ queryKey: qk.quoteReplies() })
+}
+
+export async function deleteQuoteReply(id: string): Promise<void> {
+  const { error } = await supabase.from('quote_replies').delete().eq('id', id)
   if (error) throw error
   await queryClient.invalidateQueries({ queryKey: qk.quoteReplies() })
 }
@@ -133,8 +152,10 @@ export function shareNote(
   partnerReading: ReadingWithBook | undefined,
   page: number | null,
   shared: boolean,
+  safe = false,
 ): { locked: boolean; text: string } {
   if (!shared) return { locked: true, text: 'Solo la verás tú.' }
+  if (safe) return { locked: false, text: `${partnerName} la verá aunque vaya por detrás.` }
   const position = partnerReading ? physicalPagePosition(partnerReading) : null
   if (
     partnerReading &&
@@ -142,10 +163,14 @@ export function shareNote(
     page !== null &&
     (position === null || position < page)
   )
+  {
+    if (partnerReading.unit === 'percent' && !partnerReading.book.page_count)
+      return { locked: true, text: `Este libro no tiene páginas: ${partnerName} la verá al terminarlo, o márcala sin spoilers.` }
     return {
       locked: true,
       text: `${partnerName} va por ${formatPosition(partnerReading)}: la verá al llegar a la p. ${page}, sin spoilers.`,
     }
+  }
   return { locked: false, text: `${partnerName} la verá en Citas y le llegará un aviso suave.` }
 }
 

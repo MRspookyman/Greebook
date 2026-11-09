@@ -1,5 +1,5 @@
 /* Deploy with --no-verify-jwt; authenticate database webhooks using WEBHOOK_SECRET.
- * notify_partner_webhook() comes from 0004/0006; migrations through 0012 select the kept triggers.
+ * notify_partner_webhook() comes from 0004/0006; migrations through 0013 select the kept triggers.
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendToUser } from '../_shared/push.ts'
@@ -110,7 +110,7 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
         .gte('created_at', new Date(Date.now() - 30 * 60_000).toISOString())
       if (error) throw error
       return [{ to: partnerId, ...quoteNotification({ name, book: title.title, kind: record.kind,
-        count: count ?? 1, locked: isLocked, page: record.page, body: record.body,
+        count: count ?? 1, locked: isLocked, page: record.page, body: record.body, photoPath: record.photo_path,
         actorId, bookId: String(record.book_id) }), url: `/citas#c-${record.id}` }]
     }
     case 'quote_replies': {

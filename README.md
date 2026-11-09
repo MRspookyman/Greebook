@@ -17,6 +17,13 @@ Ambas vistas agrupan un libro por año y respetan los filtros de personas, búsq
 La lista muestra las notas de ambos sin ocultarlas; en relecturas del mismo año cuenta la última
 finalización de cada persona. Las medias y la ordenación usan solo las personas y formatos visibles.
 
+En **Citas** puedes buscar por texto, comentario o libro y filtrar por cualquiera de los libros con citas.
+Las citas y notas propias se pueden editar; también tus respuestas. Puedes adjuntar una foto de página
+(JPEG comprimido, máximo 1600 px) sin escribir texto y compartir las citas abiertas como una imagen.
+«Sin spoilers» permite ver una cita compartida sin esperar al progreso de lectura.
+En Kindle sin número de páginas, una cita con página espera hasta terminar la lectura (o abrirla antes);
+sin página o marcada «Sin spoilers» se ve directamente.
+
 ## Desarrollo
 
 ```bash
@@ -34,8 +41,8 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 
 1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`, `0003_drop_ebook.sql`,
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
-   `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`
-   y `0012_avisos.sql` en ese orden.
+   `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`,
+   `0012_avisos.sql` y `0013_citas_fotos.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
@@ -49,6 +56,11 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    La 0012 retira solo los triggers de avisos obsoletos (sin borrar tablas) e indexa las ráfagas de citas.
    Tras aplicarla, vuelve a desplegar `notify-partner`, `send-reminders` y el cliente actualizado.
    Configura los marcadores de URL y secretos de los avisos con el paso 5.
+   La 0013 permite fotos privadas de páginas y citas sin texto si tienen foto, mantiene las fotos ocultas
+   mientras haya spoilers y añade permisos para editar/borrar respuestas propias.
+   Aplícala antes de desplegar el nuevo cliente y vuelve a desplegar `notify-partner`.
+   Las fotos se guardan en el bucket privado `quote-photos` (2 MiB, JPEG/WebP); el cliente usa enlaces firmados
+   de una hora. Al borrar una cita o quitar su foto se intenta eliminar el archivo asociado.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.
