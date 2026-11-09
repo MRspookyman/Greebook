@@ -59,7 +59,9 @@ export function Layout() {
         ref={mainRef}
         id="main-content"
         tabIndex={-1}
-        className={`mx-auto max-w-xl px-5 ${focus ? 'night min-h-dvh bg-transparent' : ''}`}
+        // overflow-x-clip: the page slides in sideways and full-bleed rows (-mx-5) would poke past the screen edge
+        // for a moment; on Android that widens the document, Chrome zooms out and the tab bar ends up cut off.
+        className={`mx-auto max-w-xl overflow-x-clip px-5 ${focus ? 'night min-h-dvh bg-transparent' : ''}`}
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 22px)',
           paddingBottom: focus

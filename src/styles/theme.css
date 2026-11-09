@@ -163,6 +163,8 @@
     -webkit-font-smoothing: antialiased;
     text-wrap: pretty;
     scrollbar-color: var(--rule) var(--bg);
+    /* Nothing may widen the page sideways: on Android that zooms the whole app out and pushes the tab bar off-screen. */
+    overflow-x: clip;
   }
   /* Texture sits behind the application, never over text or controls. */
   body {
