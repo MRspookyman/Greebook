@@ -128,19 +128,6 @@ export interface Reaction {
   created_at: string
 }
 
-export type InviteStatus = 'pending' | 'accepted' | 'declined'
-
-/** Invitation to a «ratito» of reading together. `starts_at` null = now. */
-export interface Invite {
-  id: string
-  from_user: string
-  to_user: string
-  starts_at: string | null
-  status: InviteStatus
-  responded_at: string | null
-  created_at: string
-}
-
 /** «Queremos leer juntos» list item. */
 export interface TogetherItem {
   id: string
@@ -155,18 +142,6 @@ export interface TogetherItem {
 
 export interface TogetherItemWithBook extends TogetherItem {
   book: Book
-}
-
-/** Cooperative goal of the month; `user_a < user_b`. */
-export interface CoupleGoal {
-  user_a: string
-  user_b: string
-  month: string // 'yyyy-MM'
-  kind: 'ratitos' | 'days'
-  target: number
-  proposed_by: string
-  accepted_at: string | null
-  created_at: string
 }
 
 export type QuoteKind = 'cita' | 'nota'
@@ -212,4 +187,13 @@ export interface ReadTogether {
   started_at: string
   ended_at: string | null
   note: string | null
+}
+
+/** One sentence about a book you both finished; your partner's only arrives once you've written yours (0019). */
+export interface BookOpinion {
+  user_id: string
+  book_id: string
+  body: string
+  created_at: string
+  updated_at: string
 }

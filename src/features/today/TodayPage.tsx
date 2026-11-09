@@ -86,6 +86,16 @@ export function TodayPage() {
     0,
   )
   const latest = quotes.find((q) => q.user_id === partner?.id)
+  // What your partner is reading, unless it's a book you share (it already shows on your card) or they're
+  // reading right now (the lamp card above says so).
+  const sharedIds = new Set(rooms.map((room) => room.theirs.id))
+  const partnerNow =
+    partner && !isPartnerReading(partner)
+      ? recentReadings(
+          (partnerReadings.data ?? []).filter((r) => r.status === 'reading' && !sharedIds.has(r.id)),
+          partnerSessions.data ?? [],
+        )[0]
+      : undefined
   const name = partner?.display_name ?? 'tu pareja'
 
   const todayLine = !partner ? (
@@ -244,6 +254,35 @@ export function TodayPage() {
             )
           })}
         </section>
+      )}
+
+      {partner && partnerNow && (
+        <Link
+          to={`/libro/${partnerNow.id}`}
+          className="pressable enter flex min-h-16 items-center gap-3.5"
+          style={{ '--i': 3 } as CSSProperties}
+        >
+          <Cover book={partnerNow.book} width={44} ribbon={partner.accent} />
+          <span className="grid min-w-0 flex-1 gap-1.5">
+            <span className="text-sm">
+              <b className="font-extrabold" style={{ color: `var(--${partner.accent})` }}>
+                {name}
+              </b>{' '}
+              {partnerNow.current_position === 0
+                ? `acaba de empezar «${partnerNow.book.title}»`
+                : partnerNow.unit === 'pages'
+                  ? `va por la p. ${partnerNow.current_position} de «${partnerNow.book.title}»`
+                  : `va por el ${partnerNow.current_position} % de «${partnerNow.book.title}»`}
+            </span>
+            <ProgressBar
+              value={progressFraction(partnerNow)}
+              color={`var(--${partner.accent})`}
+              className="h-1"
+              label={`Progreso de ${name}`}
+            />
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
+        </Link>
       )}
 
       {partner && (

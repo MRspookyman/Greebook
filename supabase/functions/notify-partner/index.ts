@@ -78,6 +78,18 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
   const name = actor.display_name as string
   const partnerId = actor.partner_id as string
   switch (payload.table) {
+    case 'book_opinions': {
+      if (payload.type !== 'INSERT') return []
+      const title = await book(admin, record.book_id)
+      if (!title) return []
+      // The text never goes in the push: it stays blind until the other one writes theirs.
+      const { data: theirs, error } = await admin.from('book_opinions').select('user_id')
+        .eq('user_id', partnerId).eq('book_id', record.book_id).maybeSingle()
+      if (error) throw error
+      return [theirs
+        ? { to: partnerId, title: `📖 ${name} ha escrito su opinión`, body: `Ya podéis leer las dos de «${title.title}»`, url: '/nosotros' }
+        : { to: partnerId, title: `📖 ${name} ha opinado de «${title.title}»`, body: 'Escribe la tuya y se destapan las dos', url: '/nosotros' }]
+    }
     case 'recommendations': {
       if (payload.type !== 'INSERT' || record.to_user !== partnerId || record.status !== 'new') return []
       const title = await book(admin, record.book_id)
@@ -205,7 +217,7 @@ Deno.serve(async (request: Request) => {
   }
   if (!payload?.record || (payload.schema && payload.schema !== 'public'))
     return new Response('Invalid payload', { status: 400 })
-  if (!['profiles', 'read_together', 'quotes', 'quote_replies', 'readings', 'together_items', 'recommendations'].includes(payload.table))
+  if (!['profiles', 'read_together', 'quotes', 'quote_replies', 'readings', 'together_items', 'recommendations', 'book_opinions'].includes(payload.table))
     return Response.json({ sent: false })
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {

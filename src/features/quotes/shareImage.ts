@@ -49,14 +49,24 @@ export function wrapQuoteText(
 
 const WIDTH = 1080
 const HEIGHT = 1350
-const PAPER = '#fffaf7'
-const INK = '#33202c'
-const MUTED = '#735d69'
-const BOOK_FONT = '"Literata Variable", "Literata", Georgia, serif'
-const TITLE_FONT = '"Young Serif", Georgia, serif'
-const SANS_FONT = '"Nunito Variable", "Nunito", sans-serif'
+export const PAPER = '#fffaf7'
+export const INK = '#33202c'
+export const MUTED = '#735d69'
+export const BOOK_FONT = '"Literata Variable", "Literata", Georgia, serif'
+export const TITLE_FONT = '"Young Serif", Georgia, serif'
+export const SANS_FONT = '"Nunito Variable", "Nunito", sans-serif'
 
-function drawTextBox(
+/** Waits for the faces a share image uses, including ones the current screen hasn't drawn yet. */
+export async function loadShareFonts(): Promise<void> {
+  await Promise.all([
+    document.fonts.load(`48px ${BOOK_FONT}`),
+    document.fonts.load(`36px ${TITLE_FONT}`),
+    document.fonts.load(`28px ${SANS_FONT}`),
+  ])
+  await document.fonts.ready
+}
+
+export function drawTextBox(
   context: CanvasRenderingContext2D,
   text: string,
   box: { x: number; y: number; width: number; height: number },
@@ -99,12 +109,7 @@ export async function renderQuoteImage(
   const body = options.body?.trim() ?? ''
   if (!body && !options.photoUrl) throw new Error('La cita no tiene texto ni foto para compartir.')
   // Explicit loads cover fonts that the current screen has not yet used; ready also waits for layout fonts.
-  await Promise.all([
-    document.fonts.load(`48px ${BOOK_FONT}`),
-    document.fonts.load(`36px ${TITLE_FONT}`),
-    document.fonts.load(`28px ${SANS_FONT}`),
-  ])
-  await document.fonts.ready
+  await loadShareFonts()
   const photo = options.photoUrl ? await loadPhoto(options.photoUrl) : null
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH
@@ -167,11 +172,15 @@ export async function renderQuoteImage(
 }
 
 export async function shareQuoteImage(options: ShareQuoteImageOptions): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  const blob = await renderQuoteImage(options)
-  const file = new File([blob], 'cita-greenbook.png', { type: 'image/png' })
+  return sharePng(await renderQuoteImage(options), 'cita-greenbook.png', options.title)
+}
+
+/** Opens the share sheet with a PNG, or downloads it where sharing files isn't available. */
+export async function sharePng(blob: Blob, name: string, title: string): Promise<'shared' | 'downloaded' | 'cancelled'> {
+  const file = new File([blob], name, { type: 'image/png' })
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: options.title })
+      await navigator.share({ files: [file], title })
       return 'shared'
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled'

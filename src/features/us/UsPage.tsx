@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronRight, Lamp, Mail } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
@@ -6,13 +6,14 @@ import { Cover } from '@/components/Cover'
 import { Spine } from '@/components/Spine'
 import { useMe } from '@/features/auth/me'
 import { QuoteCard } from '@/features/quotes/QuoteCard'
-import { WeekStamps } from '@/features/today/WeekStamps'
-import { useTogether } from '@/lib/data'
+import { useOpinions, usePartnerOpinionBooks, useTogether } from '@/lib/data'
 import { fmt } from '@/lib/dates'
 import { pagesEquivalent } from '@/lib/stats/aggregate'
 import type { Accent, ReadingWithBook } from '@/lib/types'
 import { formatDays } from '@/lib/units'
-import { BlindRating } from './BlindRating'
+import { BlindPair } from './BlindPair'
+import { YearInBooks } from './YearInBooks'
+import { summaryYear, yearSummary } from './yearSummary'
 import { TogetherCard } from './TogetherCard'
 import { monthLetter, monthName, talkedQuote } from './together-stats'
 import { useCouple } from './useCouple'
@@ -22,6 +23,8 @@ export function UsPage() {
   const { userId, profile, partner } = useMe()
   const c = useCouple()
   const together = useTogether(!!partner).data ?? []
+  const opinions = useOpinions(!!partner).data ?? []
+  const partnerOpinionBooks = usePartnerOpinionBooks(!!partner).data ?? []
   const [letterOpen, setLetterOpen] = useState(false)
   if (!partner)
     return (
@@ -36,18 +39,25 @@ export function UsPage() {
     const d = new Date(Number(year), Number(month.slice(5, 7)) - 2, 1)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })()
-  const yearMinutes = c.rows
-    .filter((r) => r.started_at.startsWith(year))
-    .reduce((sum, r) => sum + (c.minutes.get(r.id) ?? 0), 0)
-  const hours = yearMinutes / 60
   const monthNights = c.rows.filter((r) => r.started_at.startsWith(month) && c.minutes.has(r.id)).length
   const monthPages = c.sessions
     .filter((s) => s.read_on.startsWith(month))
     .reduce((sum, s) => {
-      const reading = c.mineReadings.find((r) => r.id === s.reading_id) ?? c.theirReadings.find((r) => r.id === s.reading_id)
+      const reading =
+        c.mineReadings.find((r) => r.id === s.reading_id) ?? c.theirReadings.find((r) => r.id === s.reading_id)
       return sum + (reading ? pagesEquivalent(s, reading) : 0)
     }, 0)
   const monthQuotes = c.quotes.filter((q) => q.created_at.startsWith(month) && q.shared).length
+  const monthBothDays = [...c.mineDates].filter((date) => date.startsWith(month) && c.theirDates.has(date)).length
+  // Only what happened: a zero takes a whole tile and says nothing.
+  const monthStats = (
+    [
+      [monthBothDays, monthBothDays === 1 ? 'día leyendo los dos' : 'días leyendo los dos'],
+      [monthPages, 'páginas entre los dos'],
+      [monthQuotes, monthQuotes === 1 ? 'cita compartida' : 'citas compartidas'],
+      [monthNights, monthNights === 1 ? 'noche leyendo a la vez' : 'noches leyendo a la vez'],
+    ] as const
+  ).filter(([value]) => value > 0)
   const talked = talkedQuote(c.quotes, c.reactions, c.replies)
   // The year's shelf, one spine per book with a dot for each reader.
   const shelf = new Map<string, { reading: ReadingWithBook; readers: Accent[] }>()
@@ -74,12 +84,44 @@ export function UsPage() {
       theirs: c.theirReadings.find((t) => t.book_id === mine.book_id && t.status === 'finished'),
     }))
     .filter((pair): pair is { mine: ReadingWithBook; theirs: ReadingWithBook } => !!pair.theirs)
-  const toRate = bothFinished.filter((pair) => pair.mine.rating === null || pair.theirs.rating === null)
+  // Books you both finished that still have something blind to do (a mark or a sentence), or whose sentences were
+  // revealed in the last two weeks; newest first.
+  const opinionOf = (user: string, bookId: string) => opinions.find((o) => o.user_id === user && o.book_id === bookId)
+  const lastFinish = ({ mine, theirs }: { mine: ReadingWithBook; theirs: ReadingWithBook }) =>
+    [mine.finished_on ?? '', theirs.finished_on ?? ''].sort().at(-1) ?? ''
+  const blind = bothFinished
+    .filter(({ mine, theirs }) => {
+      const myOpinion = opinionOf(userId, mine.book_id)
+      const theirOpinion = opinionOf(partner.id, mine.book_id)
+      const revealedAt = myOpinion && theirOpinion ? Math.max(Date.parse(myOpinion.updated_at), Date.parse(theirOpinion.updated_at)) : 0
+      return (
+        mine.rating === null ||
+        theirs.rating === null ||
+        !myOpinion ||
+        !(theirOpinion || partnerOpinionBooks.includes(mine.book_id)) ||
+        Date.parse(c.today) - revealedAt < 14 * 24 * 60 * 60 * 1000
+      )
+    })
+    .sort((a, b) => lastFinish(b).localeCompare(lastFinish(a)))
   const pending = together.filter(
     (item) => (!item.partner_answer && item.partner_id === userId) || (item.partner_answer === 'yes' && !item.start_on),
   )
   const firstDate = [...c.rows.map((r) => r.started_at.slice(0, 10)), ...c.sessions.map((s) => s.read_on)].sort()[0]
   const [first, second] = partner.is_gift_recipient ? [partner, profile] : [profile, partner]
+  const summaryFor = summaryYear(c.today)
+  const summary = yearSummary({
+    year: summaryFor,
+    today: c.today,
+    me: profile,
+    partner,
+    readings: [...c.mineReadings, ...c.theirReadings],
+    sessions: c.sessions,
+    rows: c.rows,
+    minutes: c.minutes,
+    quotes: c.quotes,
+    reactions: c.reactions,
+    replies: c.replies,
+  })
   const letter = monthLetter({
     month: previous,
     me: profile,
@@ -95,21 +137,30 @@ export function UsPage() {
 
   return (
     <div className="space-y-8 pb-4">
-      <header className="card enter relative px-5 py-6 text-center">
+      <header className="card enter relative flex items-center gap-4 px-5 py-4">
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-2 rounded-[18px] border-[1.5px] border-[color-mix(in_oklab,var(--plum)_30%,transparent)]"
+          className="pointer-events-none absolute inset-1.5 rounded-[18px] border-[1.5px] border-[color-mix(in_oklab,var(--plum)_30%,transparent)]"
         />
-        <p className="text-xs font-extrabold tracking-[0.2em] text-muted uppercase">Ex libris</p>
-        <p className="my-1 font-serif text-[52px] leading-tight" aria-hidden>
+        <p className="font-serif text-[30px] leading-none whitespace-nowrap" aria-hidden>
           <span style={{ color: `var(--${first.accent})` }}>{first.display_name.charAt(0)}</span>
           <span className="font-[family-name:var(--font-book)] text-rose italic">&amp;</span>
           <span style={{ color: `var(--${second.accent})` }}>{second.display_name.charAt(0)}</span>
         </p>
-        <h1 className="text-[21px]">
-          {first.display_name} y {second.display_name}
-        </h1>
-        {firstDate && <p className="text-sm text-muted">Leyendo juntos desde {fmt(firstDate, "MMMM 'de' yyyy")}</p>}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[18px] leading-tight [overflow-wrap:anywhere]">
+            {first.display_name} y {second.display_name}
+          </h1>
+          {firstDate && <p className="text-[13px] text-muted">Desde {fmt(firstDate, "MMMM 'de' yyyy")}</p>}
+        </div>
+        {/* The streak's week lives in Inicio; here, a way into its calendar. */}
+        <Link
+          to="/nosotros/racha"
+          className="pill relative min-h-11 flex-none"
+          aria-label={`Racha de los dos: ${formatDays(c.streak.current)}. Ver el calendario`}
+        >
+          <Lamp size={15} className="text-amber-ink" aria-hidden /> {formatDays(c.streak.current)}
+        </Link>
       </header>
 
       {pending.length > 0 && (
@@ -123,59 +174,24 @@ export function UsPage() {
         </section>
       )}
 
-      <section
-        className="card enter grid gap-1.5"
-        style={{ '--i': 1 } as CSSProperties}
-        aria-label="Horas leyendo a la vez"
-      >
-        <p className="font-serif text-[50px] leading-none tabular-nums">
-          {Math.floor(hours)} <span className="text-[22px]">{Math.floor(hours) === 1 ? 'hora' : 'horas'}</span>
-        </p>
-        <p className="font-extrabold">leyendo a la vez en {year}</p>
-        <p className="text-sm text-muted">
-          {hours >= 1
-            ? `${Math.round(yearMinutes)} minutos con un libro cada uno y el otro al lado.`
-            : 'Cuando uno lea y el otro se una, las horas se irán sumando aquí.'}
-        </p>
-      </section>
-
-      <section className="card space-y-3" aria-labelledby="racha">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="racha">Racha de los dos</h2>
-          <Link
-            to="/nosotros/racha"
-            className="pill min-h-11"
-            aria-label={`Ver la racha: ${formatDays(c.streak.current)}`}
+      {monthStats.length > 0 && (
+        <section className="space-y-3" aria-labelledby="mes">
+          <h2 id="mes">{monthName(month).charAt(0).toUpperCase() + monthName(month).slice(1)}, de momento</h2>
+          <div
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${monthStats.length === 4 ? 2 : monthStats.length}, minmax(0, 1fr))`,
+            }}
           >
-            <Lamp size={15} className="text-amber-ink" aria-hidden /> {formatDays(c.streak.current)}
-            <ChevronRight size={15} aria-hidden />
-          </Link>
-        </div>
-        <WeekStamps
-          today={c.today}
-          mine={c.mineDates}
-          theirs={c.theirDates}
-          profile={profile}
-          partner={partner}
-          wildcards={c.streak.wildcards}
-        />
-      </section>
-
-      <section className="space-y-3" aria-labelledby="mes">
-        <h2 id="mes">{monthName(month).charAt(0).toUpperCase() + monthName(month).slice(1)}, de momento</h2>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            [monthNights, monthNights === 1 ? 'noche leyendo a la vez' : 'noches leyendo a la vez'],
-            [monthPages, 'páginas entre los dos'],
-            [monthQuotes, monthQuotes === 1 ? 'cita compartida' : 'citas compartidas'],
-          ].map(([value, label]) => (
-            <div key={label} className="card grid content-start gap-0.5 p-3">
-              <b className="font-serif text-2xl font-normal tabular-nums">{value}</b>
-              <span className="text-[12.5px] leading-snug text-muted">{label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+            {monthStats.map(([value, label]) => (
+              <div key={label} className="card grid content-start gap-0.5 p-3">
+                <b className="font-serif text-2xl font-normal tabular-nums">{value}</b>
+                <span className="text-[12.5px] leading-snug text-muted">{label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {shelfBooks.length > 0 && (
         <section className="space-y-3" aria-labelledby="estanteria">
@@ -202,10 +218,10 @@ export function UsPage() {
         </section>
       )}
 
-      {toRate.length > 0 && (
+      {blind.length > 0 && (
         <section className="space-y-3" aria-labelledby="ciegas">
-          <h2 id="ciegas">Valorad a ciegas</h2>
-          {toRate.slice(0, 2).map(({ mine, theirs }) => (
+          <h2 id="ciegas">A ciegas</h2>
+          {blind.slice(0, 2).map(({ mine, theirs }) => (
             <article key={mine.id} className="card space-y-3">
               <div className="flex items-center gap-3">
                 <Cover book={mine.book} width={44} ribbons={[partner.accent, profile.accent]} />
@@ -215,7 +231,7 @@ export function UsPage() {
                   <span className="text-sm text-muted">Lo habéis terminado los dos</span>
                 </p>
               </div>
-              <BlindRating mine={mine} theirs={theirs} />
+              <BlindPair mine={mine} theirs={theirs} />
             </article>
           ))}
         </section>
@@ -228,6 +244,9 @@ export function UsPage() {
         </section>
       )}
 
+      {(summary.books > 0 || summary.bothDays > 0) && (
+        <YearInBooks summary={summary} names={`${first.display_name} y ${second.display_name}`} />
+      )}
       <button
         type="button"
         className="card flex min-h-[84px] w-full items-center gap-4 text-left"

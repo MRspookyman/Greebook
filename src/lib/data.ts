@@ -3,11 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHiddenIds, withoutHidden } from './undo'
 import { supabase } from './supabase'
 import type {
-  CoupleGoal,
+  BookOpinion,
   ReadTogether,
   Quote,
   QuoteReply,
-  Invite,
   Profile,
   Reaction,
   ReadingWithBook,
@@ -27,18 +26,18 @@ export const qk = {
   sessions: (userId: string) => ['sessions', userId] as const,
   /** Every ❤️ visible to me (mine + partner's). */
   reactions: () => ['reactions'] as const,
-  /** Ratito invitations sent or received. */
-  invites: () => ['invites'] as const,
   /** «Queremos leer juntos» list. */
   together: () => ['together'] as const,
   /** Quotes and notes visible to me (mine + partner's shared) via `quotes_visible`. */
   quotes: () => ['quotes'] as const,
   /** Replies on visible quotes. */
   quoteReplies: () => ['quote-replies'] as const,
+  /** Blind opinions visible to me: mine, and my partner's once I've written mine. */
+  opinions: () => ['opinions'] as const,
+  /** Books my partner has an opinion of (without the text). */
+  partnerOpinionBooks: () => ['partner-opinion-books'] as const,
   /** Times we read at the same time, newest first. */
   readTogether: () => ['read-together'] as const,
-  /** Cooperative goal for a month ('yyyy-MM'). */
-  coupleGoal: (month: string) => ['couple-goal', month] as const,
 }
 
 const PAGE = 1000
@@ -134,21 +133,6 @@ export function useReactions() {
   })
 }
 
-export function useInvites(enabled = true) {
-  return useQuery({
-    queryKey: qk.invites(),
-    enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('invites')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200)
-      if (error) throw error
-      return data as Invite[]
-    },
-  })
-}
 
 export function useTogether(enabled = true) {
   return useQuery({
@@ -165,17 +149,6 @@ export function useTogether(enabled = true) {
   })
 }
 
-export function useCoupleGoal(month: string, enabled = true) {
-  return useQuery({
-    queryKey: qk.coupleGoal(month),
-    enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('couple_goals').select('*').eq('month', month).maybeSingle()
-      if (error) throw error
-      return data as CoupleGoal | null
-    },
-  })
-}
 
 /** Every quote I can see, newest first. Locked ones come without body/comment. */
 export function useQuotes(enabled = true) {
@@ -257,5 +230,29 @@ export function useRecommendations() {
     queryFn: () => fetchAll<Recommendation>((from, to) =>
       supabase.from('recommendations').select('*, book:books(*)')
         .order('created_at', { ascending: false }).range(from, to)),
+  })
+}
+
+export function useOpinions(enabled = true) {
+  return useQuery({
+    queryKey: qk.opinions(),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('book_opinions').select('*')
+      if (error) throw error
+      return data as BookOpinion[]
+    },
+  })
+}
+
+export function usePartnerOpinionBooks(enabled = true) {
+  return useQuery({
+    queryKey: qk.partnerOpinionBooks(),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('partner_opinion_books')
+      if (error) throw error
+      return (data ?? []) as string[]
+    },
   })
 }

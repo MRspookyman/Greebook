@@ -26,6 +26,11 @@ páginas y el borrado, solo en la última. Borrar citas, respuestas o la última
 La app avisa con «Hay una versión nueva · Actualizar» en lugar de recargarse sola, y busca versiones nuevas al volver
 a abrirla. En Android, al mantener pulsado el icono aparecen los atajos Leer, Apuntar páginas y Nueva cita.
 
+En **Inicio** aparece qué está leyendo tu pareja cuando no compartís libro. En **Nosotros**, «A ciegas» reúne la nota
+y una frase de cada uno sobre los libros que habéis terminado los dos (también en la pestaña Juntos del libro), y
+«Vuestro año en libros» resume el año (en enero, el que acaba de terminar) y se puede compartir como imagen. La racha
+de los dos se ve en Inicio; en Nosotros queda el acceso a su calendario. Exportar incluye tus citas y opiniones.
+
 En **Citas** puedes buscar por texto, comentario o libro y filtrar por cualquiera de los libros con citas.
 Las citas y notas propias se pueden editar; también tus respuestas. Puedes adjuntar una foto de página
 (JPEG comprimido, máximo 1600 px) sin escribir texto y compartir las citas abiertas como una imagen.
@@ -52,7 +57,7 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
    `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`,
    `0012_avisos.sql`, `0013_citas_fotos.sql`, `0014_libros_editables.sql`, `0015_etiquetas_recomendaciones.sql`,
-   `0016_sesiones_hora.sql`, `0017_abandono.sql` y `0018_sesiones_tiempo.sql` en ese orden.
+   `0016_sesiones_hora.sql`, `0017_abandono.sql`, `0018_sesiones_tiempo.sql` y `0019_opiniones.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
@@ -81,6 +86,9 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    y hace que `edit_reading_units` las conserve al convertir unidades. Aplícala antes de desplegar el cliente; con
    el cliente anterior no cambia nada. Vuelve a desplegar también `send-reminders` (nuevo texto del recordatorio):
    `npx supabase functions deploy send-reminders --project-ref <project-ref> --no-verify-jwt`.
+   La 0019 crea `book_opinions`, la opinión a ciegas: una frase por persona y libro terminado. La de tu pareja no se
+   puede leer (tampoco desde la API) hasta que escribes la tuya; `partner_opinion_books()` solo dice si ya la escribió.
+   Añade el aviso al escribirla: vuelve a desplegar `notify-partner` (el texto nunca va en el aviso).
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.

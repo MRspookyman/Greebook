@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { todayISO } from '@/lib/dates'
-import type { Message, Note, Profile, ReadingWithBook, Session } from '@/lib/types'
+import type { BookOpinion, Message, Note, Profile, Quote, ReadingWithBook, Session } from '@/lib/types'
 import { formatLabel, unitLabel } from '@/lib/units'
 
 interface ExportData {
@@ -9,6 +9,10 @@ interface ExportData {
   sessions: Session[]
   notes: Note[]
   messages: Message[]
+  /** Your own quotes and notes (the ones you wrote, shared or not). */
+  quotes: Omit<Quote, 'book' | 'locked'>[]
+  /** Your blind opinions of books you finished. */
+  opinions: BookOpinion[]
 }
 
 export class ExportFetchError extends Error {
@@ -68,7 +72,7 @@ function readingsCsv(readings: ReadingWithBook[]): string {
 }
 
 export async function exportGreenbook(userId: string): Promise<void> {
-  const [profileResult, readings, sessions, notes, messages] = await Promise.all([
+  const [profileResult, readings, sessions, notes, messages, quotes, opinions] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     allRows<ReadingWithBook>((from, to) =>
       supabase.from('readings').select('*, book:books(*)').eq('user_id', userId).order('id').range(from, to),
@@ -86,11 +90,17 @@ export async function exportGreenbook(userId: string): Promise<void> {
         .order('id')
         .range(from, to),
     ),
+    allRows<Omit<Quote, 'book' | 'locked'>>((from, to) =>
+      supabase.from('quotes').select('*').eq('user_id', userId).order('id').range(from, to),
+    ),
+    allRows<BookOpinion>((from, to) =>
+      supabase.from('book_opinions').select('*').eq('user_id', userId).order('book_id').range(from, to),
+    ),
   ]).catch(() => {
     throw new ExportFetchError()
   })
   if (profileResult.error) throw new ExportFetchError()
-  const data: ExportData = { profile: profileResult.data as Profile, readings, sessions, notes, messages }
+  const data: ExportData = { profile: profileResult.data as Profile, readings, sessions, notes, messages, quotes, opinions }
   const date = todayISO()
   const files = [
     new File([JSON.stringify(data, null, 2)], `greenbook-${date}.json`, { type: 'application/json;charset=utf-8' }),

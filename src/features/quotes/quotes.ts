@@ -1,5 +1,5 @@
 import { useMe } from '@/features/auth/me'
-import { qk, useQuoteReplies, useQuotes, useReadings } from '@/lib/data'
+import { qk, useQuoteReplies, useQuotes } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Quote, QuoteKind, Reaction, ReadingWithBook } from '@/lib/types'
@@ -170,9 +170,4 @@ export function shareNote(
     }
   }
   return { locked: false, text: `${partnerName} la verá en Citas y le llegará un aviso suave.` }
-}
-
-export function usePartnerReadings() {
-  const { partner } = useMe()
-  return useReadings(partner?.id)
 }

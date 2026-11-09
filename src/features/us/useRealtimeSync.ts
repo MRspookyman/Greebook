@@ -8,13 +8,12 @@ const TABLES = [
   'message_pings',
   'read_together',
   'quote_replies',
-  'invites',
   'together_items',
-  'couple_goals',
   'reactions',
   'readings',
   'sessions',
   'profiles',
+  'book_opinions',
 ] as const
 
 export function useRealtimeSync(): void {
@@ -29,7 +28,6 @@ export function useRealtimeSync(): void {
         const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as {
           id?: string
           user_id?: string
-          month?: string
         }
         // Progress can open a quote left further ahead; pings say a quote or reply changed.
         if (table === 'message_pings' || table === 'readings' || table === 'quote_replies') {
@@ -43,14 +41,12 @@ export function useRealtimeSync(): void {
           case 'read_together':
             void qc.invalidateQueries({ queryKey: qk.readTogether() })
             return
-          case 'invites':
-            void qc.invalidateQueries({ queryKey: qk.invites() })
-            return
           case 'together_items':
             void qc.invalidateQueries({ queryKey: qk.together() })
             return
-          case 'couple_goals':
-            void qc.invalidateQueries({ queryKey: row.month ? qk.coupleGoal(row.month) : ['couple-goal'] })
+          case 'book_opinions':
+            void qc.invalidateQueries({ queryKey: qk.opinions() })
+            void qc.invalidateQueries({ queryKey: qk.partnerOpinionBooks() })
             return
           case 'reactions':
             void qc.invalidateQueries({ queryKey: qk.reactions() })

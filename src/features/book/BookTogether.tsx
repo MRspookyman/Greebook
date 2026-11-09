@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useMe } from '@/features/auth/me'
-import { qk, useTogether } from '@/lib/data'
+import { qk, useReadings, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { ReadingWithBook } from '@/lib/types'
@@ -11,6 +11,7 @@ import { toast } from '@/components/toast'
 import { useRooms } from '@/features/us/rooms'
 import { addTogether } from '@/features/us/together'
 import { TogetherEstimates } from './PaceEstimate'
+import { BlindPair } from '@/features/us/BlindPair'
 
 export function BookTogether({ reading }: { reading: ReadingWithBook }) {
   const { userId, profile, partner } = useMe()
@@ -20,6 +21,13 @@ export function BookTogether({ reading }: { reading: ReadingWithBook }) {
   const [reasonOpen, setReasonOpen] = useState(false)
   const [reason, setReason] = useState('')
   const listed = together.data?.some((item) => item.book_id === reading.book_id)
+  // Both of you finished it: this is where your blind sentences about it live.
+  const myReadings = useReadings(userId).data
+  const theirReadings = useReadings(partner?.id).data
+  const finishedOf = (readings: ReadingWithBook[] | undefined) =>
+    readings?.find((item) => item.book_id === reading.book_id && item.status === 'finished')
+  const myFinished = finishedOf(myReadings)
+  const theirFinished = finishedOf(theirReadings)
 
   async function add() {
     setAdding(true)
@@ -53,7 +61,12 @@ export function BookTogether({ reading }: { reading: ReadingWithBook }) {
   }
   return (
     <section className="space-y-3 py-2">
-      {room ? (
+      {partner && myFinished && theirFinished ? (
+        <>
+          <p className="text-sm text-muted">Lo habéis terminado los dos.</p>
+          <BlindPair mine={myFinished} theirs={theirFinished} />
+        </>
+      ) : room ? (
         <>
           <DualProgressBar
             a={{
