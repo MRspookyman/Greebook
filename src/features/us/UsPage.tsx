@@ -14,7 +14,7 @@ import type { Accent, ReadingWithBook } from '@/lib/types'
 import { formatDays } from '@/lib/units'
 import { BlindRating } from './BlindRating'
 import { TogetherCard } from './TogetherCard'
-import { lovedQuote, monthLetter, monthName } from './together-stats'
+import { monthLetter, monthName, talkedQuote } from './together-stats'
 import { useCouple } from './useCouple'
 
 /** Nosotros: not statistics, what you share. Hours side by side, your shelf, your streak, your favourite words. */
@@ -48,7 +48,7 @@ export function UsPage() {
       return sum + (reading ? pagesEquivalent(s, reading) : 0)
     }, 0)
   const monthQuotes = c.quotes.filter((q) => q.created_at.startsWith(month) && q.shared).length
-  const loved = lovedQuote(c.quotes, c.reactions, c.replies)
+  const talked = talkedQuote(c.quotes, c.reactions, c.replies)
   // The year's shelf, one spine per book with a dot for each reader.
   const shelf = new Map<string, { reading: ReadingWithBook; readers: Accent[] }>()
   for (const [readings, accent] of [
@@ -221,10 +221,10 @@ export function UsPage() {
         </section>
       )}
 
-      {loved && (
-        <section className="space-y-3" aria-labelledby="querida">
-          <h2 id="querida">La cita más querida</h2>
-          <QuoteCard quote={loved} compact />
+      {talked && (
+        <section className="space-y-3" aria-labelledby="hablar">
+          <h2 id="hablar">La que más dio que hablar</h2>
+          <QuoteCard quote={talked} compact />
         </section>
       )}
 

@@ -14,14 +14,16 @@ export function togetherMinutes(rows: ReadTogether[], sessions: Session[]): Map<
   return out
 }
 
-/** The quote you loved most: hearts and replies, newest on a tie. */
-export function lovedQuote(quotes: Quote[], reactions: Reaction[], replies: QuoteReply[]): Quote | undefined {
-  const score = (q: Quote) =>
-    reactions.filter((r) => r.target_id === q.id).length + replies.filter((r) => r.quote_id === q.id).length
+/**
+ * The quote that sparked the most conversation: most replies; with only two of you a heart is 0 or 1,
+ * so it just breaks ties, then newest. Quotes nobody replied to never qualify.
+ */
+export function talkedQuote(quotes: Quote[], reactions: Reaction[], replies: QuoteReply[]): Quote | undefined {
+  const replyCount = (q: Quote) => replies.filter((r) => r.quote_id === q.id).length
+  const hearted = (q: Quote) => (reactions.some((r) => r.target_id === q.id) ? 1 : 0)
   return quotes
-    .filter((q) => q.shared && !q.locked && q.body)
-    .sort((a, b) => score(b) - score(a) || b.created_at.localeCompare(a.created_at))
-    .find((q) => score(q) > 0)
+    .filter((q) => q.shared && !q.locked && q.body && replyCount(q) > 0)
+    .sort((a, b) => replyCount(b) - replyCount(a) || hearted(b) - hearted(a) || b.created_at.localeCompare(a.created_at))[0]
 }
 
 const MONTHS = [
@@ -72,7 +74,7 @@ export function monthLetter(input: {
       .filter((r) => r.user_id === person.id && r.status === 'finished' && r.finished_on && inMonth(r.finished_on))
       .map((r) => `«${r.book.title}»`)
   const list = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items.at(-1)}` : items[0])
-  const loved = lovedQuote(
+  const talked = talkedQuote(
     input.quotes.filter((q) => inMonth(q.created_at.slice(0, 10))),
     input.reactions,
     input.replies,
@@ -95,9 +97,9 @@ export function monthLetter(input: {
     const books = finished(person)
     if (books.length) out.push(`${person.display_name} terminó ${list(books)}.`)
   }
-  if (loved?.body) {
-    const text = loved.body.length > 140 ? `${loved.body.slice(0, 139)}…` : loved.body
-    out.push(`La cita que más os gustó: «${text}»${/[.!?…]$/.test(text) ? '' : '.'}`)
+  if (talked?.body) {
+    const text = talked.body.length > 140 ? `${talked.body.slice(0, 139)}…` : talked.body
+    out.push(`La cita que más dio que hablar: «${text}»${/[.!?…]$/.test(text) ? '' : '.'}`)
   }
   out.push('Que el mes que viene os pille con un libro entre las manos, y el otro al lado.')
   return out
