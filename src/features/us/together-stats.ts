@@ -24,61 +24,6 @@ export function lovedQuote(quotes: Quote[], reactions: Reaction[], replies: Quot
     .find((q) => score(q) > 0)
 }
 
-export interface Milestone {
-  title: string
-  detail: string
-  done: boolean
-  icon: 'moon' | 'lamp' | 'heart' | 'cup' | 'book' | 'books'
-}
-
-export function milestones(input: {
-  nightsTogether: number
-  hoursTogether: number
-  bestStreak: number
-  duoFinished: boolean
-  booksThisYear: number
-  year: string
-}): Milestone[] {
-  return [
-    {
-      title: 'Primera noche juntos',
-      detail: input.nightsTogether ? 'Hecho' : 'Uníos a una lectura',
-      done: input.nightsTogether > 0,
-      icon: 'moon',
-    },
-    {
-      title: 'Una semana seguida',
-      detail: input.bestStreak >= 7 ? 'Hecho' : `Mejor racha: ${input.bestStreak}`,
-      done: input.bestStreak >= 7,
-      icon: 'lamp',
-    },
-    {
-      title: 'Veinte días seguidos',
-      detail: input.bestStreak >= 20 ? 'Hecho' : `Mejor racha: ${input.bestStreak}`,
-      done: input.bestStreak >= 20,
-      icon: 'heart',
-    },
-    {
-      title: '50 horas a la vez',
-      detail: input.hoursTogether >= 50 ? 'Hecho' : `Lleváis ${Math.floor(input.hoursTogether)}`,
-      done: input.hoursTogether >= 50,
-      icon: 'cup',
-    },
-    {
-      title: 'Primer libro a dúo',
-      detail: input.duoFinished ? 'Hecho' : 'Terminad uno los dos',
-      done: input.duoFinished,
-      icon: 'book',
-    },
-    {
-      title: `10 libros en ${input.year}`,
-      detail: input.booksThisYear >= 10 ? 'Hecho' : `Lleváis ${input.booksThisYear}`,
-      done: input.booksThisYear >= 10,
-      icon: 'books',
-    },
-  ]
-}
-
 const MONTHS = [
   'enero',
   'febrero',

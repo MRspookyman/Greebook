@@ -25,7 +25,7 @@ todas las pantallas. Los datos son de ejemplo y no toca Supabase.
 | Ratitos (invitaciones) | **Leer juntos en directo**: te unes a su sesión, cronómetro compartido, página del otro en vivo, latidos y un ticket al terminar. |
 | Huellas, notas privadas y mensajes de sala | **Citas y notas en una página**: una sola idea. Compartidas por defecto, cerradas si serían spoiler, con corazón y respuestas. |
 | Salas por libro | **Ficha a dúo**: las dos cintas sobre el libro, cada cita marcada en su página y las sesiones de los dos. |
-| Estadísticas | **Nosotros**: horas a la vez, noches juntos, estantería del año, la cita más querida, reto del mes, hitos y carta del mes. Los números personales pasan a Perfil. |
+| Estadísticas | **Nosotros**: horas a la vez, noches juntos, estantería del año, la cita más querida y carta del mes. Los números personales pasan a Perfil. |
 | Racha individual | **Racha de los dos** con 2 comodines al mes, y la de cada uno al lado, sin comparar. |
 | Queremos leer juntos | Se mantiene en Biblioteca y Nosotros. |
 | — | **Valorar a ciegas** cuando terminéis el mismo libro. |
@@ -84,8 +84,8 @@ lectura de ella (con «Queremos leerlo juntos»).
 ### 3.6 Nosotros
 
 Ex libris con vuestras iniciales (L & J), horas leyendo a la vez en el año, racha, el mes en curso (noches juntos, páginas entre
-los dos, citas), estantería del año, la cita más querida, reto del mes cooperativo, hitos en forma de sello, la carta del
-mes y la lista para leer juntos. Nada de gráficas de rendimiento.
+los dos, citas), estantería del año, la cita más querida, la carta del mes y la lista para leer juntos. Sin hitos ni retos:
+se retiraron porque repetían datos de la misma pantalla. Nada de gráficas de rendimiento.
 
 ### 3.7 Valorar a ciegas
 

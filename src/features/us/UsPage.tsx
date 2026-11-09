@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
-import { BookOpen, ChevronRight, Coffee, Heart, Lamp, Library, Lock, Mail, Moon } from 'lucide-react'
+import { ChevronRight, Lamp, Mail } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { Spine } from '@/components/Spine'
@@ -14,18 +14,8 @@ import type { Accent, ReadingWithBook } from '@/lib/types'
 import { formatDays } from '@/lib/units'
 import { BlindRating } from './BlindRating'
 import { TogetherCard } from './TogetherCard'
-import { lovedQuote, milestones, monthLetter, monthName, type Milestone } from './together-stats'
+import { lovedQuote, monthLetter, monthName } from './together-stats'
 import { useCouple } from './useCouple'
-
-const NIGHTS_GOAL = 10
-const ICONS: Record<Milestone['icon'], typeof Moon> = {
-  moon: Moon,
-  lamp: Lamp,
-  heart: Heart,
-  cup: Coffee,
-  book: BookOpen,
-  books: Library,
-}
 
 /** Nosotros: not statistics, what you share. Hours side by side, your shelf, your streak, your favourite words. */
 export function UsPage() {
@@ -85,14 +75,6 @@ export function UsPage() {
     }))
     .filter((pair): pair is { mine: ReadingWithBook; theirs: ReadingWithBook } => !!pair.theirs)
   const toRate = bothFinished.filter((pair) => pair.mine.rating === null || pair.theirs.rating === null)
-  const goals = milestones({
-    nightsTogether: c.minutes.size,
-    hoursTogether: c.rows.reduce((sum, r) => sum + (c.minutes.get(r.id) ?? 0), 0) / 60,
-    bestStreak: c.streak.best,
-    duoFinished: bothFinished.length > 0,
-    booksThisYear: readsThisYear,
-    year,
-  })
   const pending = together.filter(
     (item) => (!item.partner_answer && item.partner_id === userId) || (item.partner_answer === 'yes' && !item.start_on),
   )
@@ -245,66 +227,6 @@ export function UsPage() {
           <QuoteCard quote={loved} compact />
         </section>
       )}
-
-      <section className="card space-y-3" aria-labelledby="reto">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="reto">Reto de {monthName(month)}</h2>
-          <span className="pill">
-            {Math.min(monthNights, NIGHTS_GOAL)} de {NIGHTS_GOAL}
-          </span>
-        </div>
-        <p className="text-sm text-muted">
-          Leer a la vez {NIGHTS_GOAL} noches. Vale cualquier noche en la que os juntéis, aunque sea un rato.
-        </p>
-        <div className="grid grid-cols-10 gap-1.5" role="img" aria-label={`${monthNights} de ${NIGHTS_GOAL} noches`}>
-          {Array.from({ length: NIGHTS_GOAL }, (_, i) => (
-            <i
-              key={i}
-              className="h-3 rounded-full"
-              style={{
-                background:
-                  i < monthNights
-                    ? `linear-gradient(90deg, var(--${partner.accent}), var(--${profile.accent}))`
-                    : 'var(--sunk)',
-              }}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="hitos">
-        <h2 id="hitos">Hitos</h2>
-        <div className="grid grid-cols-3 gap-x-2 gap-y-4">
-          {goals.map((goal, index) => {
-            const Icon = goal.done ? ICONS[goal.icon] : Lock
-            return (
-              <div
-                key={goal.title}
-                className="grid justify-items-center gap-1.5 text-center text-[12.5px] font-extrabold leading-tight"
-              >
-                <span
-                  className={`grid h-[70px] w-[70px] place-items-center rounded-full ${goal.done ? 'text-rose' : 'bg-sunk text-muted'}`}
-                  style={
-                    goal.done
-                      ? {
-                          background: 'color-mix(in oklab, var(--rose) 10%, var(--surface))',
-                          boxShadow:
-                            'inset 0 0 0 1.5px var(--rose), inset 0 0 0 5px color-mix(in oklab, var(--rose) 10%, var(--surface)), inset 0 0 0 6px color-mix(in oklab, var(--rose) 50%, transparent)',
-                          rotate: `${[-8, 6, -4, 7, -3, 5][index]}deg`,
-                        }
-                      : { boxShadow: 'inset 0 0 0 1.5px var(--rule)' }
-                  }
-                  aria-hidden
-                >
-                  <Icon size={26} fill={goal.done && goal.icon === 'heart' ? 'currentColor' : 'none'} />
-                </span>
-                {goal.title}
-                <small className="font-bold text-muted">{goal.detail}</small>
-              </div>
-            )
-          })}
-        </div>
-      </section>
 
       <button
         type="button"
