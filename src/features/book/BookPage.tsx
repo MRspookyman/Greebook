@@ -338,7 +338,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <section className="space-y-4" aria-label="Progreso de lectura">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="folio text-[38px] leading-none text-accent">
-              {Math.round(progressFraction(reading) * 100)} <span className="text-2xl">%</span>
+              {Math.floor(progressFraction(reading) * 100)} <span className="text-2xl">%</span>
             </p>
             <p className="folio text-[22px] text-muted">
               {reading.unit === 'pages'

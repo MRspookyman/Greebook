@@ -54,7 +54,7 @@ describe('aggregate', () => {
     const s = { start_pos: 10, end_pos: 20 }
     const reading = { unit: 'percent' as const, book: { page_count: null } }
     expect(pagesEquivalent(s, reading)).toBe(0)
-    expect(sessionScore(s, reading)).toBe(0)
+    expect(sessionScore(s, reading)).toBe(30)
   })
 })
 

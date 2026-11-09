@@ -193,6 +193,11 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     : []
   const unlocking = waiting.filter((m) => endPage !== null && (m.page ?? 0) <= endPage)
   const nextLocked = waiting.find((m) => endPage === null || (m.page ?? 0) > endPage)
+  const quoteRemaining = nextLocked
+    ? pagesUnit
+      ? `te faltan ${(nextLocked.page ?? 0) - (endPage ?? 0)} páginas`
+      : `te falta un ${Math.max(0, Math.ceil(((nextLocked.page ?? 0) * reading.total_units) / (reading.book.page_count ?? 1)) - end)} %`
+    : ''
   const other = timer && !mine ? choices.find((choice) => choice.id === timer.readingId) : undefined
   const pct = (value: number) => (reading.total_units > 0 ? Math.round((value / reading.total_units) * 100) : 0)
   const readDates = new Set(sessions.map((session) => session.read_on))
@@ -473,7 +478,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               {!mine && !timer && nextLocked && (
                 <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted">
                   <Lock size={14} aria-hidden />
-                  {name} te dejó algo en la p. {nextLocked.page} · te faltan {(nextLocked.page ?? 0) - (endPage ?? 0)} páginas
+                  {name} te dejó algo en la p. {nextLocked.page} · {quoteRemaining}
                 </p>
               )}
               {mine &&
@@ -607,7 +612,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                     nextLocked && (
                       <p className="flex items-center justify-center gap-1.5 text-muted">
                         <Lock size={14} aria-hidden />
-                        {name} te dejó algo en la p. {nextLocked.page} · te faltan {(nextLocked.page ?? 0) - (endPage ?? 0)} páginas
+                        {name} te dejó algo en la p. {nextLocked.page} · {quoteRemaining}
                       </p>
                     )
                   )}

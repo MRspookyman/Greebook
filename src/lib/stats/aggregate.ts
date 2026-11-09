@@ -10,8 +10,14 @@ export function pagesEquivalent(session: SessionPos, reading: ProgressReading): 
   return reading.unit === 'pages' ? delta : reading.book.page_count ? Math.round(delta / 100 * reading.book.page_count) : 0
 }
 
-/** Calendar intensity is the estimated page advance. */
+/** Intensity only: 1 % ≈ 3 pages when Kindle page count is unknown; never used in page totals. */
+const UNKNOWN_KINDLE_INTENSITY_PER_PERCENT = 3
+
+/** Calendar intensity uses estimated pages, with an activity-only fallback for unknown Kindle lengths. */
 export function sessionScore(session: SessionPos, reading: ProgressReading): number {
+  if (reading.unit === 'percent' && !reading.book.page_count) {
+    return (session.end_pos - session.start_pos) * UNKNOWN_KINDLE_INTENSITY_PER_PERCENT
+  }
   return pagesEquivalent(session, reading)
 }
 

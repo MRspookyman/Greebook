@@ -198,12 +198,13 @@ export function TodayPage() {
                           />
                         </span>
                         <span className="text-[13px] text-muted">
-                          Tú p. {reading.current_position} · {name} p. {room.theirs.current_position}
+                          Tú {formatPosition(reading)} · {name} {formatPosition(room.theirs)}
                         </span>
                       </>
                     ) : (
                       <span className="text-[13px] text-muted">
-                        {formatPosition(reading)} · {Math.round(progressFraction(reading) * 100)} %
+                        {formatPosition(reading)}
+                        {reading.unit !== 'percent' && ` · ${Math.floor(progressFraction(reading) * 100)} %`}
                       </span>
                     )}
                   </span>
@@ -406,7 +407,7 @@ function CurrentReading({
         </p>
         <ProgressBar value={fraction} />
         <p className="text-[13px] text-muted">
-          {Math.round(fraction * 100)} %
+          {Math.floor(fraction * 100)} %
           {finish ? ` · a tu ritmo, lo acabas hacia el ${fmt(finish, "d 'de' MMMM")}` : ''}
         </p>
       </div>

@@ -11,7 +11,8 @@ export interface Surprise {
   key: string
   trigger: SurpriseTrigger
   title: string
-  message: string
+  /** A function receives the current year, for texts like anniversaries. */
+  message: string | ((year: number) => string)
 }
 
 // Textos de Javier para Laura. Las fechas son 'MM-DD' y salen cada año ese día.
@@ -89,8 +90,9 @@ export const SURPRISES: Surprise[] = [
     key: 'anniversary',
     trigger: { type: 'date', monthDay: '10-20' },
     title: 'Feliz aniversario',
-    message:
-      'Otro 20 de octubre a tu lado. De todas las historias que hemos leído, la nuestra sigue siendo mi favorita. Te quiero, gordita.',
+    // Juntos desde el 20/10/2024.
+    message: (year) =>
+      `${year - 2024} años desde aquel 20 de octubre, y cada uno mejor que el anterior. De todas las historias que hemos leído, la nuestra sigue siendo mi favorita. Te quiero, gordita.`,
   },
   {
     key: 'valentines',

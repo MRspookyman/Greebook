@@ -16,7 +16,15 @@ export async function getPushState(): Promise<PushState> {
   const state = initialState()
   if (state !== 'default' || Notification.permission !== 'granted') return state
   const registration = await navigator.serviceWorker.ready
-  return (await registration.pushManager.getSubscription()) ? 'enabled' : 'default'
+  const subscription = await registration.pushManager.getSubscription()
+  if (!subscription) return 'default'
+  const { data, error } = await supabase
+    .from('push_subscriptions')
+    .select('id')
+    .eq('endpoint', subscription.endpoint)
+    .maybeSingle()
+  if (error) throw error
+  return data ? 'enabled' : 'default'
 }
 
 function applicationServerKey(value: string): Uint8Array<ArrayBuffer> {
@@ -26,7 +34,7 @@ function applicationServerKey(value: string): Uint8Array<ArrayBuffer> {
 }
 
 /** Call directly from a click: requestPermission must retain the user gesture on iOS. */
-export async function enablePush(userId: string): Promise<PushState> {
+export async function enablePush(): Promise<PushState> {
   const state = initialState()
   if (state !== 'default') return state
   const permission = await Notification.requestPermission()
@@ -41,18 +49,52 @@ export async function enablePush(userId: string): Promise<PushState> {
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey(key),
     }))
+  await claimSubscription(subscription)
+  return 'enabled'
+}
+
+async function claimSubscription(subscription: PushSubscription): Promise<void> {
   const json = subscription.toJSON()
   if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth)
     throw new Error('La suscripción de avisos está incompleta')
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      endpoint: json.endpoint,
-      p256dh: json.keys.p256dh,
-      auth: json.keys.auth,
-    },
-    { onConflict: 'endpoint' },
-  )
+  const { error } = await supabase.rpc('claim_push_subscription', {
+    p_endpoint: json.endpoint,
+    p_p256dh: json.keys.p256dh,
+    p_auth: json.keys.auth,
+  })
   if (error) throw error
-  return 'enabled'
+}
+
+/** Restore this browser's subscription for the current account, without prompting for permission. */
+export async function syncPushSubscription(): Promise<void> {
+  if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator))
+    return
+  const registration = await navigator.serviceWorker.ready
+  const subscription = await registration.pushManager.getSubscription()
+  if (subscription) await claimSubscription(subscription)
+}
+
+/** Privacy cleanup must finish before auth is removed, but must never prevent signing out. */
+export async function signOutWithPushCleanup(userId: string) {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration()
+      const subscription = await registration?.pushManager?.getSubscription()
+      if (subscription) {
+        try {
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('user_id', userId)
+            .eq('endpoint', subscription.endpoint)
+            .abortSignal(AbortSignal.timeout(3000))
+        } finally {
+          await subscription.unsubscribe()
+        }
+      }
+    } catch {
+      // Offline, expired sessions or browser failures must not trap the user in their account.
+    }
+  }
+  return supabase.auth.signOut()
 }

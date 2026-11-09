@@ -41,7 +41,7 @@ function SurpriseModal({ surprise, onClose, busy }: { surprise: Surprise; onClos
           {surprise.title}
         </h1>
         <p className="whitespace-pre-line font-serif text-2xl italic leading-relaxed [overflow-wrap:anywhere]">
-          {surprise.message}
+          {typeof surprise.message === 'function' ? surprise.message(new Date().getFullYear()) : surprise.message}
         </p>
         <button type="button" className="btn btn-primary mt-4 w-full" onClick={onClose} disabled={busy}>
           {busy ? 'Guardando…' : 'Cerrar'}
@@ -93,14 +93,12 @@ export function SurpriseHost() {
       setDismissed(true)
       return { previous }
     },
-    onError: (error, _seenKey, context) => {
+    onError: (_error, _seenKey, context) => {
       qc.setQueryData(key, context?.previous)
       shownThisLaunch.delete(userId)
       setDismissed(false)
-      toast(
-        'No se pudo guardar la sorpresa',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo cuando tengas conexión.',
-      )
+      // Saving the seen marker is not queued offline, so never promise a later retry.
+      toast('No se pudo guardar la sorpresa', 'Inténtalo de nuevo cuando tengas conexión.')
     },
   })
   if (

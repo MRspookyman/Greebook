@@ -56,9 +56,9 @@ async function openReadings(admin: SupabaseClient, userId: string, bookId: strin
     )) ?? []
   )
 }
-// Exactly the recipient-side rule in public.message_locked(), including non-page units.
+// Recipient-side rule in public.message_locked()/quote_locked(), including non-page units.
 function locked(message: Record<string, unknown>, readings: OpenReading[], pageCount: number | null): boolean {
-  if (message.opened_early || message.page == null || message.book_id == null) return false
+  if (message.safe || message.opened_early || message.page == null || message.book_id == null) return false
   const page = Number(message.page)
   return readings.some(
     (reading) =>
@@ -127,7 +127,21 @@ async function build(admin: SupabaseClient, payload: WebhookPayload): Promise<Pu
     }
     case 'quote_replies': {
       if (payload.type !== 'INSERT') return []
-      return [{ to: partnerId, body: `${name} te ha respondido: «${excerpt(record.body)}»`, url: `/citas#c-${record.quote_id}` }]
+      const quote = await checked(
+        admin.from('quotes').select('user_id, shared, safe, opened_early, page, book_id')
+          .eq('id', String(record.quote_id)).maybeSingle(),
+      )
+      if (!quote || (quote.user_id !== partnerId && !(quote.user_id === actorId && quote.shared))) return []
+      const title = await book(admin, quote.book_id)
+      const isLocked = quote.user_id !== partnerId && locked(
+        quote,
+        await openReadings(admin, partnerId, String(quote.book_id)),
+        title?.page_count ?? null,
+      )
+      const body = isLocked
+        ? `${name} te ha respondido en una cita. La respuesta se abre cuando llegues.`
+        : `${name} te ha respondido: «${excerpt(record.body)}»`
+      return [{ to: partnerId, body, url: `/citas#c-${record.quote_id}` }]
     }
     case 'messages': {
       if (payload.type !== 'INSERT' || record.to_user !== partnerId) return []

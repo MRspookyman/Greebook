@@ -72,7 +72,7 @@ export function useLiveTogether(togetherId: string | null | undefined, myPage: n
 
   useEffect(() => {
     if (!togetherId) return
-    const ch = supabase.channel(`juntos:${togetherId}`, { config: { broadcast: { self: false } } })
+    const ch = supabase.channel(`juntos:${togetherId}`, { config: { private: true, broadcast: { self: false } } })
     const sendPage = () =>
       void ch.send({ type: 'broadcast', event: 'page', payload: { from: userId, page: page.current } })
     ch.on('broadcast', { event: 'page' }, ({ payload }) => {

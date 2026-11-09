@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/types'
 import { LoginPage } from './LoginPage'
 import { MeContext } from './me'
 import { Splash } from '@/components/Splash'
+import { signOutWithPushCleanup, syncPushSubscription } from '@/lib/push'
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -47,6 +48,12 @@ function MeProvider({ userId, children }: { userId: string; children: ReactNode 
 
   useApplyProfileToDocument(profile.data)
 
+  useEffect(() => {
+    void syncPushSubscription().catch(() => {
+      // An offline start must not interrupt reading; the activation button can retry.
+    })
+  }, [userId])
+
   if (profile.isPending) return <Splash />
   if (profile.isError) {
     return (
@@ -58,7 +65,7 @@ function MeProvider({ userId, children }: { userId: string; children: ReactNode 
         <button className="btn btn-outline" onClick={() => profile.refetch()}>
           Reintentar
         </button>
-        <button className="btn btn-link" onClick={() => supabase.auth.signOut()}>
+        <button className="btn btn-link" onClick={() => signOutWithPushCleanup(userId)}>
           Cerrar sesión
         </button>
       </div>

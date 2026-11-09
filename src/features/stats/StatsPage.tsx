@@ -51,7 +51,7 @@ export function StatsPage() {
       label: 'Tiempo',
       value: timeSpent(sessions, { ...range, to: today }),
       previous: timeSpent(sessions, previousRange(period, today)),
-      format: formatMinutes,
+      format: (value: number) => formatMinutes(Math.round(value)),
     },
     {
       label: 'Días con lectura',
@@ -202,6 +202,9 @@ export function StatsPage() {
                   ))}
                   <span>Más</span>
                 </div>
+                <p className="text-xs text-muted">
+                  Sin número de páginas, cada 1 % de Kindle cuenta como 3 puntos de intensidad, no como páginas leídas.
+                </p>
               </>
             )}
           </section>

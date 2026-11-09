@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useMe } from '@/features/auth/me'
 import { enablePush, getPushState, type PushState } from '@/lib/push'
 import { toast } from '@/components/toast'
 
@@ -12,7 +11,6 @@ const messages: Record<PushState, string> = {
 }
 
 export function PushEnableButton() {
-  const { userId } = useMe()
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
@@ -37,7 +35,7 @@ export function PushEnableButton() {
   async function activate() {
     setBusy(true)
     try {
-      setState(await enablePush(userId))
+      setState(await enablePush())
     } catch (error) {
       toast('No se pudieron activar los avisos', error instanceof Error ? error.message : 'Inténtalo de nuevo')
     } finally {

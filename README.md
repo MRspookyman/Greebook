@@ -29,11 +29,17 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 
 1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`, `0003_drop_ebook.sql`,
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
-   `0008_citas.sql`, `0009_leer_juntos.sql` y `0010_historico_ebook.sql` en ese orden.
+   `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql` y `0011_avisos_privacidad.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
    Las citas compartidas y sus respuestas se conservan al borrar una lectura.
+   La 0011 se aplica manualmente también a proyectos existentes, después de la 0010: vincula los avisos al
+   usuario actual, oculta respuestas a citas bloqueadas y protege los participantes y el canal privado de Leer juntos.
+   Después vuelve a desplegar la función con
+   `npx supabase functions deploy notify-partner --project-ref <project-ref> --no-verify-jwt`
+   (conserva los secretos existentes). Despliega también el cliente actualizado; al abrirlo con sesión iniciada
+   recupera la suscripción de avisos del dispositivo para esa cuenta, sin volver a pedir permiso.
    Configura los marcadores de URL y secretos de los avisos con el paso 5.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.

@@ -34,6 +34,16 @@ describe('physical quote pages', () => {
     expect(physicalPagePosition({ unit: 'percent', current_position: 100, total_units: 100, book: { page_count: 301 } })).toBe(301)
   })
 
+  it.each([
+    [29, 100, 29],
+    [57, 100, 57],
+    [70, 350, 245],
+  ])('maps %d %% of %d pages without floating-point undercounting', (position, pageCount, expected) => {
+    expect(physicalPagePosition({
+      unit: 'percent', current_position: position, total_units: 100, book: { page_count: pageCount },
+    })).toBe(expected)
+  })
+
   it('does not invent a page when the Kindle page count is unknown', () => {
     expect(physicalPagePosition({ unit: 'percent', current_position: 45, total_units: 100, book: { page_count: null } })).toBeNull()
     expect(physicalPagePosition({ unit: 'percent', current_position: 45, total_units: 0, book: { page_count: 300 } })).toBeNull()

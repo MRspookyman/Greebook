@@ -53,7 +53,7 @@ export function physicalPagePosition(
 ): number | null {
   if (reading.unit === 'pages') return reading.current_position
   if (!reading.book.page_count || reading.total_units <= 0) return null
-  return Math.floor((reading.current_position / reading.total_units) * reading.book.page_count)
+  return Math.floor((reading.current_position * reading.book.page_count) / reading.total_units)
 }
 
 export function progressFraction(r: Pick<Reading, 'current_position' | 'total_units'>): number {

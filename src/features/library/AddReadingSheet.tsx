@@ -47,7 +47,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
   const qc = useQueryClient()
   const [format, setFormat] = useState<Format>('paper')
   const [pages, setPages] = useState(candidate.page_count ?? 0)
-  const [kindleUnit, setKindleUnit] = useState<Unit>(candidate.page_count ? 'pages' : 'percent')
+  const [kindleUnit, setKindleUnit] = useState<Unit>('pages')
   const [status, setStatus] = useState<'want' | 'reading' | 'finished'>('want')
   const today = todayISO()
   const currentYear = Number(today.slice(0, 4))
@@ -198,20 +198,21 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
         <fieldset>
           <legend className="lbl mb-2">Progreso en Kindle</legend>
           <div className="flex gap-2">
-            {(['percent', 'pages'] as const).map((value) => (
+            {(['pages', 'percent'] as const).map((value) => (
               <button
                 key={value}
                 type="button"
                 className="chip min-h-11"
                 aria-pressed={kindleUnit === value}
-                disabled={value === 'pages' && !candidate.page_count}
                 onClick={() => setKindleUnit(value)}
               >
                 {value === 'percent' ? '%' : 'Páginas'}
               </button>
             ))}
           </div>
-          {!candidate.page_count && <p className="mt-2 text-sm text-muted">Sin número de páginas: registra el porcentaje de Kindle.</p>}
+          {kindleUnit === 'pages' && !candidate.page_count && (
+            <p className="mt-2 text-sm text-muted">Escribe las páginas que marca tu Kindle para este libro.</p>
+          )}
         </fieldset>
       )}
       {unit === 'pages' && (

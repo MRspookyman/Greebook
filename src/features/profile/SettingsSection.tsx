@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from 'react'
 import { useMe } from '@/features/auth/me'
 import { useUpdateProfile } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
+import { signOutWithPushCleanup } from '@/lib/push'
 import type { ThemePref } from '@/lib/types'
 import { toast } from '@/components/toast'
 
@@ -50,7 +51,7 @@ export function SettingsSection() {
   async function signOut() {
     setSigningOut(true)
     try {
-      const { error: signOutError } = await supabase.auth.signOut()
+      const { error: signOutError } = await signOutWithPushCleanup(userId)
       if (signOutError) throw signOutError
     } catch {
       toast('No se pudo cerrar sesión', 'Comprueba la conexión e inténtalo de nuevo.')
