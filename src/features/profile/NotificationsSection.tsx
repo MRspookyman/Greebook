@@ -29,9 +29,6 @@ export function NotificationsSection() {
         Avisos
       </h2>
       <PushEnableButton />
-      <p className="text-sm text-muted">
-        Preferencias de tu cuenta. Solo recibirás estos avisos en los dispositivos donde los hayas activado.
-      </p>
       <Switch
         checked={profile.notify_reminder}
         disabled={update.isPending}
@@ -39,25 +36,28 @@ export function NotificationsSection() {
       >
         Recibir recordatorio diario
       </Switch>
-      <label className="label" htmlFor="reminder-time">
-        Hora del recordatorio
-      </label>
-      <input
-        id="reminder-time"
-        name="reminder-time"
-        autoComplete="off"
-        type="time"
-        className="input"
-        required
-        value={time}
-        disabled={update.isPending}
-        onChange={(event) => setTime(event.target.value)}
-        onBlur={(event) => {
-          if (event.target.validity.valid && time !== profile.reminder_time.slice(0, 5))
-            save({ reminder_time: `${time}:00` })
-          else if (!event.target.validity.valid) setTime(profile.reminder_time.slice(0, 5))
-        }}
-      />
+      {profile.notify_reminder && (
+        <label className="rise flex items-center justify-between gap-3" htmlFor="reminder-time">
+          <span className="text-sm text-muted">A las</span>
+          <input
+            id="reminder-time"
+            aria-label="Hora del recordatorio"
+            name="reminder-time"
+            autoComplete="off"
+            type="time"
+            className="input w-auto min-w-32"
+            required
+            value={time}
+            disabled={update.isPending}
+            onChange={(event) => setTime(event.target.value)}
+            onBlur={(event) => {
+              if (event.target.validity.valid && time !== profile.reminder_time.slice(0, 5))
+                save({ reminder_time: `${time}:00` })
+              else if (!event.target.validity.valid) setTime(profile.reminder_time.slice(0, 5))
+            }}
+          />
+        </label>
+      )}
       <Switch
         checked={profile.notify_partner}
         disabled={update.isPending}
@@ -65,8 +65,8 @@ export function NotificationsSection() {
       >
         <span className="block">Recibir avisos de {partner?.display_name ?? 'tu pareja'}</span>
         <span className="block text-xs text-muted">
-          Avisos de libros terminados, lecturas iniciadas o a las que se une tu pareja, citas y notas compartidas,
-          respuestas y desbloqueos, y propuestas de leer juntos, aceptaciones e inicios.
+          Cuando termina un libro, te deja una cita o te propone leer juntos. Valen para todos tus dispositivos con
+          avisos activados.
         </span>
       </Switch>
     </section>

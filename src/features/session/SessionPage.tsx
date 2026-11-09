@@ -20,7 +20,7 @@ import { logSession } from '@/lib/offline/sessionQueue'
 import { currentStreak } from '@/lib/stats/streak'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
 import type { Quote, ReadingWithBook } from '@/lib/types'
-import { formatDays, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, physicalPagePosition, progressFraction } from '@/lib/units'
+import { formatDays, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, progressFraction } from '@/lib/units'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
 import { JointPanel } from '@/features/together/JointPanel'
@@ -199,7 +199,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       : `te falta un ${Math.max(0, Math.ceil(((nextLocked.page ?? 0) * reading.total_units) / (reading.book.page_count ?? 1)) - end)} %`
     : ''
   const other = timer && !mine ? choices.find((choice) => choice.id === timer.readingId) : undefined
-  const pct = (value: number) => (reading.total_units > 0 ? Math.round((value / reading.total_units) * 100) : 0)
+  const pct = (value: number) => percentOf({ current_position: value, total_units: reading.total_units })
   const readDates = new Set(sessions.map((session) => session.read_on))
   const readToday = readDates.has(today)
   const streak = currentStreak(readDates, today)
@@ -387,9 +387,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                         <span className="block truncate font-serif text-lg leading-tight">{choice.book.title}</span>
                         <span className="text-xs text-muted">
                           {choice.status === 'reading'
-                            ? `${formatUnitValue(choice.unit, choice.current_position)} · ${Math.round(
-                                (choice.current_position / Math.max(1, choice.total_units)) * 100,
-                              )} %`
+                            ? `${formatUnitValue(choice.unit, choice.current_position)} · ${percentOf(choice)} %`
                             : 'Pendiente'}
                         </span>
                       </span>
@@ -758,7 +756,7 @@ function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string 
   const detail = [`+${formatUnitDelta(reading.unit, saved.delta)}`, saved.minutes ? formatMinutes(saved.minutes) : null]
     .filter(Boolean)
     .join(' · ')
-  const progress = reading.total_units > 0 ? Math.round((reading.current_position / reading.total_units) * 100) : 0
+  const progress = percentOf(reading)
   // Pace only means something with real time behind it (Bookly-style pages per hour).
   const pace =
     reading.unit === 'pages' && saved.minutes && saved.minutes >= 5 && saved.delta > 0

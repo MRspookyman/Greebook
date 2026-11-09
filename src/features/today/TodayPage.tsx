@@ -7,7 +7,7 @@ import { fmt, greeting, todayISO } from '@/lib/dates'
 import { coupleStreak } from '@/lib/stats/streak'
 import { dailySeries, weekDays } from '@/lib/stats/insights'
 import { formatDays, formatLabel, formatPosition, progressFraction } from '@/lib/units'
-import type { ReadingWithBook } from '@/lib/types'
+import type { ReadingWithBook, TogetherItemWithBook } from '@/lib/types'
 import { flush, usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { isPartnerReading } from '@/lib/presence'
 import { Avatar } from '@/components/Avatar'
@@ -24,7 +24,15 @@ import { recentReadings } from './recentReadings'
 import { joinReading } from '@/features/together/live'
 import { toast } from '@/components/toast'
 import { WeekStamps } from './WeekStamps'
-import { PaceEstimate, TogetherEstimates } from '@/features/book/PaceEstimate'
+import { PartnerPace, ProgressLine } from '@/features/book/PaceEstimate'
+
+/** What waits for you in Nosotros, said plainly: a proposal to answer or a shared book without a start date. */
+function pendingLine(items: TogetherItemWithBook[], name: string): string {
+  if (items.length > 1) return `${name} y tú: ${items.length} lecturas juntos por decidir`
+  const [item] = items
+  if (!item) return ''
+  return item.partner_answer ? `¿Cuándo empezáis «${item.book.title}»?` : `${name} quiere leer contigo «${item.book.title}»`
+}
 
 /** Minutes since a timestamp, refreshed every half minute while shown. */
 function useMinutesSince(iso: string | null | undefined): number {
@@ -137,7 +145,7 @@ export function TodayPage() {
           style={{ '--i': 1 } as CSSProperties}
         >
           <Avatar person={partner} size={30} />
-          <span className="flex-1 text-sm">{name} quiere leer contigo</span>
+          <span className="min-w-0 flex-1 text-sm">{pendingLine(forMe.items.map(({ item }) => item), name)}</span>
           <ChevronRight size={18} aria-hidden />
         </Link>
       )}
@@ -202,13 +210,11 @@ export function TodayPage() {
                         </span>
                       </>
                     ) : (
-                      <span className="text-[13px] text-muted">
-                        {formatPosition(reading)}
-                        {reading.unit !== 'percent' && ` · ${Math.floor(progressFraction(reading) * 100)} %`}
-                      </span>
+                      <>
+                        <ProgressBar value={progressFraction(reading)} className="h-1" />
+                        <ProgressLine reading={reading} position />
+                      </>
                     )}
-                    <PaceEstimate reading={reading} />
-                    {room && <TogetherEstimates mine={reading} theirs={room.theirs} />}
                   </span>
                 </Link>
                 <button
@@ -406,9 +412,8 @@ function CurrentReading({
           )}
         </p>
         <ProgressBar value={fraction} />
-        <p className="text-[13px] text-muted">{Math.floor(fraction * 100)} %</p>
-        <PaceEstimate reading={reading} />
-        {shared && <TogetherEstimates mine={reading} theirs={shared} />}
+        <ProgressLine reading={reading} />
+        {shared && <PartnerPace theirs={shared} />}
       </div>
       <div className="col-span-2 grid grid-cols-[1.15fr_1fr_1fr] gap-2">
         <button type="button" className="btn btn-primary px-2.5" onClick={onRead}>

@@ -27,14 +27,17 @@ export function ReadingPatterns({ range }: { range: DateRange }) {
   const weeks = yearDays(year)
   const earliestYear = Math.min(currentYear, ...people.flatMap((person) => person.sessions.map((session) => Number(session.read_on.slice(0, 4)))))
   const filtered = people.map((person) => ({ ...person, sessions: person.sessions.filter((session) => session.read_on >= range.from && session.read_on <= range.to) }))
+  const anyHabits = filtered.some((person) => readingHabits(person.sessions, person.profile.timezone).count > 0)
   return (
     <>
       {partnerFailed ? <p role="alert" className="text-sm text-danger">No se han podido cargar los datos de tu pareja. <button className="btn btn-link" onClick={() => { void theirs.refetch(); void theirBooks.refetch() }}>Reintentar</button></p> : partnerPending ? <p role="status" className="text-sm text-muted">Cargando los datos de los dos…</p> : null}
       <section className="rule space-y-4 pt-5" aria-labelledby="reading-hours">
         <h2 id="reading-hours" className="title">A qué hora leéis</h2>
+        {!anyHabits ? <p className="text-sm text-muted">Aún no hay sesiones con hora en este periodo. Aparecerán al leer con el cronómetro o al apuntar páginas.</p> : <>
         <p className="text-xs text-muted">Sesiones del periodo seleccionado, según la zona horaria de cada uno.</p>
         {filtered.map((person) => {
           const habits = readingHabits(person.sessions, person.profile.timezone)
+          if (!habits.count) return <p key={person.profile.id} className="text-sm text-muted"><b className="eyebrow mr-2" style={{ color: `var(--${person.profile.accent})` }}>{person.profile.display_name}</b>Aún sin sesiones con hora.</p>
           return <article key={person.profile.id} className="space-y-2">
             <h3 className="eyebrow" style={{ color: `var(--${person.profile.accent})` }}>{person.profile.display_name}</h3>
             <div className="grid items-center gap-1 text-center text-xs" style={{ gridTemplateColumns: '88px repeat(7, minmax(0, 1fr))' }}>
@@ -48,11 +51,12 @@ export function ReadingPatterns({ range }: { range: DateRange }) {
           </article>
         })}
         <p className="text-xs text-muted">Sin cronómetro, la hora se estima restando los minutos a la hora de registro. Más color indica más sesiones.</p>
+        </>}
       </section>
       <section className="rule space-y-4 pt-5" aria-labelledby="year-squares">
         <header className="flex items-center justify-between gap-2">
           <h2 id="year-squares" className="title">Año en cuadritos</h2>
-          <label className="text-sm">Año <select className="min-h-11 rounded border border-border bg-surface p-2" value={year} onChange={(event) => setYear(Number(event.target.value))}>
+          <label className="flex items-center gap-2 text-sm text-muted">Año <select className="input min-h-11 w-auto py-2" value={year} onChange={(event) => setYear(Number(event.target.value))}>
             {Array.from({ length: currentYear - earliestYear + 1 }, (_, index) => currentYear - index).map((value) => <option key={value}>{value}</option>)}
           </select></label>
         </header>

@@ -94,7 +94,6 @@ export function StatsPage() {
           <ArrowLeft size={20} aria-hidden />
         </button>
         <h1 className="display flex-1">Tus números</h1>
-        <span className="text-xs text-muted">{PERIOD_LABELS[period]}</span>
       </header>
       <Segmented
         variant="underline"
@@ -127,9 +126,12 @@ export function StatsPage() {
         </div>
       ) : (
         <>
-          <p className="font-serif text-2xl leading-snug">
-            Has leído {formatNumber(summary.pages)} {summary.pages === 1 ? 'página' : 'páginas'} {PERIOD_LABELS[period]}
-            .
+          <p key={`headline-${period}`} className="font-serif text-2xl leading-snug" style={{ animation: 'gb-fade-up 320ms var(--ease) both' }}>
+            {summary.pages > 0
+              ? `Has leído ${formatNumber(summary.pages)} ${summary.pages === 1 ? 'página' : 'páginas'} ${PERIOD_LABELS[period]}.`
+              : summary.activeDays > 0
+                ? `Has leído ${formatDays(summary.activeDays)} ${PERIOD_LABELS[period]}.`
+                : `${PERIOD_LABELS[period].charAt(0).toUpperCase()}${PERIOD_LABELS[period].slice(1)} aún no has leído. Cualquier ratito cuenta.`}
           </p>
           <section className="grid grid-cols-2 border-b border-rule" aria-label="Resumen del periodo">
             {metrics.map((metric) => {

@@ -32,9 +32,13 @@ export function Cover({ book, width, className = '', children, priority = false,
   const size = width ? { width, height: Math.round(width * 1.5) } : { width: '100%', aspectRatio: '2 / 3' }
   const author = book.authors?.[0]?.split(' ').at(-1)
   // Thumbnails can't hold a legible title: they show the initial, like a spine label.
-  const tiny = width !== undefined && width < 56
-  // Leave the bookmark its own strip so it never sits on the title.
+  const tiny = width !== undefined && width < 64
   const inset = width ? Math.max(6, width * 0.11) : 0
+  // The title flows around the bookmarks (a float the size of the ribbons) instead of losing a whole column to them.
+  const ribbonWidth = Math.max(5, Math.round((width ?? 100) * 0.075))
+  const ribbonFloat = width && marks.length
+    ? { width: marks.length * ribbonWidth + (marks.length - 1) * 3 + 4, height: Math.round(width * 0.26) + 2 }
+    : null
   return (
     <div className={`book-cover bg-border ${className}`} style={size} aria-label={fallback ? book.title : undefined}>
       {fallback ? (
@@ -47,7 +51,7 @@ export function Cover({ book, width, className = '', children, priority = false,
             padding: tiny
               ? 0
               : width
-                ? `${Math.max(6, width * 0.13)}px ${marks.length ? width * (0.22 + marks.length * 0.08) : inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
+                ? `${Math.max(6, width * 0.13)}px ${inset}px ${Math.max(6, width * 0.13)}px ${inset}px`
                 : `13% ${marks.length ? `${22 + marks.length * 8}%` : '11%'} 13% 11%`,
             justifyContent: tiny ? 'center' : 'space-between',
             alignItems: tiny ? 'center' : 'stretch',
@@ -58,7 +62,12 @@ export function Cover({ book, width, className = '', children, priority = false,
           ) : (
             <>
               <span className="block">
-                <span className="block overflow-hidden break-words" style={{ maxHeight: '5.5em' }}>
+                <span
+                  className="block overflow-hidden break-words hyphens-auto"
+                  // Only long words split («conver-saciones»); «sombra» moves to the next line whole.
+                  style={{ maxHeight: '5.5em', hyphenateLimitChars: '8 4 4' }}
+                >
+                  {ribbonFloat && <span aria-hidden className="float-right" style={ribbonFloat} />}
                   {book.title}
                 </span>
                 <span className="mt-[0.5em] block h-px w-1/3" style={{ background: INK, opacity: 0.45 }} aria-hidden />
@@ -87,7 +96,7 @@ export function Cover({ book, width, className = '', children, priority = false,
         <span
           aria-hidden
           className="book-ribbons"
-          style={{ '--ribbon-w': `${Math.round((width ?? 100) * 0.075)}px` } as CSSProperties}
+          style={{ '--ribbon-w': `${ribbonWidth}px` } as CSSProperties}
         >
           {marks.map((accent, index) => (
             <span key={`${accent}-${index}`} className="book-ribbon" style={{ '--ribbon': `var(--${accent})` } as CSSProperties} />

@@ -49,11 +49,14 @@ export function PushEnableButton() {
         {state ? messages[state] : 'Consultando avisos…'}
       </p>
       {state === 'needs-install' && (
-        <p className="text-sm text-muted">
-          En Android, abre Greenbook en Chrome y elige «Instalar app» (no un acceso directo).
-          En iPhone, ábrelo en Safari, toca Compartir y elige «Añadir a pantalla de inicio».
-          Después abre la app desde su icono.
-        </p>
+        <details className="text-sm text-muted">
+          <summary className="flex min-h-11 cursor-pointer items-center font-extrabold text-ink">Cómo instalarla</summary>
+          <p>
+            En Android, abre Greenbook en Chrome y elige «Instalar app» (no un acceso directo).
+            En iPhone, ábrelo en Safari, toca Compartir y elige «Añadir a pantalla de inicio».
+            Después abre la app desde su icono.
+          </p>
+        </details>
       )}
       {state === 'default' && (
         <button

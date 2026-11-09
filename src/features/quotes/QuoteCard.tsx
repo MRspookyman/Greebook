@@ -16,6 +16,10 @@ import { useQuotePhoto } from './photos'
 import { QuoteSheet } from './QuoteSheet'
 import { shareQuoteImage } from './shareImage'
 
+/** Quiet icon actions at the end of a card: share, edit, delete. */
+const iconAction =
+  'grid h-11 w-11 place-items-center rounded-full text-muted transition-[color,transform] duration-150 hover:text-ink active:scale-95 disabled:opacity-50'
+
 const ago = (iso: string) => {
   const date = new Date(iso)
   const elapsed = Date.now() - date.getTime()
@@ -56,6 +60,7 @@ export function QuoteCard({
   const [editingReply, setEditingReply] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
   const [deletingReply, setDeletingReply] = useState<string | null>(null)
+  const [beat, setBeat] = useState(false)
   const photo = useQuotePhoto(quote.locked ? null : quote.photo_path)
   if (!author) return null
   const color = `var(--${author.accent})`
@@ -227,33 +232,36 @@ export function QuoteCard({
                   </form>
                 ) : (
                   <>
-                    <p className="wrap-anywhere">{r.body}</p>
-                    {r.user_id === userId && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        {deletingReply === r.id ? (
-                          <>
-                            <span>¿Borrar tu respuesta?</span>
-                            <button
-                              type="button"
-                              className="btn btn-link text-sm text-danger"
-                              disabled={busy}
-                              onClick={() => void act(async () => {
-                                await deleteQuoteReply(r.id)
-                                setDeletingReply(null)
-                              }, 'No se pudo borrar la respuesta')}
-                            >Borrar</button>
-                            <button type="button" className="btn btn-link text-sm" disabled={busy} onClick={() => setDeletingReply(null)}>No</button>
-                          </>
-                        ) : (
-                          <>
-                            <button type="button" className="btn btn-link text-sm" disabled={busy} onClick={() => {
-                              setEditingReply(r.id)
-                              setReplyDraft(r.body)
-                              setDeletingReply(null)
-                            }}>Editar</button>
-                            <button type="button" className="btn btn-link text-sm text-muted" disabled={busy} onClick={() => setDeletingReply(r.id)}>Borrar</button>
-                          </>
-                        )}
+                    <div className="flex items-start gap-1">
+                      <p className="min-w-0 flex-1 wrap-anywhere">{r.body}</p>
+                      {r.user_id === userId && deletingReply !== r.id && (
+                        <span className="-my-2.5 -mr-2.5 flex flex-none">
+                          <button type="button" className={iconAction} aria-label="Editar tu respuesta" disabled={busy} onClick={() => {
+                            setEditingReply(r.id)
+                            setReplyDraft(r.body)
+                            setDeletingReply(null)
+                          }}>
+                            <Pencil size={15} aria-hidden />
+                          </button>
+                          <button type="button" className={iconAction} aria-label="Borrar tu respuesta" disabled={busy} onClick={() => setDeletingReply(r.id)}>
+                            <Trash2 size={15} aria-hidden />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {r.user_id === userId && deletingReply === r.id && (
+                      <div className="flex flex-wrap items-center gap-x-2">
+                        <span className="text-muted">¿Borrar tu respuesta?</span>
+                        <button
+                          type="button"
+                          className="btn btn-link text-sm text-danger"
+                          disabled={busy}
+                          onClick={() => void act(async () => {
+                            await deleteQuoteReply(r.id)
+                            setDeletingReply(null)
+                          }, 'No se pudo borrar la respuesta')}
+                        >Borrar</button>
+                        <button type="button" className="btn btn-link text-sm" disabled={busy} onClick={() => setDeletingReply(null)}>No</button>
                       </div>
                     )}
                   </>
@@ -298,27 +306,31 @@ export function QuoteCard({
           </button>
         </form>
       )}
-      <div className="-mx-2 flex flex-wrap items-center border-t border-dashed border-rule pt-1">
+      <div className="-mx-2 flex items-center border-t border-dashed border-rule pt-1">
         {mine ? (
-          <span
-            className={`flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold ${partnerLiked ? 'text-rose' : 'text-muted'}`}
-          >
-            <Heart size={18} fill={partnerLiked ? 'currentColor' : 'none'} aria-hidden />
-            {partnerLiked ? `Le gusta a ${partner?.display_name}` : quote.shared ? 'Aún sin corazón' : 'Privada'}
-          </span>
+          partnerLiked && (
+            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold text-rose">
+              <Heart size={18} fill="currentColor" aria-hidden />
+              Le gusta<span className="sr-only"> a {partner?.display_name}</span>
+            </span>
+          )
         ) : (
           <button
             type="button"
             aria-pressed={liked}
             disabled={busy}
-            className={`flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-sm font-extrabold ${liked ? 'text-rose' : 'text-muted'}`}
-            onClick={() => void act(() => toggleQuoteHeart(quote.id), 'No se pudo guardar el corazón')}
+            className={`flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-sm font-extrabold transition-colors duration-150 ${liked ? 'text-rose' : 'text-muted'}`}
+            onClick={() => {
+              if (!liked) setBeat(true)
+              void act(() => toggleQuoteHeart(quote.id), 'No se pudo guardar el corazón')
+            }}
           >
             <Heart
               size={19}
               fill={liked ? 'currentColor' : 'none'}
               aria-hidden
-              style={{ transition: 'fill 140ms var(--ease)' }}
+              onAnimationEnd={() => setBeat(false)}
+              style={{ transition: 'fill 140ms var(--ease)', animation: beat ? 'gb-beat 560ms var(--ease)' : undefined }}
             />
             {liked ? 'Te gusta' : 'Me gusta'}
           </button>
@@ -332,41 +344,10 @@ export function QuoteCard({
             <Reply size={18} aria-hidden /> Responder
           </button>
         )}
-        {(quote.body || quote.photo_path) && (
-          <button
-            type="button"
-            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold"
-            disabled={busy || (!quote.body && !photo.data)}
-            onClick={() => void act(async () => {
-              const result = await shareQuoteImage({
-                body: quote.body,
-                photoUrl: photo.data,
-                title: quote.book.title,
-                authors: quote.book.authors,
-                savedBy: author.display_name,
-                accent: author.accent,
-                page: quote.page,
-                kind: quote.kind,
-              })
-              if (result === 'downloaded') toast('Imagen descargada')
-            }, 'No se pudo compartir la imagen')}
-          >
-            <Share2 size={18} aria-hidden /> Compartir
-          </button>
-        )}
-        {mine && (
-          <button
-            type="button"
-            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold"
-            disabled={busy}
-            onClick={() => setEditing(true)}
-          >
-            <Pencil size={17} aria-hidden /> Editar
-          </button>
-        )}
-        {mine &&
-          (confirmDelete ? (
-            <span className="ml-auto flex items-center">
+        <span className="ml-auto flex items-center">
+          {mine && confirmDelete ? (
+            <>
+              <span className="px-1 text-sm text-muted">¿Borrarla?</span>
               <button
                 className="btn btn-link px-2 text-sm text-danger"
                 disabled={busy}
@@ -377,17 +358,45 @@ export function QuoteCard({
               <button className="btn btn-link px-2 text-sm" onClick={() => setConfirmDelete(false)}>
                 No
               </button>
-            </span>
+            </>
           ) : (
-            <button
-              type="button"
-              className="ml-auto grid min-h-11 min-w-11 place-items-center text-muted"
-              aria-label="Borrar"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 size={17} aria-hidden />
-            </button>
-          ))}
+            <>
+              {(quote.body || quote.photo_path) && (
+                <button
+                  type="button"
+                  className={iconAction}
+                  aria-label="Compartir como imagen"
+                  disabled={busy || (!quote.body && !photo.data)}
+                  onClick={() => void act(async () => {
+                    const result = await shareQuoteImage({
+                      body: quote.body,
+                      photoUrl: photo.data,
+                      title: quote.book.title,
+                      authors: quote.book.authors,
+                      savedBy: author.display_name,
+                      accent: author.accent,
+                      page: quote.page,
+                      kind: quote.kind,
+                    })
+                    if (result === 'downloaded') toast('Imagen descargada')
+                  }, 'No se pudo compartir la imagen')}
+                >
+                  <Share2 size={18} aria-hidden />
+                </button>
+              )}
+              {mine && (
+                <button type="button" className={iconAction} aria-label="Editar" disabled={busy} onClick={() => setEditing(true)}>
+                  <Pencil size={17} aria-hidden />
+                </button>
+              )}
+              {mine && (
+                <button type="button" className={iconAction} aria-label="Borrar" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 size={17} aria-hidden />
+                </button>
+              )}
+            </>
+          )}
+        </span>
       </div>
       {mine && <QuoteSheet open={editing} onClose={() => setEditing(false)} quote={quote} />}
       <BottomSheet open={photoOpen} onClose={() => setPhotoOpen(false)} title="Foto de la cita">

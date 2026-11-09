@@ -22,11 +22,12 @@ export function SettingsSection() {
   const [error, setError] = useState('')
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [name, setName] = useState(profile.display_name)
-  const [accent, setAccent] = useState<Accent>(profile.accent)
   const [identityError, setIdentityError] = useState('')
-  const accentConflict = !!partner && accent === partner.accent
+  const nameChanged = name.trim() !== profile.display_name
+  // Each of you keeps a different colour; yours can only move to one your partner isn't using.
+  const partnerPending = !!profile.partner_id && !partner
 
-  async function saveIdentity(event: SubmitEvent<HTMLFormElement>) {
+  async function saveName(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     setIdentityError('')
     const displayName = name.trim()
@@ -34,18 +35,27 @@ export function SettingsSection() {
       setIdentityError('El nombre debe tener entre 1 y 30 caracteres.')
       return
     }
-    if (accentConflict || (profile.partner_id && !partner)) {
-      setIdentityError('Elige un color distinto al de tu pareja. Si no aparece, espera a que cargue su perfil.')
-      return
-    }
     try {
-      await update.mutateAsync({ display_name: displayName, accent })
-      document.documentElement.dataset.accent = accent
+      await update.mutateAsync({ display_name: displayName })
       setName(displayName)
-      toast('Perfil actualizado')
+      toast('Nombre guardado')
     } catch {
-      setIdentityError('No se pudo guardar el perfil. Comprueba la conexión e inténtalo de nuevo.')
+      setIdentityError('No se pudo guardar el nombre. Comprueba la conexión e inténtalo de nuevo.')
     }
+  }
+
+  function pickAccent(accent: Accent) {
+    if (accent === profile.accent || partnerPending || accent === partner?.accent) return
+    setIdentityError('')
+    update.mutate(
+      { accent },
+      {
+        onSuccess: () => {
+          document.documentElement.dataset.accent = accent
+        },
+        onError: () => toast('No se pudo cambiar el color', 'Comprueba la conexión e inténtalo de nuevo.'),
+      },
+    )
   }
 
   async function changePassword(event: SubmitEvent<HTMLFormElement>) {
@@ -91,31 +101,43 @@ export function SettingsSection() {
       <h2 id="settings-title" className="eyebrow text-muted">
         Ajustes
       </h2>
-      <form className="space-y-4" onSubmit={saveIdentity}>
-        <label className="label">
+      <form className="space-y-2" onSubmit={saveName}>
+        <label className="label" htmlFor="display-name">
           Tu nombre
-          <input className="input mt-2" value={name} onChange={(event) => setName(event.target.value)}
-            required minLength={1} maxLength={30} autoComplete="given-name" />
         </label>
-        <fieldset>
-          <legend className="label mb-2">Tu color</legend>
-          <div className="flex gap-2">
-            {(['blue', 'green'] as const).map((color) => (
-              <button key={color} type="button" className="btn btn-outline" aria-pressed={accent === color}
-                style={{ color: `var(--${color})`, borderColor: accent === color ? `var(--${color})` : undefined }}
-                onClick={() => setAccent(color)}>
-                {color === 'blue' ? 'Azul' : 'Verde'}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        {accentConflict && <p role="alert" className="text-sm text-danger">Ese es el color de {partner?.display_name}. Elige el otro para distinguiros en los calendarios.</p>}
+        <div className="flex gap-2">
+          <input id="display-name" className="input min-w-0 flex-1" value={name} onChange={(event) => setName(event.target.value)}
+            required minLength={1} maxLength={30} autoComplete="given-name" />
+          {nameChanged && (
+            <button type="submit" className="btn btn-primary rise" disabled={update.isPending || !name.trim()}>
+              {update.isPending ? 'Guardando…' : 'Guardar'}
+            </button>
+          )}
+        </div>
         {identityError && <p role="alert" className="text-sm text-danger">{identityError}</p>}
-        <button type="submit" className="btn btn-outline"
-          disabled={update.isPending || accentConflict || (!!profile.partner_id && !partner) || !name.trim()}>
-          {update.isPending ? 'Guardando…' : 'Guardar nombre y color'}
-        </button>
       </form>
+      <fieldset>
+        <legend className="label mb-2">Tu color</legend>
+        <div className="flex flex-wrap gap-2">
+          {(['blue', 'green'] as const).map((color) => {
+            const theirs = partner?.accent === color
+            return (
+              <button
+                key={color}
+                type="button"
+                className="chip"
+                aria-pressed={profile.accent === color}
+                disabled={update.isPending || partnerPending || theirs}
+                onClick={() => pickAccent(color)}
+              >
+                <span aria-hidden className="h-3 w-3 rounded-full" style={{ background: `var(--${color})` }} />
+                {color === 'blue' ? 'Azul' : 'Verde'}
+                {theirs && <span className="font-bold opacity-80">· de {partner?.display_name}</span>}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
       <fieldset>
         <legend className="label mb-2">Tema</legend>
         <div className="flex flex-wrap gap-2">
@@ -125,7 +147,7 @@ export function SettingsSection() {
               type="button"
               aria-pressed={profile.theme === theme.value}
               disabled={update.isPending}
-              className={`btn btn-outline ${profile.theme === theme.value ? 'border-accent text-accent' : ''}`}
+              className="chip"
               onClick={() =>
                 update.mutate({ theme: theme.value }, { onError: () => toast('No se pudo guardar el tema') })
               }
@@ -182,7 +204,7 @@ export function SettingsSection() {
           </button>
         </form>
       )}
-      <button type="button" className="btn btn-link text-danger" disabled={signingOut} onClick={signOut}>
+      <button type="button" className="btn btn-link px-0 text-danger" disabled={signingOut} onClick={signOut}>
         {signingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
       </button>
     </section>

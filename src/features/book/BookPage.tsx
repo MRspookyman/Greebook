@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
@@ -10,9 +10,8 @@ import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { formatDays, formatFinished, formatLabel, formatMinutes, formatUnitValue, progressFraction } from '@/lib/units'
+import { formatDays, formatFinished, formatLabel, formatMinutes, percentOf, progressFraction } from '@/lib/units'
 import { readingPace } from './readingPace'
-import { PaceEstimate } from './PaceEstimate'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
 import { Segmented } from '@/components/Segmented'
@@ -110,6 +109,19 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   }, [reading.id, userId])
   const [tab, setTab] = useState<BookTab>('sessions')
   const [allSessions, setAllSessions] = useState(false)
+  // One underline that travels to the chosen tab instead of jumping between them.
+  const tablist = useRef<HTMLDivElement>(null)
+  const [ink, setInk] = useState<{ left: number; width: number } | null>(null)
+  const quoteCount = bookQuotes.length
+  useLayoutEffect(() => {
+    const measure = () => {
+      const button = tablist.current?.querySelector<HTMLElement>(`#book-tab-${tab}`)
+      if (button) setInk({ left: button.offsetLeft, width: button.offsetWidth })
+    }
+    measure()
+    // Labels change width once the web font arrives.
+    void document.fonts?.ready.then(measure)
+  }, [tab, quoteCount])
   const disabled = !online || busy || pending > 0
   const destructiveDisabled =
     !online || busy || readingPending !== 0 || !sessionsQuery.isSuccess
@@ -229,12 +241,9 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         >
           <ArrowLeft size={20} />
         </button>
-        <p className="ml-auto text-right text-xs text-muted">
-          {formatLabel(reading.format)} · {reading.unit === 'pages' ? `${reading.total_units} págs.` : '%'}
-        </p>
         {own && (
           <button
-            className="icon-btn"
+            className="icon-btn ml-auto"
             aria-label="Opciones de la lectura"
             onClick={() => setMenuOpen(true)}
           >
@@ -256,11 +265,14 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
             {reading.book.published_year ? ` · ${reading.book.published_year}` : ''}
           </p>
           <p className="mt-1 text-xs text-muted">
+            {formatLabel(reading.format)}
+            {reading.unit === 'pages' ? ` · ${reading.total_units} págs.` : ''}
+            {' · '}
             {reading.finished_on && reading.status === 'finished'
-              ? `Terminado: ${formatFinished(reading.finished_on, reading.finished_precision)}`
+              ? `terminado ${reading.finished_precision === 'month' || reading.finished_precision === 'year' ? 'en' : 'el'} ${formatFinished(reading.finished_on, reading.finished_precision)}`
               : reading.started_on
-                ? `Empezado el ${fmt(reading.started_on, 'd MMM')}`
-                : 'Aún por empezar'}
+                ? `empezado el ${fmt(reading.started_on, 'd MMM')}`
+                : 'aún por empezar'}
           </p>
         </div>
       </header>
@@ -340,13 +352,13 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         <section className="space-y-4" aria-label="Progreso de lectura">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="folio text-[38px] leading-none text-accent">
-              {Math.floor(progressFraction(reading) * 100)} <span className="text-2xl">%</span>
+              {percentOf(reading)} <span className="text-2xl">%</span>
             </p>
-            <p className="folio text-[22px] text-muted">
-              {reading.unit === 'pages'
-                ? `p. ${reading.current_position} — ${reading.total_units}`
-                : `${formatUnitValue(reading.unit, reading.current_position)} — ${formatUnitValue(reading.unit, reading.total_units)}`}
-            </p>
+            {reading.unit === 'pages' && (
+              <p className="folio text-[22px] text-muted">
+                p. {reading.current_position} <span className="text-base">de {reading.total_units}</span>
+              </p>
+            )}
           </div>
           <ProgressBar value={progressFraction(reading)} />
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
@@ -367,13 +379,12 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </dl>
         </section>
       )}
-      {own && reading.status === 'reading' && <PaceEstimate reading={reading} />}
       {own && !online && <p className="text-xs text-muted">Sin conexión: puedes registrar sesiones, pero no editar.</p>}
       {own && pending > 0 && (
         <p className="text-xs text-muted">Espera a que se sincronicen las sesiones para editar.</p>
       )}
       <div>
-        <div className="relative flex gap-7 border-b border-rule" role="tablist" aria-label="Detalle del libro">
+        <div ref={tablist} className="relative flex gap-7 border-b border-rule" role="tablist" aria-label="Detalle del libro">
           {tabs.map((item) => (
             <button
               key={item.value}
@@ -399,14 +410,32 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 setTab(tabs[next].value)
                 document.getElementById(`book-tab-${tabs[next].value}`)?.focus()
               }}
-              className={`min-h-11 min-w-11 border-b text-sm ${tab === item.value ? 'border-ink text-ink' : 'border-transparent text-muted'}`}
+              className={`min-h-11 min-w-11 text-sm font-bold transition-colors duration-200 ${tab === item.value ? 'text-ink' : 'text-muted'}`}
               onClick={() => setTab(item.value)}
             >
               {item.label}
             </button>
           ))}
+          {ink && (
+            <span
+              aria-hidden
+              className="absolute -bottom-px left-0 h-0.5 rounded-full bg-ink"
+              style={{
+                width: ink.width,
+                transform: `translateX(${ink.left}px)`,
+                transition: 'transform var(--dur-move) var(--ease), width var(--dur-move) var(--ease)',
+              }}
+            />
+          )}
         </div>
-        <div key={tab} id="book-panel" role="tabpanel" aria-labelledby={`book-tab-${tab}`} className="pt-1">
+        <div
+          key={tab}
+          id="book-panel"
+          role="tabpanel"
+          aria-labelledby={`book-tab-${tab}`}
+          className="pt-1"
+          style={{ animation: 'gb-fade-up 260ms var(--ease) both' }}
+        >
           {tab === 'sessions' && (
             <div>
               {sessionsQuery.isPending && (

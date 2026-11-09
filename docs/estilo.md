@@ -10,6 +10,7 @@ ciruela profundo y luz miel de noche. El rediseño «Leer juntos» está integra
 - `font-book`: **Literata Variable**, lectura e itálicas personales (`.display-italic`).
 - `font-hand`: **Caveat**, palabras que una persona escribe a la otra (notas, comentarios); nunca navegación ni cifras.
 - Etiquetas `.eyebrow` / `.lbl`: 12px. No reducir texto por debajo de 12px ni poner etiquetas decorativas sobre cada título.
+- Young Serif dibuja cifras de estilo antiguo: títulos, `.display`, `.title` y `.font-serif` activan `lnum` para que un 0 no se lea «o».
 
 ## Paleta
 
@@ -40,6 +41,9 @@ Usar tokens, no hex locales ni opacidad sobre metadatos. La textura queda detrá
 - Ritmo 4/8/12/16/20/24/32px; agrupar lo relacionado y dejar aire antes de los títulos.
 - `.card`: superficie sin borde, radio 22px y sombra de papel. Sin tarjetas anidadas.
 - Portadas: radio 3px y sombra de libro; mantener título accesible incluso en miniaturas.
+- Filtros siempre con `.chip` (o `FilterChips`); las filas que se deslizan van a sangre con `.fade-x`. Un filtro sin
+  alternativas (un solo año, un solo formato) no se muestra.
+- Porcentaje leído: `percentOf()` (redondea hacia abajo) en todas las pantallas; 100 % solo al terminar.
 - Botones y chips redondos (999px), objetivos táctiles de al menos 44px. Los selectores nativos también deben mantener ese mínimo (`min-h-11`), incluido el año de las estadísticas.
 - `.btn-primary`: ciruela de día, miel de noche; una acción dominante por pantalla.
 - `.btn-outline` / `.btn-secondary`: apoyo con filete; `.btn-soft`: papel hundido.

@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { useMe } from '@/features/auth/me'
 import { useReadings, useTogether } from '@/lib/data'
 import type { ReadingWithBook } from '@/lib/types'
-import { formatUnitValue, progressFraction } from '@/lib/units'
+import { formatUnitValue, percentOf } from '@/lib/units'
 import { Avatar } from '@/components/Avatar'
 import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { addTogether } from '@/features/us/together'
@@ -41,8 +41,8 @@ export function PartnerReadingBanner({ reading }: { reading: ReadingWithBook }) 
       {mine ? (
         <div className="flex flex-wrap items-center gap-x-4">
           <Link to={`/libro/${mine.id}`} className="btn btn-link px-0 text-sm">
-            Tu lectura: {formatUnitValue(mine.unit, mine.current_position)} · {Math.round(progressFraction(mine) * 100)}{' '}
-            %
+            Tu lectura: {formatUnitValue(mine.unit, mine.current_position)}
+            {mine.unit === 'pages' && ` · ${percentOf(mine)} %`}
           </Link>
           {['want', 'reading'].includes(mine.status) && (
             <button type="button" className="btn btn-link px-0 text-sm" onClick={() => setTracing(true)}>

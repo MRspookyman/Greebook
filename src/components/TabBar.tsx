@@ -39,8 +39,11 @@ function Tab({ tab, active, badge = 0 }: { tab: TabItem; active: boolean; badge?
       aria-current={active ? 'page' : undefined}
       className={`relative flex min-h-[52px] flex-col items-center justify-center gap-[3px] text-xs font-extrabold transition-colors duration-200 ${active ? 'text-ink' : 'text-muted'}`}
     >
-      <span className="relative">
-        <Icon aria-hidden size={24} strokeWidth={1.75} />
+      <span
+        className="relative transition-transform duration-300"
+        style={{ transform: active ? 'translateY(-2px)' : 'none', transitionTimingFunction: 'var(--spring)' }}
+      >
+        <Icon aria-hidden size={24} strokeWidth={active ? 2 : 1.75} />
         {badge > 0 && (
           <span
             className="absolute -top-1.5 -right-2.5 grid h-[20px] min-w-[20px] place-items-center rounded-full bg-rose px-1 text-xs font-extrabold text-surface tabular-nums ring-2 ring-bg"
@@ -52,7 +55,13 @@ function Tab({ tab, active, badge = 0 }: { tab: TabItem; active: boolean; badge?
         )}
       </span>
       {tab.label}
-      {active && <span aria-hidden className="absolute -bottom-1.5 h-[5px] w-[5px] rounded-full bg-rose" />}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute -bottom-1.5 h-[5px] w-[5px] rounded-full bg-rose"
+          style={{ animation: 'gb-pop-in 320ms var(--spring) both' }}
+        />
+      )}
     </Link>
   )
 }

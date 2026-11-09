@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLocation } from 'react-router'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { useMe } from '@/features/auth/me'
 import { useQuotes } from '@/lib/data'
@@ -25,10 +25,11 @@ export function CitasPage() {
   const books = [...new Map(quotes.map((q) => [q.book_id, q.book] as const)).values()]
   const needle = normalizeQuoteSearch(search)
   const visible = quotes.filter(
-    (q) => (filter === 'all' ||
-      (filter === 'theirs' && q.user_id !== userId) ||
-      (filter === 'mine' && q.user_id === userId) ||
-      filter === `book:${q.book_id}`) &&
+    (q) =>
+      (filter === 'all' ||
+        (filter === 'theirs' && q.user_id !== userId) ||
+        (filter === 'mine' && q.user_id === userId) ||
+        filter === `book:${q.book_id}`) &&
       (!needle || normalizeQuoteSearch([q.body, q.comment, q.book.title].filter(Boolean).join(' ')).includes(needle)),
   )
 
@@ -66,26 +67,41 @@ export function CitasPage() {
 
   return (
     <div className="space-y-6">
-      <header className="enter space-y-1.5">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="display">Citas</h1>
-          <button type="button" className="btn btn-primary min-h-11 px-4 text-sm" onClick={() => setComposing(true)}>
-            <Plus size={18} aria-hidden /> Nueva
-          </button>
-        </div>
-        <p className="text-muted">Las frases y notas que os dejáis, cada una en su página.</p>
+      <header className="enter flex min-h-11 items-center justify-between gap-3">
+        <h1 className="display">Citas</h1>
+        <button type="button" className="btn btn-primary min-h-11 px-4 text-sm" onClick={() => setComposing(true)}>
+          <Plus size={18} aria-hidden /> Nueva
+        </button>
       </header>
-      <div>
-        <label className="sr-only" htmlFor="quotes-search">Buscar citas</label>
-        <input id="quotes-search" type="search" className="input" placeholder="Buscar frase, comentario o libro"
-          value={search} onChange={(event) => setSearch(event.target.value)} />
-      </div>
       {quotes.length > 0 && (
-        <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5" role="group" aria-label="Filtrar citas">
-          {chip('all', 'Todas')}
-          {partner && chip('theirs', `De ${partner.display_name}`)}
-          {chip('mine', 'Mías')}
-          {books.map((book) => chip(`book:${book.id}`, book.title))}
+        <div className="space-y-3">
+          <label className="relative block">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted"
+              size={18}
+              aria-hidden
+            />
+            <span className="sr-only">Buscar citas</span>
+            <input
+              id="quotes-search"
+              type="search"
+              className="input pl-10"
+              placeholder="Buscar frase, comentario o libro"
+              autoComplete="off"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <div
+            className="no-scrollbar fade-x -mx-5 flex gap-2 overflow-x-auto px-5"
+            role="group"
+            aria-label="Filtrar citas"
+          >
+            {chip('all', 'Todas')}
+            {partner && chip('theirs', `De ${partner.display_name}`)}
+            {chip('mine', 'Mías')}
+            {books.map((book) => chip(`book:${book.id}`, book.title))}
+          </div>
         </div>
       )}
       {query.isPending ? (
@@ -100,7 +116,8 @@ export function CitasPage() {
       ) : visible.length === 0 ? (
         <EmptyState title={quotes.length ? 'Nada con este filtro' : 'Aún no hay ninguna cita'}>
           <p className="text-muted">
-            Cuando una frase te guste, guárdala con su página si la conoces{partner ? ` y ${partner.display_name} la verá` : ''}.
+            Cuando una frase te guste, guárdala con su página si la conoces
+            {partner ? ` y ${partner.display_name} la verá` : ''}.
           </p>
           <button className="btn btn-primary mt-2" onClick={() => setComposing(true)}>
             Guardar la primera

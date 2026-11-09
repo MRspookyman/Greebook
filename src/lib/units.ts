@@ -61,6 +61,11 @@ export function progressFraction(r: Pick<Reading, 'current_position' | 'total_un
   return Math.min(1, Math.max(0, r.current_position / r.total_units))
 }
 
+/** Whole percent read, rounded down everywhere so 100 % only appears once the book is done. */
+export function percentOf(r: Pick<Reading, 'current_position' | 'total_units'>): number {
+  return Math.floor(progressFraction(r) * 100)
+}
+
 export function formatLabel(format: Format): string {
   return format === 'paper' ? 'Papel' : 'Kindle'
 }

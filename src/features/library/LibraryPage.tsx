@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Plus, Search } from 'lucide-react'
+import { ArrowDownUp, LayoutGrid, List, Plus, Search } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
@@ -77,8 +77,11 @@ export function LibraryPage() {
     .sort((a, b) => b.localeCompare(a))
   // A stale year selection must not hide every book when who/search changes.
   const selectedYear = years.includes(year) ? year : 'all'
+  // Only offer Papel/Kindle when both are on the shelf; a hidden filter must not keep filtering.
+  const formats = new Set(shelves.finished.flatMap((card) => card.matches.map((reading) => reading.format)))
+  const selectedFormat = formats.size > 1 ? format : 'all'
   const cards = view === 'finished'
-    ? libraryCards(selected, 'finished', search, format).filter((card) => selectedYear === 'all' || card.year === selectedYear)
+    ? libraryCards(selected, 'finished', search, selectedFormat).filter((card) => selectedYear === 'all' || card.year === selectedYear)
     : shelves[view]
   const loading = mineQuery.isPending || (!!partner && theirsQuery.isPending)
   const error = mineQuery.isError || (!!partner && theirsQuery.isError)
@@ -100,44 +103,49 @@ export function LibraryPage() {
           <Plus size={22} aria-hidden />
         </Link>
       </header>
-      <label className="relative block">
-        <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" size={18} aria-hidden />
-        <input
-          className="input pl-10"
-          type="search"
-          name="library-search"
-          autoComplete="off"
-          spellCheck={false}
-          aria-label="Buscar por título o autor"
-          placeholder="Buscar por título o autor"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </label>
-      {partner && (
-        <div role="group" aria-label="De quién son los libros" className="flex flex-wrap gap-3">
-          {people.map(({ person, label, active: on, key }) => (
-            <button
-              key={person.id}
-              type="button"
-              aria-pressed={on}
-              onClick={() => {
-                const other = key === 'mine' ? 'theirs' : 'mine'
-                if (active[key] && !active[other]) return
-                if (active[key] && sort === (key === 'mine' ? 'mine' : 'partner')) setSort('average')
-                setActive((previous) => ({ ...previous, [key]: !previous[key] }))
-              }}
-              className={`pressable flex min-h-11 min-w-11 max-w-full items-center gap-2 rounded-full border py-1 pr-3 pl-1 ${on ? 'bg-surface' : 'border-rule opacity-60'}`}
-              style={{ color: `var(--${person.accent})`, borderColor: on ? `var(--${person.accent})` : undefined }}
-            >
-              <Avatar person={person} size={34} filled={on} />
-              <span className="truncate text-sm font-bold">{label}</span>
-            </button>
-          ))}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <label className="relative block min-w-0 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" size={18} aria-hidden />
+            <input
+              className="input pl-10"
+              type="search"
+              name="library-search"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Buscar por título o autor"
+              placeholder="Buscar por título o autor"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          {partner && (
+            // Whose books are shown: one avatar each, lit when on. At least one stays on.
+            <div role="group" aria-label="De quién son los libros" className="flex flex-none">
+              {people.map(({ person, label, active: on, key }) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={key === 'mine' ? 'Tus libros' : `Libros de ${label}`}
+                  onClick={() => {
+                    const other = key === 'mine' ? 'theirs' : 'mine'
+                    if (active[key] && !active[other]) return
+                    if (active[key] && sort === (key === 'mine' ? 'mine' : 'partner')) setSort('average')
+                    setActive((previous) => ({ ...previous, [key]: !previous[key] }))
+                  }}
+                  className="pressable grid h-12 w-11 place-items-center transition-opacity duration-200"
+                  style={{ opacity: on ? 1 : 0.4 }}
+                >
+                  <Avatar person={person} size={38} filled={on} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      {tagOptions.length > 0 && <FilterChips options={[{ value: 'all', label: 'Todas las etiquetas' }, ...tagOptions.map((value) => ({ value, label: value }))]} value={selectedTag} onChange={setTag} aria-label="Etiqueta" />}
-      {tagsQuery.isError && <button className="btn btn-outline" onClick={() => void tagsQuery.refetch()}>Reintentar cargar etiquetas</button>}
+        {tagOptions.length > 0 && <FilterChips bleed options={[{ value: 'all', label: 'Todas las etiquetas' }, ...tagOptions.map((value) => ({ value, label: value }))]} value={selectedTag} onChange={setTag} aria-label="Etiqueta" />}
+        {tagsQuery.isError && <button className="btn btn-outline" onClick={() => void tagsQuery.refetch()}>Reintentar cargar etiquetas</button>}
+      </div>
       <Segmented<ReadingStatus>
         options={tabs.map((tab) => ({ ...tab, count: shelves[tab.value].length }))}
         value={view}
@@ -163,20 +171,31 @@ export function LibraryPage() {
         <>
           {view === 'want' && <><Recommendations /><ReadingPicker readings={all} /></>}
           {view === 'finished' && (
-            <div className="min-w-0 space-y-2">
-              <FilterChips options={[{ value: 'all', label: 'Todos' }, ...years.map((value) => ({ value, label: value }))]} value={selectedYear} onChange={setYear} aria-label="Año de finalización" />
-              <FilterChips<Format | 'all'> options={[{ value: 'all', label: 'Todos' }, ...(['paper', 'ebook'] as const).map((value) => ({ value, label: formatLabel(value) }))]} value={format} onChange={setFormat} aria-label="Formato del libro" />
-              <Segmented options={[{ value: 'covers', label: 'Portadas' }, { value: 'list', label: 'Lista' }]} value={finishedView} onChange={(value) => {
-                setFinishedView(value)
-                try { localStorage.setItem('gb.library.finishedView', value) } catch { /* Storage may be unavailable in private browsing. */ }
-              }} aria-label="Vista de los leídos" />
-              <label className="flex min-w-0 items-center gap-3 text-sm text-muted">
-                <span>Ordenar</span>
-                <select className="input min-h-11 min-w-0 flex-1" aria-label="Ordenar leídos" value={selectedSort} onChange={(event) => setSort(event.target.value as FinishedSort)}>
-                  {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-              </label>
-              <p className="lbl">{cards.length} {cards.length === 1 ? 'libro' : 'libros'}</p>
+            <div className="min-w-0 space-y-3">
+              {years.length > 1 && <FilterChips bleed options={[{ value: 'all', label: 'Todos los años' }, ...years.map((value) => ({ value, label: value }))]} value={selectedYear} onChange={setYear} aria-label="Año de finalización" />}
+              {formats.size > 1 && <FilterChips<Format | 'all'> bleed options={[{ value: 'all', label: 'Papel y Kindle' }, ...(['paper', 'ebook'] as const).map((value) => ({ value, label: formatLabel(value) }))]} value={selectedFormat} onChange={setFormat} aria-label="Formato del libro" />}
+              <div className="flex items-center gap-2">
+                <label className="relative block min-w-0 flex-1">
+                  <ArrowDownUp className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" size={16} aria-hidden />
+                  <span className="sr-only">Ordenar leídos</span>
+                  <select className="input min-h-11 py-2 pl-10" value={selectedSort} onChange={(event) => setSort(event.target.value as FinishedSort)}>
+                    {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <Segmented
+                  className="w-[108px] shrink-0"
+                  options={[
+                    { value: 'covers', label: <><LayoutGrid size={18} aria-hidden /><span className="sr-only">Portadas</span></> },
+                    { value: 'list', label: <><List size={18} aria-hidden /><span className="sr-only">Lista</span></> },
+                  ]}
+                  value={finishedView}
+                  onChange={(value) => {
+                    setFinishedView(value)
+                    try { localStorage.setItem('gb.library.finishedView', value) } catch { /* Storage may be unavailable in private browsing. */ }
+                  }}
+                  aria-label="Vista de los leídos"
+                />
+              </div>
             </div>
           )}
           {cards.length === 0 ? (
@@ -192,13 +211,13 @@ export function LibraryPage() {
                     <p className="text-xs text-muted">{group.cards.length} {group.cards.length === 1 ? 'libro' : 'libros'}{group.average !== null && ` · media ${group.average.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ★`}</p>
                   </header>
                   <ul className={finishedView === 'list' ? 'space-y-3' : 'grid grid-cols-3 gap-x-4 gap-y-6'}>
-                    {group.cards.map((card) => {
+                    {group.cards.map((card, index) => {
                       const book = card.reading.book
                       const readers = people.filter(({ active, person }) => active && cardFinish(card, person.id))
                       const formats = [...new Set(card.matches.map((reading) => formatLabel(reading.format)))].join(' y ')
                       const date = card.reading.finished_on ? formatFinished(card.reading.finished_on, card.reading.finished_precision) : 'Sin fecha'
                       return (
-                        <li key={card.key} className="min-w-0">
+                        <li key={card.key} className="enter min-w-0" style={{ '--i': Math.min(index, 8) } as CSSProperties}>
                           <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={finishedView === 'list' ? 'pressable flex min-h-11 gap-3 rounded-card border border-rule bg-surface p-3' : 'pressable block min-h-11 min-w-0'}>
                             <div className="shrink-0"><Cover book={book} width={finishedView === 'list' ? 44 : undefined} /></div>
                             <div className="min-w-0 flex-1">
@@ -229,12 +248,12 @@ export function LibraryPage() {
             </div>
           ) : (
             <ul aria-label={tabs.find((tab) => tab.value === view)?.label} className={view === 'reading' ? 'space-y-3' : 'grid grid-cols-3 gap-x-4 gap-y-6'}>
-              {cards.map((card) => {
+              {cards.map((card, index) => {
                 const book = card.reading.book
                 const owners = people.filter(({ active, person }) => active && card.readings.some((reading) => reading.user_id === person.id))
                 const readers = people.filter(({ active, person }) => active && card.matches.some((reading) => reading.user_id === person.id))
                 return (
-                  <li key={card.key} className="min-w-0">
+                  <li key={card.key} className="enter min-w-0" style={{ '--i': Math.min(index, 8) } as CSSProperties}>
                     <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={view === 'reading' ? 'pressable flex min-h-11 gap-4 rounded-card border border-rule bg-surface p-4' : 'pressable block min-h-11 min-w-0'}>
                       {view === 'reading' ? (
                         <>
