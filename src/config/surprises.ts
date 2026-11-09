@@ -14,88 +14,101 @@ export interface Surprise {
   message: string
 }
 
-// ✏️ cambia este texto
+// Textos de Javier para Laura. Las fechas son 'MM-DD' y salen cada año ese día.
+
 export const WELCOME = {
-  title: 'Una historia para nosotros',
+  title: 'Feliz cumpleaños, gordita',
   message:
-    'Este pequeño rincón es para ti: para las historias que te emocionan, las páginas que quieres recordar y todos los ratitos de lectura que nos quedan por compartir. Feliz cumpleaños, mi amor.',
-  signature: 'Con todo mi cariño, tu compañero de historias',
+    'Empezamos con «De ratones y hombres» y no pienso parar. Este Kindle es para que te lleves todas tus historias a la cama, al sofá y a la playa de Almería, y esta app es nuestro rincón: aquí apuntas lo que lees, guardas las frases que te enamoran y yo voy viendo por dónde vas (y tú por dónde voy yo, que te conozco). Que nunca te falten libros, ni mantita, ni risketos del Mercadona.',
+  signature: 'Te quiero, tu gordito Javier',
 }
 
 export const SURPRISES: Surprise[] = [
-  // ✏️ cambia este texto
   {
     key: 'books-1',
     trigger: { type: 'booksFinished', count: 1 },
-    title: 'La primera de muchas historias',
-    message: 'Un libro terminado y un nuevo recuerdo en este rincón nuestro. Me encanta acompañarte, página a página.',
+    title: '¡Primer libro terminado!',
+    message:
+      'El primero de muchos en nuestro rincón. Esto se celebra como se celebran las cosas importantes: con una bolsa de risketos para los dos.',
   },
-  // ✏️ cambia este texto
   {
     key: 'primer-kindle',
     trigger: { type: 'firstFinishedFormat', format: 'ebook' },
-    title: 'Tu primera historia en Kindle',
-    message: 'El primer viaje con tu Kindle ya tiene un lugar aquí. Que te acompañe en mil historias más, y yo contigo.',
+    title: 'Tu primer libro en el Kindle',
+    message:
+      'Ya lo has estrenado como se merece. Ahora cabe una biblioteca entera en tu bolso, así que en Almería no hay excusa: toalla, sombrilla y Kindle.',
   },
-  // ✏️ cambia este texto
   {
     key: 'books-5',
     trigger: { type: 'booksFinished', count: 5 },
-    title: 'Cinco mundos contigo',
-    message: 'Ya has viajado por cinco historias. Mi lugar favorito sigue siendo a tu lado.',
+    title: 'Cinco libros, gordita',
+    message: 'Cinco historias ya. Voy a tener que ponerme las pilas, que me estás dejando atrás.',
   },
-  // ✏️ cambia este texto
   {
     key: 'books-10',
     trigger: { type: 'booksFinished', count: 10 },
-    title: 'Diez historias que son tuyas',
-    message: 'Qué bonito ver crecer tu biblioteca de recuerdos. Que nunca nos falten historias que contarnos.',
+    title: 'Diez libros',
+    message:
+      'Diez historias desde que empezamos aquí. Me encanta verte desaparecer dentro de un libro… siempre que luego vuelvas a contármelo.',
   },
-  // ✏️ cambia este texto
   {
     key: 'books-25',
     trigger: { type: 'booksFinished', count: 25 },
-    title: 'Una biblioteca de aventuras',
+    title: 'Veinticinco. Lo tuyo ya es una biblioteca',
     message:
-      'Veinticinco libros, tantos mundos y tantas emociones. Gracias por compartir un pedacito de ellos conmigo.',
+      'Veinticinco libros, gordita. Ni en Budapest había tantas cosas que ver como las que tú has leído. Estoy muy orgulloso de ti.',
   },
-  // ✏️ cambia este texto
   {
     key: 'streak-7',
     trigger: { type: 'streak', days: 7 },
-    title: 'Una semana para ti',
-    message: 'Siete días encontrando un ratito para leer. Ojalá este pequeño refugio te siga haciendo sonreír.',
+    title: 'Una semana seguida leyendo',
+    message: 'Siete días sin fallar. Tu ratito de lectura ya es sagrado, y me encanta que lo sea.',
   },
-  // ✏️ cambia este texto
   {
     key: 'streak-30',
     trigger: { type: 'streak', days: 30 },
-    title: 'Treinta días de historias',
-    message: 'Un mes de páginas y pequeños momentos tuyos. Me hace feliz verte disfrutar de lo que te gusta.',
+    title: 'Un mes entero leyendo',
+    message:
+      'Treinta días seguidos. Esto merece premio: elige plan y yo invito. (Los risketos van aparte, eso ya lo sabes.)',
   },
-  // ✏️ cambia este texto
   {
     key: 'yearly-goal',
     trigger: { type: 'goalReached' },
-    title: 'Lo has conseguido',
-    message: 'Tu objetivo del año ya es una realidad. Celebremos las historias vividas, sin prisas por la siguiente.',
+    title: '¡Objetivo del año cumplido!',
+    message:
+      'Lo has conseguido, gordita. Todos los libros que te propusiste este año, leídos. Lo que leas a partir de ahora es de regalo.',
   },
-  // ✏️ cambia este texto
+  {
+    key: 'birthday',
+    trigger: { type: 'date', monthDay: '12-16' },
+    title: 'Feliz cumpleaños, gordita',
+    message:
+      'Un año más contigo, y ojalá muchos más leyendo uno al lado del otro. Hoy no se mira la racha: hoy es tu día. Te quiero.',
+  },
+  {
+    key: 'anniversary',
+    trigger: { type: 'date', monthDay: '10-20' },
+    title: 'Feliz aniversario',
+    message:
+      'Otro 20 de octubre a tu lado. De todas las historias que hemos leído, la nuestra sigue siendo mi favorita. Te quiero, gordita.',
+  },
   {
     key: 'valentines',
     trigger: { type: 'date', monthDay: '02-14' },
-    title: 'Mi historia favorita',
-    message: 'Entre todos los libros del mundo, nuestra historia sigue siendo mi favorita. Feliz San Valentín, amor.',
+    title: 'San Valentín (y algo más)',
+    message:
+      'Feliz San Valentín, gordita. Y por si se te había olvidado: hoy también es el cumple de tu gordito. Un mensajito bonito, un risketo y quizás alguna cita subrayada me valen.',
   },
-  // ✏️ cambia este texto
   {
     key: 'new-year',
     trigger: { type: 'date', monthDay: '01-01' },
-    title: 'Un nuevo capítulo',
-    message: 'Otro año para leer, descubrir y seguir escribiendo nuestra historia. Qué suerte empezarlo contigo.',
+    title: 'Año nuevo, libros nuevos',
+    message: '¿Qué vamos a leer este año? Yo ya sé con quién quiero leerlo.',
   },
-  // ✏️ cambia este texto y MM-DD por vuestra fecha de aniversario
-  // { key: 'anniversary', trigger: { type: 'date', monthDay: 'MM-DD' }, title: 'Otro capítulo juntos', message: 'Volvería a elegir nuestra historia una y mil veces.' },
-  // ✏️ cambia este texto y MM-DD por su cumpleaños
-  // { key: 'birthday', trigger: { type: 'date', monthDay: 'MM-DD' }, title: 'Feliz cumpleaños, amor', message: 'Que este nuevo año tuyo esté lleno de historias bonitas. Yo quiero estar a tu lado para vivirlas.' },
+  {
+    key: 'summer',
+    trigger: { type: 'date', monthDay: '08-01' },
+    title: 'Modo Almería activado',
+    message: 'Playa, chill y un libro bueno. Mete el Kindle en la bolsa, que los risketos ya los llevo yo.',
+  },
 ]

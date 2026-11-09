@@ -37,7 +37,7 @@ function SurpriseModal({ surprise, onClose, busy }: { surprise: Surprise; onClos
         style={{ animation: 'gb-fade-up 400ms ease-out' }}
       >
         <Heart size={28} strokeWidth={1} className="text-green" aria-hidden="true" />
-        <h1 id="surprise-title" tabIndex={-1} className="display display-italic [overflow-wrap:anywhere]">
+        <h1 id="surprise-title" tabIndex={-1} className="display display-italic focus-heading [overflow-wrap:anywhere]">
           {surprise.title}
         </h1>
         <p className="whitespace-pre-line font-serif text-2xl italic leading-relaxed [overflow-wrap:anywhere]">

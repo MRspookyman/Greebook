@@ -1,3 +1,7 @@
+-- ¡PELIGRO! NUNCA en producción después de entregar el regalo.
+-- Borra datos reales y suscripciones push, y reinicia la bienvenida.
+-- Solo para preparar el regalo o un entorno de pruebas.
+--
 -- Greenbook: vaciar todos los datos antes del regalo.
 -- Conserva las cuentas y los perfiles (nombres, colores, emparejamiento) y deja la bienvenida
 -- sin ver para que ella vea la dedicatoria al entrar. Ejecutar completo en Supabase → SQL Editor.

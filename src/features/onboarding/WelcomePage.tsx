@@ -59,7 +59,7 @@ export function WelcomePage() {
         <p className="font-serif text-2xl text-green">Greenbook</p>
         {step === 1 ? (
           <>
-            <h1 tabIndex={-1} className="display display-italic">
+            <h1 tabIndex={-1} className="display display-italic focus-heading">
               {WELCOME.title}
             </h1>
             <p className="whitespace-pre-line font-serif text-2xl italic leading-relaxed">{WELCOME.message}</p>
@@ -75,7 +75,7 @@ export function WelcomePage() {
             </p>
             {step === 2 ? (
               <>
-                <h1 tabIndex={-1} className="display display-italic">
+                <h1 tabIndex={-1} className="display display-italic focus-heading">
                   Tu rincón de lectura
                 </h1>
                 <label className="label">
@@ -109,7 +109,7 @@ export function WelcomePage() {
               </>
             ) : (
               <>
-                <h1 tabIndex={-1} className="display display-italic">
+                <h1 tabIndex={-1} className="display display-italic focus-heading">
                   Un ratito para leer
                 </h1>
                 <label className="label">

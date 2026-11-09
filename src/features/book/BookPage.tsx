@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
-import { differenceInCalendarDays } from 'date-fns'
+import { differenceInCalendarDays, endOfMonth, endOfYear } from 'date-fns'
 import { ArrowLeft, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useQuotes, useReadings, useSessions, useTogether } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
-import { fmt, fromISODate, todayISO } from '@/lib/dates'
+import { fmt, fromISODate, todayISO, toISODate } from '@/lib/dates'
 import { formatDays, formatFinished, formatLabel, formatMinutes, formatUnitValue, progressFraction } from '@/lib/units'
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
 import { Avatar } from '@/components/Avatar'
@@ -184,17 +184,19 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         const { error } = await supabase.from('readings').delete().eq('id', reading.id).eq('user_id', userId)
         if (error) throw error
       } else {
-        const { error: sessionsError } = await supabase
-          .from('sessions').delete().eq('reading_id', reading.id).eq('user_id', userId)
-        if (sessionsError) throw sessionsError
         const { error } = await supabase.from('readings').update({
           status: 'want',
           current_position: 0,
           started_on: null,
           finished_on: null,
           finished_precision: null,
+          backfilled: false,
         }).eq('id', reading.id).eq('user_id', userId)
         if (error) throw error
+        // Preserve sessions if resetting the reading fails; refresh both if deletion fails.
+        const { error: sessionsError } = await supabase
+          .from('sessions').delete().eq('reading_id', reading.id).eq('user_id', userId)
+        if (sessionsError) throw sessionsError
       }
       setMenuOpen(false)
       if (remove) navigate('/biblioteca')
@@ -276,6 +278,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     : {}),
                 finished_on: status === 'finished' ? (reading.finished_on ?? today) : null,
                 finished_precision: status === 'finished' ? 'day' : null,
+                ...(status === 'reading' || status === 'want' || status === 'finished' ? { backfilled: false } : {}),
               })
             }
           />
@@ -393,7 +396,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                 setTab(tabs[next].value)
                 document.getElementById(`book-tab-${tabs[next].value}`)?.focus()
               }}
-              className={`min-h-11 border-b text-sm ${tab === item.value ? 'border-ink text-ink' : 'border-transparent text-muted'}`}
+              className={`min-h-11 min-w-11 border-b text-sm ${tab === item.value ? 'border-ink text-ink' : 'border-transparent text-muted'}`}
               onClick={() => setTab(item.value)}
             >
               {item.label}
@@ -763,9 +766,16 @@ function ReadingEditor({
           const units = reading.unit === 'percent' ? 100 : /^\d+$/.test(total) ? Number(total) : null
           const next: Record<string, string> = {}
           if (start && start > todayISO()) next.start = 'El inicio no puede ser una fecha futura.'
-          if ((finish && finish > todayISO()) || (start && finish && start > finish)) {
+          const precision = finishEdited ? 'day' : reading.finished_precision
+          const latestFinish = !finish ? '' : precision === 'year'
+            ? toISODate(endOfYear(fromISODate(finish)))
+            : precision === 'month'
+              ? toISODate(endOfMonth(fromISODate(finish)))
+              : finish
+          if ((finish && finish > todayISO()) || (start && latestFinish && start > latestFinish)) {
             next.finish = 'El fin debe estar entre el inicio y hoy.'
           }
+          if (reading.status === 'finished' && !finish) next.finish = 'Indica cuándo terminaste el libro.'
           if (units === null || !Number.isSafeInteger(units) || units <= 0 || units < reading.current_position) {
             next.total = `Indica un total válido, igual o mayor que ${formatUnitValue(reading.unit, reading.current_position)}.`
           }
@@ -812,9 +822,10 @@ function ReadingEditor({
               aria-invalid={!!errors.finish}
               aria-describedby={errors.finish ? 'reading-finish-error' : undefined}
               type="date"
-              min={start || undefined}
+              min={finishEdited || reading.finished_precision === 'day' ? start || undefined : undefined}
               max={todayISO()}
               value={finish}
+              required={reading.status === 'finished'}
               onChange={(event) => {
                 setFinish(event.target.value)
                 setFinishEdited(true)
@@ -911,7 +922,12 @@ function SessionEditor({
     try {
       const { error: readingError } = await supabase
         .from('readings')
-        .update({ current_position: position })
+        .update({
+          current_position: position,
+          ...(reading.status === 'finished' && position < reading.total_units
+            ? { status: 'reading', finished_on: null, finished_precision: null, backfilled: false }
+            : {}),
+        })
         .eq('id', reading.id)
         .eq('user_id', reading.user_id)
       if (readingError) throw readingError
@@ -925,7 +941,13 @@ function SessionEditor({
       if (result.error) {
         await supabase
           .from('readings')
-          .update({ current_position: reading.current_position })
+          .update({
+            current_position: reading.current_position,
+            status: reading.status,
+            finished_on: reading.finished_on,
+            finished_precision: reading.finished_precision,
+            backfilled: reading.backfilled,
+          })
           .eq('id', reading.id)
           .eq('user_id', reading.user_id)
         throw result.error

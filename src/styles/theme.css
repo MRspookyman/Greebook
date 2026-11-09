@@ -241,6 +241,9 @@
     outline: 2.5px solid var(--amber);
     outline-offset: 2px;
   }
+  .focus-heading[tabindex='-1']:focus {
+    outline: none;
+  }
 }
 @layer components {
   .display {

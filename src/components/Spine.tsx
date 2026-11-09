@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
-import { fmt } from '@/lib/dates'
+import { formatFinished } from '@/lib/units'
 import type { Accent, ReadingWithBook } from '@/lib/types'
 import { CLOTH_INK, clothFor } from './Cover'
 
@@ -11,22 +11,26 @@ export function Spine({ reading, readers }: { reading: ReadingWithBook; readers:
   const height = 120 + ((reading.book.title.length * 7) % 38)
   return (
     <Link
-      role="listitem"
+      className="flex min-w-11 flex-none items-end justify-center rounded-sm"
       to={`/libro/${reading.id}`}
-      className="spine"
-      style={{ width, height, background: clothFor(reading.book.title), color: CLOTH_INK } as CSSProperties}
-      aria-label={`${reading.book.title}${reading.finished_on ? `, terminado el ${fmt(reading.finished_on, "d 'de' MMMM")}` : ''}`}
+      aria-label={`${reading.book.title}${reading.finished_on ? `, terminado: ${formatFinished(reading.finished_on, reading.finished_precision)}` : ''}`}
     >
-      <span className="absolute top-1.5 left-1/2 flex -translate-x-1/2 gap-0.5" aria-hidden>
-        {readers.map((accent, index) => (
-          <i
-            key={index}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: `var(--${accent})`, boxShadow: `0 0 0 1.5px ${CLOTH_INK}` }}
-          />
-        ))}
+      {/* Keep the cloth narrow inside a separate, non-overlapping touch target. */}
+      <span
+        className="spine"
+        style={{ width, height, background: clothFor(reading.book.title), color: CLOTH_INK } as CSSProperties}
+      >
+        <span className="absolute top-1.5 left-1/2 flex -translate-x-1/2 gap-0.5" aria-hidden>
+          {readers.map((accent, index) => (
+            <i
+              key={index}
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: `var(--${accent})`, boxShadow: `0 0 0 1.5px ${CLOTH_INK}` }}
+            />
+          ))}
+        </span>
+        <span className="spine-title">{reading.book.title}</span>
       </span>
-      <span className="spine-title">{reading.book.title}</span>
     </Link>
   )
 }

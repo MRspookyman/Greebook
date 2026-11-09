@@ -47,7 +47,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
   const qc = useQueryClient()
   const [format, setFormat] = useState<Format>('paper')
   const [pages, setPages] = useState(candidate.page_count ?? 0)
-  const [kindleUnit, setKindleUnit] = useState<Unit>('percent')
+  const [kindleUnit, setKindleUnit] = useState<Unit>(candidate.page_count ? 'pages' : 'percent')
   const [status, setStatus] = useState<'want' | 'reading' | 'finished'>('want')
   const today = todayISO()
   const currentYear = Number(today.slice(0, 4))
@@ -82,7 +82,7 @@ function ReadingForm({ candidate, onClose, onBackfilled }: Props & { candidate: 
         setError('Elige un año y un mes que no estén en el futuro.')
         return
       }
-      if (startedOn && (!/^\d{4}-\d{2}-\d{2}$/.test(startedOn) || startedOn > `${year}-${month || '12'}-31` || startedOn > today)) {
+      if (startedOn && (!/^\d{4}-\d{2}-\d{2}$/.test(startedOn) || startedOn > `${year}-${month || '01'}-01` || startedOn > today)) {
         setError('La fecha de inicio no puede ser posterior a la de fin ni estar en el futuro.')
         return
       }

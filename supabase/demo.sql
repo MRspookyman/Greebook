@@ -1,3 +1,7 @@
+-- ¡PELIGRO! NUNCA en producción después de entregar el regalo.
+-- Estos scripts de demo/reset borran datos reales, eliminan suscripciones push
+-- y reinician la bienvenida. Solo para preparar el regalo o un entorno de pruebas.
+--
 -- Greenbook: datos de ejemplo para ver la app llena (Laura y Javier).
 -- Ejecutar completo en Supabase → SQL Editor.
 -- BORRA antes los datos de lectura y pareja; conserva cuentas y perfiles.

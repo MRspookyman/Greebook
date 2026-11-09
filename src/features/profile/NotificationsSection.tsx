@@ -65,7 +65,7 @@ export function NotificationsSection() {
       >
         <span className="block">Recibir avisos de {partner?.display_name ?? 'tu pareja'}</span>
         <span className="block text-xs text-muted">
-          Huellas, invitaciones, mensajes de la sala, corazones y cuando se pone a leer
+          Avisos de libros terminados, citas y notas compartidas, respuestas, retos y ratitos de lectura juntos.
         </span>
       </Switch>
     </section>

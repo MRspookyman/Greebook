@@ -1,13 +1,26 @@
 /// <reference types="vitest/config" />
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Timestamp also distinguishes rebuilds of the same commit (and works without .git on CI).
+let revision = 'build'
+try {
+  revision = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim()
+} catch {
+  // Cloudflare may supply a checkout without Git metadata.
+}
+const buildId = `${revision}-${Date.now()}`
+
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    __APP_VERSION__: JSON.stringify(buildId),
   },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
@@ -35,8 +48,8 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#F8EEE9',
-        theme_color: '#5B2B4C',
+        background_color: '#f8eee9',
+        theme_color: '#f8eee9',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

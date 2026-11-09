@@ -15,6 +15,7 @@ import { useRooms } from '@/features/us/rooms'
 import { QuoteSheet } from '@/features/quotes/QuoteSheet'
 import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, fromISODate, todayISO, toISODate } from '@/lib/dates'
+import { userMessage } from '@/lib/errors'
 import { logSession } from '@/lib/offline/sessionQueue'
 import { currentStreak } from '@/lib/stats/streak'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
@@ -262,7 +263,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       navigator.vibrate?.(12)
       if (end === reading.total_units) setFinished({ ...reading, current_position: end })
     } catch (cause) {
-      toast('No se pudo registrar la sesión', cause instanceof Error ? cause.message : 'Inténtalo de nuevo')
+      toast('No se pudo registrar la sesión', cause instanceof TypeError
+        ? 'Sin conexión. Vuelve a intentarlo cuando tengas red'
+        : userMessage(cause, 'Revisa la posición e inténtalo de nuevo'))
     } finally {
       setBusy(false)
     }

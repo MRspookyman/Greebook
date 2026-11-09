@@ -7,6 +7,7 @@ import { toast } from '@/components/toast'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/queryClient'
 import { qk } from '@/lib/data'
+import { userMessage } from '@/lib/errors'
 import type { ReadingWithBook } from '@/lib/types'
 import { flush } from '@/lib/offline/sessionQueue'
 import { offlineDb } from '@/lib/offline/db'
@@ -45,6 +46,8 @@ export function FinishSheet({
         .update({
           status: 'finished',
           finished_on: readOn,
+          finished_precision: 'day',
+          backfilled: false,
           rating: withRating && rating ? rating : null,
           moods: withRating ? moods : [],
         })
@@ -55,7 +58,9 @@ export function FinishSheet({
       if (showToast) toast('Un libro más en tu historia', reading.book.title)
       close()
     } catch (error) {
-      toast('No se pudo terminar el libro', error instanceof Error ? error.message : 'Inténtalo de nuevo')
+      toast('No se pudo terminar el libro', error instanceof TypeError
+        ? 'Sin conexión. Vuelve a intentarlo cuando tengas red'
+        : userMessage(error, 'Espera a que se sincronice la sesión e inténtalo de nuevo'))
     } finally {
       setBusy(false)
     }

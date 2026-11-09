@@ -6,6 +6,7 @@ import { qk } from '@/lib/data'
 import { supabase } from '@/lib/supabase'
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { toast } from '@/components/toast'
+import { userMessage } from '@/lib/errors'
 
 function apply(op: PendingSession) {
   const { session, readingPatch } = op.payload
@@ -68,7 +69,7 @@ export function flush(): Promise<void> {
             )
               return
             await offlineDb.pendingOps.delete(op.id)
-            toast('No se pudo guardar una sesión', error.message)
+            toast('No se pudo guardar una sesión', userMessage(error, 'Revisa los datos e inténtalo de nuevo'))
             await refresh(session.user_id)
             continue
           }
