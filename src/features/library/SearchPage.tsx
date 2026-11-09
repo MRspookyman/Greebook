@@ -1,10 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Camera, ChevronRight, Search } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
-import { lookupIsbn, searchBooks } from '@/lib/books/search'
+import { FilterChips } from '@/components/FilterChips'
+import { searchBooks } from '@/lib/books/search'
+import { isIsbn, normalizeIsbn, type SearchMode } from '@/lib/books/searchMode'
 import type { BookCandidate } from '@/lib/types'
 import { AddReadingSheet } from './AddReadingSheet'
 import { ManualBookForm } from './ManualBookForm'
@@ -14,23 +16,28 @@ const IsbnScanner = lazy(() => import('./IsbnScanner').then((m) => ({ default: m
 
 export function SearchPage() {
   const [query, setQuery] = useState('')
+  const [mode, setMode] = useState<SearchMode>('all')
+  const input = useRef<HTMLInputElement>(null)
   const [debounced, setDebounced] = useState('')
   const [scanner, setScanner] = useState(false)
   const [manual, setManual] = useState(false)
   const [selected, setSelected] = useState<BookCandidate | null>(null)
+  const searchTerm = mode === 'isbn' ? normalizeIsbn(query) : query.trim()
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebounced(query.trim()), 400)
+    const timeout = window.setTimeout(() => setDebounced(searchTerm), 400)
     return () => window.clearTimeout(timeout)
-  }, [query])
-  const ready = debounced.length >= 3 && debounced === query.trim()
+  }, [searchTerm, mode])
+  const valid = mode === 'isbn' ? isIsbn(searchTerm) : searchTerm.length >= 3
+  const ready = valid && debounced === searchTerm
   const results = useQuery({
-    queryKey: ['book-search', debounced],
-    queryFn: () => (/^97[89]\d{10}$/.test(debounced) ? lookupIsbn(debounced) : searchBooks(debounced)),
+    queryKey: ['book-search', mode, debounced],
+    queryFn: () => searchBooks(debounced, mode),
     enabled: ready,
     retry: false,
   })
-  const waiting = query.trim().length >= 3 && (!ready || results.isPending)
+  const waiting = valid && (!ready || results.isPending)
   const emptySearch = ready && (results.isError || (results.isSuccess && results.data.length === 0))
+  const searchLabel = mode === 'title' ? 'Título' : mode === 'author' ? 'Autor' : mode === 'isbn' ? 'ISBN' : 'Título, autor o ISBN'
   return (
     <section className="space-y-6">
       <header className="enter flex items-center gap-3">
@@ -39,19 +46,36 @@ export function SearchPage() {
         </Link>
         <h1 className="display">Añadir libro</h1>
       </header>
+      <FilterChips
+        aria-label="Buscar libros por"
+        options={[
+          { value: 'all', label: 'Todo' },
+          { value: 'title', label: 'Título' },
+          { value: 'author', label: 'Autor' },
+          { value: 'isbn', label: 'ISBN' },
+        ]}
+        value={mode}
+        onChange={(value) => {
+          setMode(value)
+          setDebounced('')
+          input.current?.focus()
+        }}
+      />
       <div className="flex items-center gap-2">
         <label className="relative min-w-0 flex-1">
           <Search size={20} className="pointer-events-none absolute top-3 left-0 text-muted" />
-          <span className="sr-only">Título, autor o ISBN</span>
+          <span className="sr-only">{searchLabel}</span>
           <input
+            ref={input}
             className="input rounded-none border-x-0 border-t-0 border-b-rule bg-transparent pl-7"
             type="search"
+            inputMode={mode === 'isbn' ? 'numeric' : 'search'}
             name="book-search"
             autoComplete="off"
             spellCheck={false}
-            placeholder="p. ej. Patria o 978…"
+            placeholder={mode === 'title' ? 'p. ej. Patria' : mode === 'author' ? 'p. ej. Almudena Grandes' : mode === 'isbn' ? 'ISBN de 10 o 13 cifras' : 'p. ej. Patria o 978…'}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => setQuery(mode === 'isbn' ? normalizeIsbn(e.target.value) : e.target.value)}
             autoFocus={window.matchMedia('(pointer: fine)').matches}
           />
         </label>
@@ -60,15 +84,17 @@ export function SearchPage() {
         </button>
       </div>
       <div aria-live="polite">
-        {query.trim().length < 3 && (
-          <p className="py-2 text-sm text-muted">Busca por título, autor o ISBN. Escribe al menos 3 caracteres.</p>
+        {!valid && (
+          <p className="py-2 text-sm text-muted">
+            {mode === 'isbn' ? 'Escribe el ISBN de 10 o 13 cifras del libro.' : `Busca por ${searchLabel.toLocaleLowerCase('es')}. Escribe al menos 3 caracteres.`}
+          </p>
         )}
         {waiting && (
           <div className="space-y-3" role="status">
             <span className="sr-only">Buscando libros…</span>
             {[0, 1, 2].map((n) => (
-              <div key={n} className="flex animate-pulse gap-4 border-b border-rule py-4">
-                <div className="bg-border w-16 h-24 rounded" />
+              <div key={n} className="flex animate-pulse gap-4 rounded-card border border-rule bg-surface p-4">
+                <div className="h-[132px] w-[88px] shrink-0 rounded bg-border" />
                 <div className="flex-1 space-y-3 py-2">
                   <div className="bg-border h-5 w-3/4 rounded" />
                   <div className="bg-border h-4 w-1/2 rounded" />
@@ -96,17 +122,17 @@ export function SearchPage() {
           </EmptyState>
         )}
         {ready && results.isSuccess && results.data.length > 0 && (
-          <ul>
+          <ul className="space-y-4">
             {results.data.map((book, index) => (
               <li
                 key={`${book.google_id ?? book.openlibrary_key ?? book.title}:${index}`}
-                className="border-b border-rule"
+                className="overflow-hidden rounded-card border border-rule bg-surface shadow-[var(--paper-shadow)]"
               >
                 <button
-                  className="pressable flex w-full items-center gap-4 py-5 text-left"
+                  className="pressable flex min-h-44 w-full items-center gap-4 p-4 text-left"
                   onClick={() => setSelected(book)}
                 >
-                  <Cover book={book} width={60} />
+                  <Cover book={book} width={88} />
                   <div className="min-w-0 flex-1">
                     <h2 className="line-clamp-2 font-serif text-xl leading-tight">{book.title}</h2>
                     <p className="mt-1 line-clamp-2 text-xs text-muted">
@@ -142,6 +168,7 @@ export function SearchPage() {
             onClose={() => setScanner(false)}
             onScan={(isbn) => {
               setScanner(false)
+              setMode('isbn')
               setQuery(isbn)
               setDebounced(isbn)
             }}
@@ -156,7 +183,16 @@ export function SearchPage() {
           setSelected(book)
         }}
       />
-      <AddReadingSheet candidate={selected} onClose={() => setSelected(null)} />
+      <AddReadingSheet
+        candidate={selected}
+        onClose={() => setSelected(null)}
+        onBackfilled={() => {
+          setSelected(null)
+          setQuery('')
+          setDebounced('')
+          window.requestAnimationFrame(() => input.current?.focus())
+        }}
+      />
     </section>
   )
 }

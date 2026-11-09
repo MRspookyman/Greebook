@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { BookCandidate } from '@/lib/types'
+import type { SearchMode } from './searchMode'
 
 const fields = 'key,title,author_name,number_of_pages_median,first_publish_year,cover_i,isbn'
 const documentSchema = z.object({
@@ -38,5 +39,6 @@ async function queryOpenLibrary(params: URLSearchParams): Promise<BookCandidate[
   })
 }
 
-export const searchOpenLibrary = (query: string) => queryOpenLibrary(new URLSearchParams({ q: query }))
+export const searchOpenLibrary = (query: string, mode: SearchMode = 'all') =>
+  queryOpenLibrary(new URLSearchParams({ [mode === 'all' ? 'q' : mode]: query }))
 export const byIsbnOpenLibrary = (isbn: string) => queryOpenLibrary(new URLSearchParams({ isbn }))

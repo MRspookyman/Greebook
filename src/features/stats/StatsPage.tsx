@@ -52,8 +52,8 @@ export function StatsPage() {
     { label: 'Páginas', value: summary.pages, previous: previous.pages },
     {
       label: 'Tiempo',
-      value: timeSpent(sessions, readings, { ...range, to: today }),
-      previous: timeSpent(sessions, readings, previousRange(period, today)),
+      value: timeSpent(sessions, { ...range, to: today }),
+      previous: timeSpent(sessions, previousRange(period, today)),
       format: formatTime,
     },
     {

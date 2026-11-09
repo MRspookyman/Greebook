@@ -2,6 +2,7 @@ import type { Book, BookCandidate } from '@/lib/types'
 import { supabase } from '@/lib/supabase'
 import { byIsbnGoogle, searchGoogle } from './googleBooks'
 import { byIsbnOpenLibrary, searchOpenLibrary } from './openLibrary'
+import { isIsbn, normalizeIsbn, type SearchMode } from './searchMode'
 
 async function withFallback(primary: () => Promise<BookCandidate[]>, fallback: () => Promise<BookCandidate[]>) {
   try {
@@ -13,15 +14,18 @@ async function withFallback(primary: () => Promise<BookCandidate[]>, fallback: (
   return fallback()
 }
 
-export const searchBooks = (query: string) =>
-  withFallback(
-    () => searchGoogle(query),
-    () => searchOpenLibrary(query),
+export function searchBooks(query: string, mode: SearchMode = 'all') {
+  if (mode === 'isbn' || (mode === 'all' && isIsbn(query))) return lookupIsbn(query)
+  return withFallback(
+    () => searchGoogle(query, mode),
+    () => searchOpenLibrary(query, mode),
   )
+}
+
 export const lookupIsbn = (isbn: string) =>
   withFallback(
-    () => byIsbnGoogle(isbn),
-    () => byIsbnOpenLibrary(isbn),
+    () => byIsbnGoogle(normalizeIsbn(isbn)),
+    () => byIsbnOpenLibrary(normalizeIsbn(isbn)),
   )
 
 async function findBook(candidate: BookCandidate): Promise<Book | null> {

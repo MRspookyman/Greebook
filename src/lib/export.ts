@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { todayISO } from '@/lib/dates'
 import type { Message, Note, Profile, ReadingWithBook, Session } from '@/lib/types'
+import { formatLabel, unitLabel } from '@/lib/units'
 
 interface ExportData {
   profile: Profile
@@ -34,9 +35,7 @@ function csvCell(value: string | number | null): string {
 }
 
 function readingsCsv(readings: ReadingWithBook[]): string {
-  const formats = { paper: 'Papel', audio: 'Audiolibro' }
   const statuses = { want: 'Quiero leer', reading: 'Leyendo', finished: 'Leído', abandoned: 'Abandonado' }
-  const units = { pages: 'Páginas', minutes: 'Minutos' }
   const rows: (string | number | null)[][] = [
     [
       'Título',
@@ -47,21 +46,21 @@ function readingsCsv(readings: ReadingWithBook[]): string {
       'Fin',
       'Valoración',
       'Ánimos',
-      'Páginas/minutos',
+      'Total',
       'Unidad',
       'Posición actual',
     ],
     ...readings.map((reading) => [
       reading.book.title,
       reading.book.authors.join(', '),
-      formats[reading.format],
+      formatLabel(reading.format),
       statuses[reading.status],
       reading.started_on,
       reading.finished_on,
       reading.rating,
       reading.moods.join(', '),
       reading.total_units,
-      units[reading.unit],
+      unitLabel(reading.unit),
       reading.current_position,
     ]),
   ]

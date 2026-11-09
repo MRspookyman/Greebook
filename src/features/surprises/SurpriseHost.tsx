@@ -7,7 +7,7 @@ import { useMe } from '@/features/auth/me'
 import { useReadings, useSessions } from '@/lib/data'
 import { todayISO } from '@/lib/dates'
 import { currentStreak } from '@/lib/stats/streak'
-import { pendingSurprises, surpriseSeenKey } from '@/lib/surprises/evaluate'
+import { finishedSurpriseStats, pendingSurprises, surpriseSeenKey } from '@/lib/surprises/evaluate'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/components/toast'
 
@@ -114,12 +114,10 @@ export function SurpriseHost() {
     !sessions.isSuccess
   )
     return null
-  const finished = readings.data.filter((reading) => reading.status === 'finished')
   const surprise = pendingSurprises(
     {
-      booksFinished: finished.length,
+      ...finishedSurpriseStats(readings.data, today),
       currentStreak: currentStreak(new Set(sessions.data.map((session) => session.read_on)), today),
-      finishedThisYear: finished.filter((reading) => reading.finished_on?.slice(0, 4) === today.slice(0, 4)).length,
       yearlyGoal: profile.yearly_goal,
     },
     today,

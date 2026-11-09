@@ -5,6 +5,9 @@ Diario de lectura para dos (PWA). Vite + React + TypeScript, Supabase y Cloudfla
 Estética «diario editorial»: Fraunces + Inter, filetes en vez de tarjetas, portadas como libros y letra manuscrita
 (Caveat) solo en las huellas. Reglas, tokens y contrastes en [`docs/estilo.md`](docs/estilo.md).
 
+Formatos: **Papel** (páginas) y **Kindle** (porcentaje por defecto, o páginas si se conoce el total).
+El tiempo de lectura registrado en cada sesión es independiente del progreso.
+
 ## Desarrollo
 
 ```bash
@@ -21,8 +24,10 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
 ## Puesta en marcha (proyecto único `greenbook`; antes del regalo se vacían los datos de prueba)
 
 1. **Supabase → SQL editor**: ejecuta `supabase/migrations/0001_init.sql`, `0003_drop_ebook.sql`,
-   `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql` y `0007_rincon.sql`
-   en ese orden. Configura los marcadores de URL y secretos de los avisos con el paso 5.
+   `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`
+   y `0008_historico_ebook.sql` en ese orden. La 0008 se aplica manualmente también a proyectos existentes:
+   añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
+   Configura los marcadores de URL y secretos de los avisos con el paso 5.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.

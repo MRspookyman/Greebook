@@ -4,7 +4,7 @@ import { useMe } from '@/features/auth/me'
 import { useReadings, useSessions } from '@/lib/data'
 import { summarize } from '@/lib/stats/aggregate'
 import { periodRange, type Period } from '@/lib/stats/insights'
-import { formatDays, formatMinutes } from '@/lib/units'
+import { formatDays } from '@/lib/units'
 
 /**
  * «Los dos»: the same period for both readers, side by side. Each bar is relative to whoever
@@ -30,8 +30,7 @@ export function CoupleCompare({ period, today, label }: { period: Period; today:
     { name: 'Tú', accent: profile.accent, summary: mine },
     { name: partner.display_name, accent: partner.accent, summary: hers },
   ]
-  const score = (summary: typeof mine) => summary.pages + summary.audioMinutes / 2
-  const max = Math.max(1, ...rows.map((row) => score(row.summary)))
+  const max = Math.max(1, ...rows.map((row) => row.summary.pages))
   return (
     <section className="rule space-y-4 pt-5" aria-labelledby="couple-compare">
       <div className="flex items-baseline justify-between gap-2">
@@ -52,8 +51,7 @@ export function CoupleCompare({ period, today, label }: { period: Period; today:
                   <CountUp value={row.summary.pages} />
                 </span>{' '}
                 <span className="text-xs text-muted">
-                  págs
-                  {row.summary.audioMinutes > 0 ? ` + ${formatMinutes(row.summary.audioMinutes)}` : ''} ·{' '}
+                  págs ·{' '}
                   {formatDays(row.summary.activeDays)}
                   {row.summary.booksFinished
                     ? ` · ${row.summary.booksFinished} ${row.summary.booksFinished === 1 ? 'libro' : 'libros'}`
@@ -66,7 +64,7 @@ export function CoupleCompare({ period, today, label }: { period: Period; today:
                 className="h-full origin-left"
                 style={{
                   background: `var(--${row.accent})`,
-                  transform: `scaleX(${entered ? score(row.summary) / max : 0})`,
+                  transform: `scaleX(${entered ? row.summary.pages / max : 0})`,
                   transition: `transform var(--dur-fill) var(--ease) ${index * 90}ms`,
                 }}
               />

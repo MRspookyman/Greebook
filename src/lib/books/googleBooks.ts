@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { BookCandidate } from '@/lib/types'
+import type { SearchMode } from './searchMode'
 
 const volume = z.object({
   id: z.string().optional(),
@@ -44,5 +45,6 @@ async function queryGoogle(query: string): Promise<BookCandidate[]> {
   })
 }
 
-export const searchGoogle = (query: string) => queryGoogle(query)
+export const searchGoogle = (query: string, mode: SearchMode = 'all') =>
+  queryGoogle(mode === 'all' ? query : `${mode === 'title' ? 'intitle' : mode === 'author' ? 'inauthor' : 'isbn'}:${query}`)
 export const byIsbnGoogle = (isbn: string) => queryGoogle(`isbn:${isbn}`)

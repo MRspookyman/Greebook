@@ -1,7 +1,8 @@
 export type Accent = 'blue' | 'green'
 export type ThemePref = 'system' | 'light' | 'dark'
-export type Format = 'paper' | 'audio'
-export type Unit = 'pages' | 'minutes'
+export type Format = 'paper' | 'ebook'
+export type Unit = 'pages' | 'percent'
+export type FinishedPrecision = 'year' | 'month' | 'day'
 export type ReadingStatus = 'want' | 'reading' | 'finished' | 'abandoned'
 export type NoteKind = 'note' | 'quote'
 
@@ -53,6 +54,8 @@ export interface Reading {
   status: ReadingStatus
   started_on: string | null // 'yyyy-MM-dd'
   finished_on: string | null
+  finished_precision: FinishedPrecision | null
+  backfilled: boolean
   rating: number | null
   moods: string[]
   created_at: string

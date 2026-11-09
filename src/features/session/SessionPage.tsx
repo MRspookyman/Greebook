@@ -19,7 +19,7 @@ import { logSession } from '@/lib/offline/sessionQueue'
 import { currentStreak } from '@/lib/stats/streak'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
 import type { Message, ReadingWithBook } from '@/lib/types'
-import { formatDays, formatMinutes, formatUnitDelta, formatUnitValue, parseHMM, toHMM } from '@/lib/units'
+import { formatDays, formatMinutes, formatUnitDelta, formatUnitValue } from '@/lib/units'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
 import {
@@ -131,19 +131,13 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         : storedMode(),
   )
   const timing = !!mine || mode === 'crono'
-  const audio = reading.unit === 'minutes'
   const pagesUnit = reading.unit === 'pages'
   const [position, setPosition] = useState<number | null>(() =>
     mine?.draft != null && mine.draft > reading.current_position && mine.draft <= reading.total_units
       ? mine.draft
       : null,
   )
-  // Listening time is progress: an audiobook advances with the timer until you set it by hand.
-  const end =
-    position ??
-    (audio && mine
-      ? Math.min(reading.total_units, reading.current_position + Math.floor(seconds / 60))
-      : reading.current_position)
+  const end = position ?? reading.current_position
   const delta = end - reading.current_position
   const [minutes, setMinutes] = useState<number | null>(null)
   const [date, setDate] = useState(initialDate)
@@ -241,7 +235,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     const readOn = timed ? today : date
     const sessionMinutes = mine ? timerMinutes(mine, Date.now()) : minutes
     if (!Number.isInteger(end) || end <= reading.current_position)
-      return fail('position', audio ? 'Indica hasta dónde has escuchado' : 'Indica hasta qué página has llegado')
+      return fail('position', pagesUnit ? 'Indica hasta qué página has llegado' : 'Indica a qué porcentaje has llegado')
     if (end > reading.total_units)
       return fail('position', `Este libro tiene ${formatUnitValue(reading.unit, reading.total_units)}`)
     if (!readOn || readOn > today) return fail('date', 'Elige una fecha que no sea futura')
@@ -269,7 +263,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     }
   }
 
-  const steps = audio ? [5, 10, 15, 30] : [5, 10, 25]
+  const steps = pagesUnit ? [5, 10, 25] : [1, 5, 10]
   const actions: ReactNode = saved ? (
     <>
       {partner && online && !tracing && (
@@ -290,7 +284,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       }}
     >
       <Play size={17} fill="currentColor" aria-hidden />
-      {audio ? 'Empezar a escuchar' : 'Empezar a leer'}
+      Empezar a leer
     </button>
   ) : (
     <>
@@ -350,7 +344,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               />
               <p className="mt-2 text-xs text-muted">
                 {formatUnitValue(reading.unit, reading.current_position)} de{' '}
-                {reading.unit === 'pages' ? reading.total_units : formatMinutes(reading.total_units)} ·{' '}
+                {reading.total_units}{pagesUnit ? '' : ' %'} ·{' '}
                 {pct(reading.current_position)} %
               </p>
             </div>
@@ -503,10 +497,10 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
           {(!timing || mine) && (
             <section
               className={`space-y-4 ${timing ? 'rule pt-5' : 'pt-6'}`}
-              aria-label={audio ? 'Hasta dónde has escuchado' : 'Hasta qué página has llegado'}
+              aria-label={pagesUnit ? 'Hasta qué página has llegado' : 'Hasta qué porcentaje has llegado'}
             >
               <div className="flex items-baseline justify-between gap-3">
-                <h2 className="eyebrow">He llegado a</h2>
+                <h2 className="eyebrow">{pagesUnit ? 'He llegado a' : 'He llegado al … %'}</h2>
                 <p className="text-xs text-muted">
                   Empezaste en {formatUnitValue(reading.unit, reading.current_position)}
                 </p>
@@ -516,32 +510,27 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                 value={end}
                 onChange={change}
                 step={1}
-                min={reading.current_position}
+                min={Math.min(reading.total_units, reading.current_position + 1)}
                 max={reading.total_units}
                 display={
-                  audio ? (
-                    <RollingNumber value={end} format={toHMM} />
-                  ) : (
-                    <span className="inline-flex items-baseline">
-                      <span className="mr-1.5 text-[0.55em] text-muted">p.</span>
-                      <RollingNumber value={end} />
-                    </span>
-                  )
+                  <span className="inline-flex items-baseline">
+                    {pagesUnit && <span className="mr-1.5 text-[0.55em] text-muted">p.</span>}
+                    <RollingNumber value={end} />
+                    {!pagesUnit && <span className="ml-1.5 text-[0.55em] text-muted">%</span>}
+                  </span>
                 }
                 caption={
                   <span className={delta > 0 ? 'text-accent' : undefined}>
                     +{formatUnitDelta(reading.unit, delta)} · {pct(end)} %
                   </span>
                 }
-                label={audio ? 'Tiempo escuchado' : 'Página alcanzada'}
+                label={pagesUnit ? 'Página alcanzada' : 'Porcentaje alcanzado'}
                 editable
                 inputId="session-position"
                 invalid={error?.field === 'position'}
                 describedBy={error?.field === 'position' ? 'session-position-error' : undefined}
-                editLabel={audio ? 'Escribir el tiempo alcanzado' : 'Escribir la página'}
-                inputMode={audio ? 'text' : 'numeric'}
-                parse={audio ? parseHMM : undefined}
-                format={audio ? toHMM : undefined}
+                editLabel={pagesUnit ? 'Escribir la página' : 'Escribir el porcentaje'}
+                inputMode="numeric"
               />
               {error?.field === 'position' && (
                 <p id="session-position-error" role="alert" className="text-center text-sm text-danger">
@@ -558,7 +547,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                     onClick={() => change(Math.min(reading.total_units, end + amount))}
                   >
                     +{amount}
-                    {audio ? ' min' : ''}
+                    {pagesUnit ? '' : ' %'}
                   </button>
                 ))}
                 <button

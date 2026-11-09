@@ -70,7 +70,7 @@ describe('goalProjection', () => {
 
 describe('bestWeekday', () => {
   it('compares the best day average with the other days', () => {
-    const readings = [{ id: 'r', unit: 'pages' as const }]
+    const readings = [{ id: 'r', unit: 'pages' as const, book: { page_count: 300 } }]
     const sessions = [
       session('2026-11-01', 0, 70), // Sunday 70
       session('2026-11-02', 70, 120), // Monday 50

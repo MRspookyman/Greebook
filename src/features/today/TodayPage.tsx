@@ -8,7 +8,7 @@ import { useInvites, useReadings, useSessions } from '@/lib/data'
 import { fmt, greeting, todayISO } from '@/lib/dates'
 import { currentStreak } from '@/lib/stats/streak'
 import { dailySeries, estimatedFinish, pacePerDay, weekDays } from '@/lib/stats/insights'
-import { formatDays, formatMinutes, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
+import { formatDays, formatLabel, formatPosition, formatUnitDelta, progressFraction } from '@/lib/units'
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
 import { Avatar } from '@/components/Avatar'
@@ -190,7 +190,7 @@ export function TodayPage() {
               <button
                 type="button"
                 className="icon-btn"
-                aria-label={`${reading.format === 'audio' ? 'Escuchar' : 'Leer'} «${reading.book.title}»`}
+                aria-label={`Leer «${reading.book.title}»`}
                 onClick={() => read(reading)}
               >
                 <Play size={16} aria-hidden />
@@ -332,7 +332,6 @@ function CurrentReading({
   const timer = useActiveTimer()
   const mine = timer?.readingId === reading.id ? timer : null
   const seconds = useElapsedSeconds(mine)
-  const audio = reading.format === 'audio'
   return (
     <article className="space-y-3">
       <div className="flex items-start gap-4">
@@ -358,19 +357,15 @@ function CurrentReading({
           </div>
           <p className="mt-2 text-xs text-muted">
             <span className="text-accent">{Math.round(fraction * 100)} %</span> ·{' '}
-            {pace === null ? 'Sin ritmo aún' : `${Math.round(pace)} ${reading.unit === 'minutes' ? 'min' : 'pág'}/día`}
+            {pace === null ? 'Sin ritmo aún' : `${Math.round(pace)} ${reading.unit === 'percent' ? '%' : 'pág'}/día`}
           </p>
         </div>
       </div>
       <div className="flex justify-between gap-3 text-xs text-muted">
         <span>
-          {reading.unit === 'minutes'
-            ? `te quedan ${formatMinutes(reading.total_units - reading.current_position)}`
-            : finish
-              ? `lo acabas hacia el ${fmt(finish, 'd MMM')}`
-              : 'registra para conocer tu ritmo'}
+          {finish ? `lo acabas hacia el ${fmt(finish, 'd MMM')}` : 'registra para conocer tu ritmo'}
         </span>
-        <span>{reading.format === 'audio' ? 'Audiolibro' : 'Papel'}</span>
+        <span>{formatLabel(reading.format)}</span>
       </div>
       <div className="flex gap-3">
         {mine ? (
@@ -380,18 +375,18 @@ function CurrentReading({
             aria-label={`Volver a tu sesión de «${reading.book.title}»`}
           >
             {mine.pausedAt == null && <span className="live-dot" aria-hidden />}
-            {mine.pausedAt == null ? (audio ? 'Escuchando' : 'Leyendo') : 'En pausa'} ·{' '}
+            {mine.pausedAt == null ? 'Leyendo' : 'En pausa'} ·{' '}
             <span className="[font-variant-numeric:lining-nums_tabular-nums]">{formatClock(seconds)}</span>
           </Link>
         ) : (
           <button type="button" className="btn btn-primary flex-1" onClick={onRead}>
             <Play size={15} fill="currentColor" aria-hidden />
-            {audio ? 'Escuchar' : 'Leer'}
+            Leer
           </button>
         )}
         <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-outline flex-1 whitespace-nowrap px-3">
           <Plus size={16} aria-hidden />
-          {reading.unit === 'minutes' ? 'Apuntar tiempo' : 'Apuntar páginas'}
+          {reading.unit === 'percent' ? 'Apuntar porcentaje' : 'Apuntar páginas'}
         </Link>
       </div>
     </article>

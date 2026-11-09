@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { audioMinutes, pagesRead, sessionScore } from './aggregate'
+import { pagesEquivalent, sessionScore } from './aggregate'
 import { level } from './intensity'
 import { bestStreak, currentStreak } from './streak'
 
@@ -43,10 +43,17 @@ describe('level', () => {
 })
 
 describe('aggregate', () => {
-  it('audio counts minutes and half-weight score', () => {
-    const s = { start_pos: 0, end_pos: 60 }
-    expect(audioMinutes(s, { unit: 'minutes' })).toBe(60)
-    expect(pagesRead(s, { unit: 'minutes' })).toBe(0)
-    expect(sessionScore(s, { unit: 'minutes' })).toBe(30)
+  it('converts Kindle percentage advance to estimated pages', () => {
+    const s = { start_pos: 10, end_pos: 20 }
+    const reading = { unit: 'percent' as const, book: { page_count: 300 } }
+    expect(pagesEquivalent(s, reading)).toBe(30)
+    expect(sessionScore(s, reading)).toBe(30)
+  })
+
+  it('does not invent pages when a Kindle book has no page count', () => {
+    const s = { start_pos: 10, end_pos: 20 }
+    const reading = { unit: 'percent' as const, book: { page_count: null } }
+    expect(pagesEquivalent(s, reading)).toBe(0)
+    expect(sessionScore(s, reading)).toBe(0)
   })
 })

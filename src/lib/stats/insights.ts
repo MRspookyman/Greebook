@@ -15,7 +15,7 @@ import {
 } from 'date-fns'
 import { fromISODate, toISODate } from '../dates'
 import type { Reading, ReadingWithBook, Session } from '../types'
-import { audioMinutes, pagesRead, sessionScore, type DateRange } from './aggregate'
+import { pagesEquivalent, sessionScore, type DateRange } from './aggregate'
 
 export type Period = 'week' | 'month' | 'year'
 
@@ -56,29 +56,26 @@ export function weekDays(today: string): string[] {
 export interface DayPoint {
   date: string
   pages: number
-  audioMinutes: number
-  /** pages + audioMinutes / 2 */
   score: number
 }
 
 /** One point per calendar day in `range` (inclusive), zeros on days without sessions. */
 export function dailySeries(
   sessions: Session[],
-  readings: Pick<Reading, 'id' | 'unit'>[],
+  readings: Pick<ReadingWithBook, 'id' | 'unit' | 'book'>[],
   range: DateRange,
 ): DayPoint[] {
   const byId = new Map(readings.map((r) => [r.id, r]))
   const days = new Map<string, DayPoint>()
   for (const d of eachDayOfInterval({ start: fromISODate(range.from), end: fromISODate(range.to) })) {
     const date = toISODate(d)
-    days.set(date, { date, pages: 0, audioMinutes: 0, score: 0 })
+    days.set(date, { date, pages: 0, score: 0 })
   }
   for (const s of sessions) {
     const point = days.get(s.read_on)
     const r = byId.get(s.reading_id)
     if (!point || !r) continue
-    point.pages += pagesRead(s, r)
-    point.audioMinutes += audioMinutes(s, r)
+    point.pages += pagesEquivalent(s, r)
     point.score += sessionScore(s, r)
   }
   return [...days.values()]
@@ -87,19 +84,18 @@ export function dailySeries(
 /** Twelve monthly totals (index 0 = January) of the year containing `today`. */
 export function monthlySeries(
   sessions: Session[],
-  readings: Pick<Reading, 'id' | 'unit'>[],
+  readings: Pick<ReadingWithBook, 'id' | 'unit' | 'book'>[],
   today: string,
 ): Omit<DayPoint, 'date'>[] {
   const year = today.slice(0, 4)
   const byId = new Map(readings.map((r) => [r.id, r]))
-  const months = Array.from({ length: 12 }, () => ({ pages: 0, audioMinutes: 0, score: 0 }))
+  const months = Array.from({ length: 12 }, () => ({ pages: 0, score: 0 }))
   for (const s of sessions) {
     if (!s.read_on.startsWith(year)) continue
     const r = byId.get(s.reading_id)
     if (!r) continue
     const m = months[Number(s.read_on.slice(5, 7)) - 1]
-    m.pages += pagesRead(s, r)
-    m.audioMinutes += audioMinutes(s, r)
+    m.pages += pagesEquivalent(s, r)
     m.score += sessionScore(s, r)
   }
   return months
@@ -160,7 +156,7 @@ export interface BestWeekday {
 }
 
 /** Weekday with the highest average score over the given sessions; null without data. */
-export function bestWeekday(sessions: Session[], readings: Pick<Reading, 'id' | 'unit'>[]): BestWeekday | null {
+export function bestWeekday(sessions: Session[], readings: (Pick<Reading, 'id' | 'unit'> & { book: Pick<ReadingWithBook['book'], 'page_count'> })[]): BestWeekday | null {
   const byId = new Map(readings.map((r) => [r.id, r]))
   const totals = Array(7).fill(0) as number[]
   const dates = Array.from({ length: 7 }, () => new Set<string>())

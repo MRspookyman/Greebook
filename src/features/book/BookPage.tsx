@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
@@ -9,7 +10,7 @@ import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { formatDays, formatMinutes, formatUnitValue, parseHMM, progressFraction, toHMM } from '@/lib/units'
+import { formatDays, formatFinished, formatLabel, formatMinutes, formatUnitValue, progressFraction } from '@/lib/units'
 import { estimatedFinish, pacePerDay } from '@/lib/stats/insights'
 import { Avatar } from '@/components/Avatar'
 import { Cover } from '@/components/Cover'
@@ -22,6 +23,7 @@ import { toast } from '@/components/toast'
 import { startTimer, useActiveTimer } from '@/features/session/Timer'
 import { useOnline } from '@/features/session/useOnline'
 import { usePendingSessionCount } from '@/lib/offline/sessionQueue'
+import { offlineDb } from '@/lib/offline/db'
 import { DualProgressBar } from '@/components/DualProgressBar'
 import { MessageCard } from '@/features/us/MessageCard'
 import { TraceSheet } from '@/features/us/TraceSheet'
@@ -87,9 +89,33 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [editing, setEditing] = useState<Session | null>(null)
   const [editingReading, setEditingReading] = useState(false)
   const [editingMoods, setEditingMoods] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [readingPending, setReadingPending] = useState<number | null>(null)
+  useEffect(() => {
+    const subscription = liveQuery(() =>
+      offlineDb.pendingOps
+        .filter((op) => op.payload.session.reading_id === reading.id && op.payload.session.user_id === userId)
+        .count(),
+    ).subscribe({
+      next: setReadingPending,
+      error: () => setReadingPending(null),
+    })
+    return () => subscription.unsubscribe()
+  }, [reading.id, userId])
   const [tab, setTab] = useState<BookTab>('sessions')
   const [allSessions, setAllSessions] = useState(false)
   const disabled = !online || busy || pending > 0
+  const destructiveDisabled =
+    !online || busy || readingPending !== 0 || !sessionsQuery.isSuccess || !notesQuery.isSuccess
+  const destructiveExplanation = !online
+    ? 'Sin conexión: vuelve a conectarte para reiniciar o eliminar esta lectura.'
+    : readingPending === null
+      ? 'Comprobando las sesiones pendientes de esta lectura…'
+      : readingPending > 0
+        ? 'Espera a que se sincronicen las sesiones de esta lectura para reiniciarla o eliminarla.'
+        : !sessionsQuery.isSuccess || !notesQuery.isSuccess
+          ? 'Espera a que se carguen las sesiones y notas antes de reiniciar o eliminar la lectura.'
+          : null
   const tabs: { value: BookTab; label: string }[] = [
     { value: 'sessions', label: 'Sesiones' },
     ...(own
@@ -143,6 +169,53 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       setBusy(false)
     }
   }
+  async function destroyReading(remove: boolean) {
+    if (!own || destructiveDisabled) return
+    const message = remove
+      ? `Se borrarán ${sessions.length} sesiones y ${notesQuery.data?.length ?? 0} notas.`
+      : `Se borrarán ${sessions.length} sesiones. Tus notas, citas y valoración se conservan.`
+    if (!window.confirm(`${remove ? '¿Eliminar de la biblioteca?' : '¿Reiniciar lectura?'}\n\n${message}`)) return
+    setBusy(true)
+    try {
+      // Check durable operations again: a session may have been queued while the menu was open.
+      const queued = await offlineDb.pendingOps
+        .filter((op) => op.payload.session.reading_id === reading.id && op.payload.session.user_id === userId)
+        .count()
+      if (queued > 0) {
+        toast('Espera a que se sincronicen las sesiones de esta lectura')
+        return
+      }
+      if (remove) {
+        const { error } = await supabase.from('readings').delete().eq('id', reading.id).eq('user_id', userId)
+        if (error) throw error
+      } else {
+        const { error: sessionsError } = await supabase
+          .from('sessions').delete().eq('reading_id', reading.id).eq('user_id', userId)
+        if (sessionsError) throw sessionsError
+        const { error } = await supabase.from('readings').update({
+          status: 'want',
+          current_position: 0,
+          started_on: null,
+          finished_on: null,
+          finished_precision: null,
+        }).eq('id', reading.id).eq('user_id', userId)
+        if (error) throw error
+      }
+      setMenuOpen(false)
+      if (remove) navigate('/biblioteca')
+      toast(remove ? 'Eliminado de la biblioteca' : 'Lectura reiniciada')
+    } catch {
+      toast(remove ? 'No se pudo eliminar la lectura' : 'No se pudo reiniciar la lectura')
+    } finally {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: qk.readings(userId) }),
+        queryClient.invalidateQueries({ queryKey: qk.sessions(userId) }),
+        queryClient.invalidateQueries({ queryKey: qk.notes(reading.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.reactions() }),
+      ])
+      setBusy(false)
+    }
+  }
   return (
     <div className="space-y-5 pb-20">
       <div className="flex items-center gap-2">
@@ -157,16 +230,13 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           <ArrowLeft size={20} />
         </button>
         <p className="ml-auto text-right text-xs text-muted">
-          {reading.format === 'paper'
-            ? `Papel · ${reading.total_units} págs.`
-            : `Audiolibro · ${formatMinutes(reading.total_units)}`}
+          {formatLabel(reading.format)} · {reading.unit === 'pages' ? `${reading.total_units} págs.` : '%'}
         </p>
         {own && (
           <button
             className="icon-btn"
-            aria-label="Editar lectura"
-            disabled={disabled}
-            onClick={() => setEditingReading(true)}
+            aria-label="Opciones de la lectura"
+            onClick={() => setMenuOpen(true)}
           >
             <MoreHorizontal size={20} />
           </button>
@@ -187,7 +257,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </p>
           <p className="mt-1 text-xs text-muted">
             {reading.finished_on && reading.status === 'finished'
-              ? `Terminado el ${fmt(reading.finished_on, 'd MMM')}`
+              ? `Terminado: ${formatFinished(reading.finished_on, reading.finished_precision)}`
               : reading.started_on
                 ? `Empezado el ${fmt(reading.started_on, 'd MMM')}`
                 : 'Aún por empezar'}
@@ -195,7 +265,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         </div>
       </header>
       {own ? (
-        <fieldset disabled={disabled}>
+        <fieldset disabled={disabled || (reading.status === 'finished' && !sessionsQuery.isSuccess)}>
           <Segmented
             variant="underline"
             aria-label="Estado de la lectura"
@@ -205,8 +275,13 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               void patch({
                 status,
                 ...(status === 'reading' && !reading.started_on ? { started_on: today } : {}),
-                ...(status === 'finished' ? { current_position: reading.total_units } : {}),
+                ...(status === 'finished'
+                  ? { current_position: reading.total_units }
+                  : reading.status === 'finished'
+                    ? { current_position: sessions.reduce((max, session) => Math.max(max, session.end_pos), 0) }
+                    : {}),
                 finished_on: status === 'finished' ? (reading.finished_on ?? today) : null,
+                finished_precision: status === 'finished' ? 'day' : null,
               })
             }
           />
@@ -250,10 +325,10 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
       </div>
       {reading.status === 'finished' ? (
         // The finish date is already in the header; summarize how long it took.
-        (reading.started_on && reading.finished_on) || minutes > 0 ? (
+        (reading.started_on && reading.finished_on && reading.finished_precision === 'day') || minutes > 0 ? (
           <section className="rule pt-4 text-sm text-muted" aria-label="Resumen de lectura">
             {[
-              reading.started_on && reading.finished_on
+              reading.started_on && reading.finished_on && reading.finished_precision === 'day'
                 ? `Leído en ${formatDays(differenceInCalendarDays(fromISODate(reading.finished_on), fromISODate(reading.started_on)) + 1)}`
                 : null,
               minutes > 0 ? `${formatMinutes(minutes)} de lectura` : null,
@@ -277,9 +352,9 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           <ProgressBar value={progressFraction(reading)} />
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
             {[
-              ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : 'min'}/día`],
+              ['Ritmo', pace === null ? '—' : `${Math.round(pace)} ${reading.unit === 'pages' ? 'pág' : '%'}/día`],
               ['Tiempo', minutes > 0 ? formatMinutes(minutes) : '—'],
-              ['Te quedan', reading.unit === 'pages' ? `${remaining} págs.` : formatMinutes(remaining)],
+              ['Te quedan', reading.unit === 'pages' ? `${remaining} págs.` : `${remaining} %`],
               ['Fin estimado', finish ? fmt(finish, 'd MMM') : '—'],
             ].map(([label, value]) => (
               <div key={label}>
@@ -361,12 +436,12 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     </time>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm">
-                        + {session.end_pos - session.start_pos} {reading.unit === 'pages' ? 'págs.' : 'min'}
+                        + {session.end_pos - session.start_pos} {reading.unit === 'pages' ? 'págs.' : '%'}
                       </p>
                       <p className="mt-1 text-xs text-muted">
                         {reading.unit === 'pages'
                           ? `p. ${session.start_pos} — ${session.end_pos}`
-                          : `${formatMinutes(session.start_pos)} — ${formatMinutes(session.end_pos)}`}
+                          : `${session.start_pos} % — ${session.end_pos} %`}
                       </p>
                     </div>
                     {session.minutes !== null && (
@@ -428,18 +503,37 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     }}
                   >
                     <Play size={16} fill="currentColor" aria-hidden />
-                    {reading.format === 'audio' ? 'Escuchar' : 'Leer'}
+                    Leer
                   </button>
                 )}
                 <Link to={`/leer/${reading.id}?modo=paginas`} className="btn btn-outline flex-1 whitespace-nowrap">
                   <Plus size={17} aria-hidden />
-                  {reading.unit === 'minutes' ? 'Apuntar tiempo' : 'Apuntar páginas'}
+                  {reading.unit === 'percent' ? 'Apuntar porcentaje' : 'Apuntar páginas'}
                 </Link>
               </>
             )}
           </div>,
           document.body,
         )}
+      {own && (
+        <BottomSheet open={menuOpen} onClose={() => { if (!busy) setMenuOpen(false) }} title="Opciones de la lectura">
+          <div className="space-y-3">
+            <button className="btn btn-secondary w-full" disabled={disabled} onClick={() => {
+              setMenuOpen(false)
+              setEditingReading(true)
+            }}>
+              Editar lectura
+            </button>
+            {destructiveExplanation && <p className="text-sm text-muted">{destructiveExplanation}</p>}
+            <button className="btn btn-secondary w-full" disabled={destructiveDisabled} onClick={() => void destroyReading(false)}>
+              Reiniciar lectura
+            </button>
+            <button className="btn btn-ghost w-full text-danger" disabled={destructiveDisabled} onClick={() => void destroyReading(true)}>
+              Eliminar de la biblioteca
+            </button>
+          </div>
+        </BottomSheet>
+      )}
       {editing && <SessionEditor reading={reading} session={editing} onClose={() => setEditing(null)} />}
       {editingReading && (
         <ReadingEditor reading={reading} disabled={disabled} onSave={patch} onClose={() => setEditingReading(false)} />
@@ -648,9 +742,8 @@ function ReadingEditor({
 }) {
   const [start, setStart] = useState(reading.started_on ?? '')
   const [finish, setFinish] = useState(reading.finished_on ?? '')
-  const [total, setTotal] = useState(
-    reading.unit === 'minutes' ? toHMM(reading.total_units) : String(reading.total_units),
-  )
+  const [finishEdited, setFinishEdited] = useState(false)
+  const [total, setTotal] = useState(String(reading.total_units))
   const [errors, setErrors] = useState<Record<string, string>>({})
   return (
     <BottomSheet
@@ -660,7 +753,7 @@ function ReadingEditor({
       dirty={
         start !== (reading.started_on ?? '') ||
         finish !== (reading.finished_on ?? '') ||
-        total !== (reading.unit === 'minutes' ? toHMM(reading.total_units) : String(reading.total_units))
+        total !== String(reading.total_units)
       }
     >
       <form
@@ -669,7 +762,7 @@ function ReadingEditor({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
-          const units = reading.unit === 'minutes' ? parseHMM(total) : /^\d+$/.test(total) ? Number(total) : null
+          const units = reading.unit === 'percent' ? 100 : /^\d+$/.test(total) ? Number(total) : null
           const next: Record<string, string> = {}
           if (start && start > todayISO()) next.start = 'El inicio no puede ser una fecha futura.'
           if ((finish && finish > todayISO()) || (start && finish && start > finish)) {
@@ -684,7 +777,12 @@ function ReadingEditor({
             event.currentTarget.querySelector<HTMLInputElement>(`[name="${first}"]`)?.focus()
             return
           }
-          void onSave({ started_on: start || null, finished_on: finish || null, total_units: units! }).then((saved) => {
+          void onSave({
+            started_on: start || null,
+            finished_on: finish || null,
+            ...(finishEdited ? { finished_precision: finish ? 'day' : null } : {}),
+            total_units: units!,
+          }).then((saved) => {
             if (saved) onClose()
           })
         }}
@@ -719,7 +817,10 @@ function ReadingEditor({
               min={start || undefined}
               max={todayISO()}
               value={finish}
-              onChange={(event) => setFinish(event.target.value)}
+              onChange={(event) => {
+                setFinish(event.target.value)
+                setFinishEdited(true)
+              }}
             />
             {errors.finish && (
               <span id="reading-finish-error" role="alert" className="mt-2 block text-sm text-danger">
@@ -727,15 +828,16 @@ function ReadingEditor({
               </span>
             )}
           </label>
+          {reading.unit === 'pages' && (
           <label className="label">
-            {reading.unit === 'pages' ? 'Total de páginas' : 'Duración total (h:mm)'}
+            Total de páginas
             <input
               className="input mt-2"
               name="total"
               aria-invalid={!!errors.total}
               aria-describedby={errors.total ? 'reading-total-error' : undefined}
-              placeholder={reading.unit === 'minutes' ? 'p. ej. 9:30…' : 'p. ej. 320…'}
-              inputMode={reading.unit === 'pages' ? 'numeric' : 'text'}
+              placeholder="p. ej. 320…"
+              inputMode="numeric"
               value={total}
               onChange={(event) => setTotal(event.target.value)}
               required
@@ -746,6 +848,7 @@ function ReadingEditor({
               </span>
             )}
           </label>
+          )}
           <button className="btn btn-primary w-full">Guardar cambios</button>
         </fieldset>
       </form>
@@ -761,7 +864,7 @@ function SessionEditor({
   session: Session
   onClose: () => void
 }) {
-  const [end, setEnd] = useState(reading.unit === 'minutes' ? toHMM(session.end_pos) : String(session.end_pos))
+  const [end, setEnd] = useState(String(session.end_pos))
   const [date, setDate] = useState(session.read_on)
   const [minutes, setMinutes] = useState(session.minutes === null ? '' : String(session.minutes))
   const [busy, setBusy] = useState(false)
@@ -779,7 +882,7 @@ function SessionEditor({
   const disabled = !online || busy || pending > 0 || reading.user_id !== userId || newest?.id !== session.id
   async function save(remove: boolean) {
     if (disabled) return
-    const endPos = reading.unit === 'minutes' ? parseHMM(end) : /^\d+$/.test(end) ? Number(end) : null
+    const endPos = /^\d+$/.test(end) ? Number(end) : null
     const next: Record<string, string> = {}
     if (!remove) {
       if (
@@ -846,7 +949,7 @@ function SessionEditor({
       onClose={onClose}
       title="Editar última sesión"
       dirty={
-        end !== (reading.unit === 'minutes' ? toHMM(session.end_pos) : String(session.end_pos)) ||
+        end !== String(session.end_pos) ||
         date !== session.read_on ||
         minutes !== (session.minutes === null ? '' : String(session.minutes))
       }
@@ -861,13 +964,17 @@ function SessionEditor({
         }}
       >
         <label className="label">
-          He llegado a…
+          {reading.unit === 'percent' ? 'He llegado al … %' : 'He llegado a…'}
           <input
             id="session-end"
             name="end"
             className="input mt-2"
-            inputMode={reading.unit === 'minutes' ? 'text' : 'numeric'}
-            placeholder={reading.unit === 'minutes' ? 'p. ej. 9:30…' : 'p. ej. 72…'}
+            inputMode="numeric"
+            type="number"
+            min={session.start_pos + 1}
+            max={reading.total_units}
+            step={1}
+            placeholder={reading.unit === 'percent' ? 'p. ej. 45…' : 'p. ej. 72…'}
             value={end}
             aria-invalid={!!errors.end}
             aria-describedby={errors.end ? 'session-end-error' : undefined}

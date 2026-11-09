@@ -8,7 +8,7 @@ import { useReadings, useSessions } from '@/lib/data'
 import { fmt, todayISO } from '@/lib/dates'
 import { dailySeries, weekDays, type DayPoint } from '@/lib/stats/insights'
 import type { Profile, ReadingWithBook, Session } from '@/lib/types'
-import { formatMinutes, formatUnitValue, progressFraction } from '@/lib/units'
+import { formatUnitValue, progressFraction } from '@/lib/units'
 
 const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const LIVE_MS = 2 * 60 * 60 * 1000
@@ -22,8 +22,7 @@ export function isReadingNow(person: Pick<Profile, 'reading_now_id' | 'reading_n
 
 const amount = (points: DayPoint[]) => {
   const pages = points.reduce((sum, point) => sum + point.pages, 0)
-  const audio = points.reduce((sum, point) => sum + point.audioMinutes, 0)
-  return pages > 0 || audio === 0 ? `${pages} ${pages === 1 ? 'pág' : 'págs'}` : formatMinutes(audio)
+  return `${pages} ${pages === 1 ? 'pág' : 'págs'}`
 }
 
 /**
@@ -103,9 +102,7 @@ function PersonRow({
     ? 'leyendo ahora'
     : today && today.pages > 0
       ? `hoy +${today.pages} ${today.pages === 1 ? 'pág' : 'págs'}`
-      : today && today.audioMinutes > 0
-        ? `hoy ${formatMinutes(today.audioMinutes)}`
-        : 'hoy aún no'
+      : 'hoy aún no'
   const fraction = current ? progressFraction(current) : 0
   return (
     <li className="rule py-3">

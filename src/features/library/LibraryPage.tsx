@@ -3,12 +3,12 @@ import { Link } from 'react-router'
 import { Plus, Search, Star } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
-import { Segmented } from '@/components/Segmented'
+import { FilterChips } from '@/components/FilterChips'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
 import { useReadings, useTogether } from '@/lib/data'
-import type { ReadingStatus, TogetherItemWithBook } from '@/lib/types'
-import { progressFraction } from '@/lib/units'
+import type { Format, ReadingStatus, TogetherItemWithBook } from '@/lib/types'
+import { formatFinished, formatLabel, progressFraction } from '@/lib/units'
 import { useRooms } from '@/features/us/rooms'
 import { answerTogether, startTogether } from '@/features/us/together'
 import { fmt, todayISO } from '@/lib/dates'
@@ -18,6 +18,7 @@ const segments = [
   { value: 'want', label: 'Pendientes' },
   { value: 'finished', label: 'Leídos' },
   { value: 'together', label: 'Juntos' },
+  { value: 'abandoned', label: 'Dejados' },
 ] as const
 
 type View = ReadingStatus | 'together'
@@ -33,14 +34,25 @@ export function LibraryPage() {
   const [view, setView] = useState<View>('reading')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<'recent' | 'title' | 'rating'>('recent')
+  const [year, setYear] = useState('all')
+  const [format, setFormat] = useState<Format | 'all'>('all')
+  const finished = (readings.data ?? []).filter((reading) => reading.status === 'finished')
+  const years = [...new Set(finished.flatMap((reading) => reading.finished_on ? [reading.finished_on.slice(0, 4)] : []))]
+    .sort((a, b) => b.localeCompare(a))
+  const togetherItems = (together.data ?? []).filter((item) => !rooms.some((room) => room.book.id === item.book_id))
   const normalized = search.trim().toLocaleLowerCase('es')
   const matches = (book: { title: string; authors: string[] }) =>
     [book.title, ...book.authors].some((text) => text.toLocaleLowerCase('es').includes(normalized))
   const visible = (readings.data ?? [])
     .filter((reading) => reading.status === view && matches(reading.book))
+    .filter((reading) => view !== 'finished' || (
+      (year === 'all' || reading.finished_on?.startsWith(year)) &&
+      (format === 'all' || reading.format === format)
+    ))
     .sort((a, b) => {
       if (sort === 'title') return a.book.title.localeCompare(b.book.title, 'es')
       if (sort === 'rating' && view === 'finished') return (b.rating ?? -1) - (a.rating ?? -1)
+      if (view === 'finished') return (b.finished_on ?? '').localeCompare(a.finished_on ?? '')
       return b.updated_at.localeCompare(a.updated_at)
     })
   const list = (together.data ?? []).filter(
@@ -69,23 +81,53 @@ export function LibraryPage() {
           onChange={(event) => setSearch(event.target.value)}
         />
       </label>
-      <Segmented
-        variant="underline"
-        options={(view === 'abandoned'
-          ? [...segments, { value: 'abandoned' as const, label: 'Dejados' }]
-          : [...segments]
-        ).map((segment) => ({
-          ...segment,
-          count:
-            segment.value === 'together'
-              ? rooms.length +
-                (together.data ?? []).filter((item) => !rooms.some((room) => room.book.id === item.book_id)).length
-              : (readings.data ?? []).filter((reading) => reading.status === segment.value).length,
-        }))}
-        value={view}
-        onChange={setView}
-        aria-label="Vista de biblioteca"
-      />
+      <div role="group" aria-label="Vista de biblioteca" className="flex gap-3 overflow-x-auto py-1">
+        {segments.map((segment) => {
+          const shelf = (readings.data ?? [])
+            .filter((reading) => reading.status === segment.value)
+            .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+          const books = segment.value === 'together'
+            ? [...rooms.map((room) => room.book), ...togetherItems.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)).map((item) => item.book)]
+            : shelf.map((reading) => reading.book)
+          return (
+            <button
+              key={segment.value}
+              type="button"
+              aria-pressed={view === segment.value}
+              onClick={() => setView(segment.value)}
+              className={`min-h-28 w-32 shrink-0 rounded-card border p-3 text-left transition-colors ${view === segment.value ? 'border-accent bg-soft text-accent' : 'border-rule bg-surface text-ink'}`}
+            >
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="font-serif text-base">{segment.label}</span>
+                <span className="folio text-sm">{books.length}</span>
+              </span>
+              <span className="mt-3 flex min-h-12 -space-x-3" aria-hidden>
+                {books.slice(0, 3).map((book, index) => (
+                  <span key={`${book.id}:${index}`} className="relative" style={{ zIndex: 3 - index }}>
+                    <Cover book={book} width={30} />
+                  </span>
+                ))}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {view === 'finished' && (
+        <div className="space-y-2">
+          <FilterChips
+            aria-label="Año de finalización"
+            options={[{ value: 'all', label: 'Todos' }, ...years.map((value) => ({ value, label: value }))]}
+            value={year}
+            onChange={setYear}
+          />
+          <FilterChips
+            aria-label="Formato de los libros leídos"
+            options={[{ value: 'all', label: 'Todos' }, ...(['paper', 'ebook'] as const).map((value) => ({ value, label: formatLabel(value) }))]}
+            value={format}
+            onChange={setFormat}
+          />
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {view !== 'together' &&
           (['recent', 'title', ...(view === 'finished' ? (['rating'] as const) : [])] as const).map((value) => (
@@ -98,15 +140,6 @@ export function LibraryPage() {
               {value === 'recent' ? 'Recientes' : value === 'title' ? 'Título' : 'Nota'}
             </button>
           ))}
-        {view !== 'together' && (
-          <button
-            className="btn btn-ghost ml-auto text-xs"
-            aria-pressed={view === 'abandoned'}
-            onClick={() => setView(view === 'abandoned' ? 'reading' : 'abandoned')}
-          >
-            Ver dejados
-          </button>
-        )}
       </div>
       {view === 'together' ? (
         <div className="space-y-4">
@@ -203,6 +236,11 @@ export function LibraryPage() {
                     />
                   </span>
                   <span className="folio text-sm text-muted">{Math.round(progressFraction(reading) * 100)} %</span>
+                </span>
+              )}
+              {reading.status === 'finished' && reading.finished_on && (
+                <span className="text-xs leading-relaxed text-muted">
+                  {formatFinished(reading.finished_on, reading.finished_precision)}
                 </span>
               )}
               {reading.status === 'finished' && reading.rating !== null && (

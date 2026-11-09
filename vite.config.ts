@@ -24,6 +24,8 @@ export default defineConfig({
       includeAssets: ['icon.svg', 'apple-touch-icon-180x180.png', 'favicon.ico'],
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // Scanner WASM is fetched from our origin on demand, never during PWA installation.
+        globIgnores: ['**/*.wasm'],
       },
       manifest: {
         name: 'Greenbook',

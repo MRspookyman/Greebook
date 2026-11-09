@@ -2,19 +2,17 @@ import type { Reading, ReadingWithBook, Session } from '../types'
 
 type SessionPos = Pick<Session, 'start_pos' | 'end_pos'>
 
-/** Pages read in a session (audio counts 0). */
-export function pagesRead(session: SessionPos, reading: Pick<Reading, 'unit'>): number {
-  return reading.unit === 'pages' ? session.end_pos - session.start_pos : 0
+type ProgressReading = Pick<Reading, 'unit'> & { book: Pick<ReadingWithBook['book'], 'page_count'> }
+
+/** Estimated pages advanced, using the book's page count for Kindle percentages. */
+export function pagesEquivalent(session: SessionPos, reading: ProgressReading): number {
+  const delta = session.end_pos - session.start_pos
+  return reading.unit === 'pages' ? delta : reading.book.page_count ? Math.round(delta / 100 * reading.book.page_count) : 0
 }
 
-/** Minutes listened in a session (audio readings only). */
-export function audioMinutes(session: SessionPos, reading: Pick<Reading, 'unit'>): number {
-  return reading.unit === 'minutes' ? session.end_pos - session.start_pos : 0
-}
-
-/** Intensity score of a session: 1 page ≈ 2 minutes of listening. */
-export function sessionScore(session: SessionPos, reading: Pick<Reading, 'unit'>): number {
-  return pagesRead(session, reading) + audioMinutes(session, reading) / 2
+/** Calendar intensity is the estimated page advance. */
+export function sessionScore(session: SessionPos, reading: ProgressReading): number {
+  return pagesEquivalent(session, reading)
 }
 
 export interface DateRange {
@@ -26,7 +24,6 @@ export interface DateRange {
 
 export interface Summary {
   pages: number
-  audioMinutes: number
   /** Sum of the optional `minutes` recorded on sessions. */
   readingMinutes: number
   booksFinished: number
@@ -35,18 +32,15 @@ export interface Summary {
 
 const inRange = (d: string, r: DateRange) => d >= r.from && d <= r.to
 
-/** Recorded time takes precedence over audio advance; each session counts once. */
+/** Only explicitly recorded session time counts as time spent reading. */
 export function timeSpent(
   sessions: readonly Pick<Session, 'reading_id' | 'read_on' | 'minutes' | 'start_pos' | 'end_pos'>[],
-  readings: readonly Pick<Reading, 'id' | 'unit'>[],
   range: DateRange,
 ): number {
-  const byId = new Map(readings.map((reading) => [reading.id, reading]))
   let minutes = 0
   for (const session of sessions) {
     if (!inRange(session.read_on, range)) continue
-    const reading = byId.get(session.reading_id)
-    minutes += session.minutes ?? (reading ? audioMinutes(session, reading) : 0)
+    minutes += session.minutes ?? 0
   }
   return minutes
 }
@@ -55,7 +49,6 @@ export function summarize(sessions: Session[], readings: ReadingWithBook[], rang
   const byId = new Map(readings.map((r) => [r.id, r]))
   const days = new Set<string>()
   let pages = 0
-  let audio = 0
   let readingMinutes = 0
   for (const s of sessions) {
     if (!inRange(s.read_on, range)) continue
@@ -63,13 +56,12 @@ export function summarize(sessions: Session[], readings: ReadingWithBook[], rang
     readingMinutes += s.minutes ?? 0
     const r = byId.get(s.reading_id)
     if (!r) continue
-    pages += pagesRead(s, r)
-    audio += audioMinutes(s, r)
+    pages += pagesEquivalent(s, r)
   }
   const booksFinished = readings.filter(
     (r) => r.status === 'finished' && r.finished_on != null && inRange(r.finished_on, range),
   ).length
-  return { pages, audioMinutes: audio, readingMinutes, booksFinished, activeDays: days.size }
+  return { pages, readingMinutes, booksFinished, activeDays: days.size }
 }
 
 export interface DayActivity {

@@ -1,7 +1,10 @@
+import type { Format } from '@/lib/types'
+
 export type SurpriseTrigger =
   | { type: 'booksFinished'; count: number }
   | { type: 'streak'; days: number }
   | { type: 'goalReached' }
+  | { type: 'firstFinishedFormat'; format: Format }
   | { type: 'date'; monthDay: `${string}-${string}` }
 
 export interface Surprise {
@@ -26,6 +29,13 @@ export const SURPRISES: Surprise[] = [
     trigger: { type: 'booksFinished', count: 1 },
     title: 'La primera de muchas historias',
     message: 'Un libro terminado y un nuevo recuerdo en este rincón nuestro. Me encanta acompañarte, página a página.',
+  },
+  // ✏️ cambia este texto
+  {
+    key: 'primer-kindle',
+    trigger: { type: 'firstFinishedFormat', format: 'ebook' },
+    title: 'Tu primera historia en Kindle',
+    message: 'El primer viaje con tu Kindle ya tiene un lugar aquí. Que te acompañe en mil historias más, y yo contigo.',
   },
   // ✏️ cambia este texto
   {
