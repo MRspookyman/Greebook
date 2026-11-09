@@ -27,7 +27,7 @@ todas las pantallas. Los datos son de ejemplo y no toca Supabase.
 | Salas por libro | **Ficha a dúo**: las dos cintas sobre el libro, cada cita marcada en su página y las sesiones de los dos. |
 | Estadísticas | **Nosotros**: horas a la vez, noches juntos, estantería del año, la cita más querida, reto del mes, hitos y carta del mes. Los números personales pasan a Perfil. |
 | Racha individual | **Racha de los dos** con 2 comodines al mes, y la de cada uno al lado, sin comparar. |
-| Queremos leer juntos | Se mantiene en Biblioteca y Nosotros, y se suman los **regalos con dedicatoria**. |
+| Queremos leer juntos | Se mantiene en Biblioteca y Nosotros. |
 | — | **Valorar a ciegas** cuando terminéis el mismo libro. |
 
 Navegación: **Inicio · Biblioteca · (Leer) · Citas · Nosotros**. El perfil se abre desde los avatares de Inicio. Las
@@ -69,9 +69,9 @@ ticket al sincronizar.
 
 ### 3.4 Biblioteca
 
-Los dos · Míos · De ella. Secciones: Leyendo ahora (cada persona es una cinta de color en la portada), A dúo, Un regalo
-para ti (con dedicatoria a mano), Queremos leer juntos y Leídos en 2026 como estantería. Fichas: a dúo, tuya, la
-lectura de ella (con «Queremos leerlo juntos») y el regalo con su dedicatoria.
+Los dos · Míos · De ella. Secciones: Leyendo ahora (cada persona es una cinta de color en la portada), A dúo,
+Queremos leer juntos y Leídos en 2026 como estantería. Fichas: a dúo, tuya y la
+lectura de ella (con «Queremos leerlo juntos»).
 
 ### 3.5 Racha de los dos
 
@@ -97,7 +97,7 @@ acuerdo: medio punto de diferencia») y desde ahí se abre la charla del libro (
 **Imprescindibles (fases 1 a 4):** leer juntos en directo con latidos y ticket · citas compartidas con protección de
 spoilers · racha de los dos con comodines · Nosotros · nueva Inicio y Biblioteca.
 
-**Muy recomendables:** valorar a ciegas · carta del mes · regalo con dedicatoria (aparece envuelto en su biblioteca) ·
+**Muy recomendables:** valorar a ciegas · carta del mes ·
 modo noche automático a partir de las 22:00 · «darle las buenas noches».
 
 **Para más adelante:** cita como imagen para compartir · «Hace un año estabais leyendo…» · «Te leo yo» (uno lee en voz
@@ -129,7 +129,7 @@ de 12 px como mínimo, contraste medido, movimiento reducido respetado y nada de
 
 - **Tipografía:** Young Serif para títulos y números (cálida, de portada antigua), Nunito para la interfaz (terminaciones
   redondas), Literata en cursiva para las citas (hecha para leer en pantalla) y Caveat solo para lo que escribe la
-  pareja (notas, comentarios, dedicatorias).
+  pareja (notas, comentarios).
 - **Motivos:** cinta de color por persona (portadas, citas, progreso); lámpara para la presencia y la racha; sellos para
   los días leídos juntos y los hitos; ticket con troquel para la sesión juntos; ex libris en Nosotros; estantería para
   el año. Las portadas reales de Google Books se mantienen; las de tela son para los libros sin imagen (y para el
@@ -165,7 +165,7 @@ de 12 px como mínimo, contraste medido, movimiento reducido respetado y nada de
 2. **Citas compartidas**: migración, muro, ficha a dúo y protección de spoilers.
 3. **Leer juntos en directo**: presencia, sesión juntos, latidos, ticket y avisos.
 4. **Racha de los dos y Nosotros**: comodines, hitos, carta del mes y valoración a ciegas.
-5. **Extras**: cita como imagen, regalos con dedicatoria, «Hace un año…».
+5. **Extras**: cita como imagen, «Hace un año…».
 
 Cada fase deja la app usable; se puede regalar al terminar la 3.
 

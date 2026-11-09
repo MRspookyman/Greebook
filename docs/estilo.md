@@ -8,7 +8,7 @@ ciruela profundo y luz miel de noche. El rediseño «Leer juntos» está integra
 - `font-serif`: **Young Serif**, títulos y cifras. H1 / `.display`: 33px, 400, línea 1.04; h2: 21px, 400, línea 1.15.
 - `font-sans`: **Nunito Variable**, interfaz, controles y texto funcional (base 16px).
 - `font-book`: **Literata Variable**, lectura e itálicas personales (`.display-italic`).
-- `font-hand`: **Caveat**, palabras que una persona escribe a la otra (notas, comentarios, dedicatorias); nunca navegación ni cifras.
+- `font-hand`: **Caveat**, palabras que una persona escribe a la otra (notas, comentarios); nunca navegación ni cifras.
 - Etiquetas `.eyebrow` / `.lbl`: 12px. No reducir texto por debajo de 12px ni poner etiquetas decorativas sobre cada título.
 
 ## Paleta

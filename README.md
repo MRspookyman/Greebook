@@ -18,7 +18,7 @@ El rediseño «Leer juntos» ya está integrado; referencias de diseño y protot
 npm install
 cp .env.example .env.local   # rellena las 4 variables (Project Settings → API)
 npm run dev                  # http://localhost:5173
-npm test                     # lógica pura (rachas, intensidad, agregados, spoilers, sorpresas)
+npm test                     # lógica pura (rachas, intensidad, agregados, spoilers)
 npm run build                # typecheck + build de producción con service worker
 ```
 
@@ -62,10 +62,10 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    El nombre del Worker **`greebook`** es intencional (commit `99c8db6`); no renombrarlo.
    Cada build usa SHA corto + timestamp como buster de la caché persistida; sin `.git` usa timestamp.
 
+La bienvenida solo configura nombre, objetivo anual y recordatorio; no muestra mensajes personales.
+
 ## Personalizar el regalo
 
-- Dedicatoria y mensajes sorpresa: `src/config/surprises.ts` (busca `✏️`). Añade las fechas reales de
-  aniversario y cumpleaños (`'MM-DD'`).
 - Icono y arranque iOS: `public/icon.svg` y `pwa-assets.config.ts`, después `npm run icons`.
   El generador ya es una devDependency. Genera las resoluciones iPhone deduplicadas (SE a 17/Air);
   los enlaces de `index.html` cubren vertical y horizontal, siempre sobre papel claro `#f8eee9`.

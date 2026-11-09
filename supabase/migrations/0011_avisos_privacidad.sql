@@ -164,4 +164,7 @@ create policy juntos_broadcast_insert on realtime.messages for insert to authent
       and auth.uid() in (t.user_a, t.user_b)
   ));
 
+-- Retirar el registro de mensajes automáticos que ya no utiliza la aplicación.
+drop table if exists public.surprises_seen;
+
 commit;

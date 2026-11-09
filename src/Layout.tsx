@@ -4,7 +4,6 @@ import { TabBar } from '@/components/TabBar'
 import { useMe } from '@/features/auth/me'
 import { useRealtimeSync } from '@/features/us/useRealtimeSync'
 import { useOfflineSync } from '@/lib/offline/sessionQueue'
-import { SurpriseHost } from '@/features/surprises/SurpriseHost'
 import { NightContext } from '@/components/night'
 import { useAttachTogether } from '@/features/together/live'
 
@@ -86,7 +85,6 @@ export function Layout() {
         </div>
       </main>
       {!focus && <TabBar />}
-      <SurpriseHost />
     </>
   )
 }

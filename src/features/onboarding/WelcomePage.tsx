@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type SubmitEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { WELCOME } from '@/config/surprises'
 import { useMe } from '@/features/auth/me'
 import { PushEnableButton } from '@/features/profile/PushEnableButton'
 import { useUpdateProfile } from '@/lib/data'
@@ -9,7 +8,7 @@ export function WelcomePage() {
   const { userId, profile } = useMe()
   const navigate = useNavigate()
   const update = useUpdateProfile(userId)
-  const [step, setStep] = useState(profile.is_gift_recipient ? 1 : 2)
+  const [step, setStep] = useState(1)
   const [name, setName] = useState(profile.display_name)
   const [goal, setGoal] = useState(String(profile.yearly_goal))
   const [time, setTime] = useState(profile.reminder_time.slice(0, 5))
@@ -24,12 +23,12 @@ export function WelcomePage() {
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
-    if (step === 2) {
+    if (step === 1) {
       if (!name.trim() || !Number.isInteger(Number(goal)) || Number(goal) < 1 || Number(goal) > 365) {
         setError('Escribe tu nombre y un objetivo entre 1 y 365 libros.')
         return
       }
-      setStep(3)
+      setStep(2)
       return
     }
     if (!/^\d{2}:\d{2}$/.test(time)) {
@@ -57,23 +56,11 @@ export function WelcomePage() {
         style={{ animation: 'gb-fade-up 300ms ease-out' }}
       >
         <p className="font-serif text-2xl text-green">Greenbook</p>
-        {step === 1 ? (
-          <>
-            <h1 tabIndex={-1} className="display display-italic focus-heading">
-              {WELCOME.title}
-            </h1>
-            <p className="whitespace-pre-line font-serif text-2xl italic leading-relaxed">{WELCOME.message}</p>
-            <p className="rule pt-5 font-serif text-lg italic text-muted">{WELCOME.signature}</p>
-            <button type="button" className="btn btn-primary mt-4" onClick={() => setStep(2)}>
-              Continuar
-            </button>
-          </>
-        ) : (
           <form onSubmit={submit} className="flex flex-col gap-6">
             <p className="folio text-muted">
-              Paso {profile.is_gift_recipient ? step : step - 1} de {profile.is_gift_recipient ? 3 : 2}
+              Paso {step} de 2
             </p>
-            {step === 2 ? (
+            {step === 1 ? (
               <>
                 <h1 tabIndex={-1} className="display display-italic focus-heading">
                   Tu rincón de lectura
@@ -133,7 +120,7 @@ export function WelcomePage() {
               </p>
             )}
             <div className="flex flex-wrap gap-3">
-              {(step === 3 || profile.is_gift_recipient) && (
+              {step === 2 && (
                 <button
                   type="button"
                   className="btn btn-outline"
@@ -144,11 +131,10 @@ export function WelcomePage() {
                 </button>
               )}
               <button className="btn btn-primary" disabled={update.isPending}>
-                {update.isPending ? 'Guardando…' : step === 2 ? 'Continuar' : 'Empezar a leer'}
+                {update.isPending ? 'Guardando…' : step === 1 ? 'Continuar' : 'Empezar a leer'}
               </button>
             </div>
           </form>
-        )}
       </div>
     </main>
   )

@@ -23,7 +23,6 @@ delete from sessions;
 delete from read_together;
 delete from readings;
 delete from books;
-delete from surprises_seen;
 
 -- Perfiles (solo si aún no existen).
 insert into profiles (id, display_name, accent, partner_id, is_gift_recipient, onboarded_at)

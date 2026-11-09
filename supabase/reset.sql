@@ -3,8 +3,8 @@
 -- Solo para preparar el regalo o un entorno de pruebas.
 --
 -- Greenbook: vaciar todos los datos antes del regalo.
--- Conserva las cuentas y los perfiles (nombres, colores, emparejamiento) y deja la bienvenida
--- sin ver para que ella vea la dedicatoria al entrar. Ejecutar completo en Supabase → SQL Editor.
+-- Conserva las cuentas y los perfiles (nombres, colores, emparejamiento) y reinicia la
+-- configuración de bienvenida. Ejecutar completo en Supabase → SQL Editor.
 
 begin;
 
@@ -22,7 +22,6 @@ delete from sessions;
 delete from read_together;
 delete from readings;
 delete from books;
-delete from surprises_seen;
 delete from push_subscriptions;
 
 update profiles set onboarded_at = null, last_reminded_on = null, live_notified_on = null, yearly_goal = 12, theme = 'system';
