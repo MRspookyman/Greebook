@@ -1,4 +1,6 @@
+import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useHiddenIds, withoutHidden } from './undo'
 import { supabase } from './supabase'
 import type {
   CoupleGoal,
@@ -97,10 +99,18 @@ export function useReadings(userId: string | null | undefined) {
   })
 }
 
+/** Leaves out rows deleted a moment ago that can still be undone. */
+function useWithoutHidden<T extends { id: string }>() {
+  const hidden = useHiddenIds()
+  return useCallback((rows: T[]) => withoutHidden(rows, hidden), [hidden])
+}
+
 export function useSessions(userId: string | null | undefined) {
+  const select = useWithoutHidden<Session>()
   return useQuery({
     queryKey: qk.sessions(userId ?? ''),
     enabled: !!userId,
+    select,
     queryFn: () =>
       fetchAll<Session>((from, to) =>
         supabase
@@ -169,9 +179,11 @@ export function useCoupleGoal(month: string, enabled = true) {
 
 /** Every quote I can see, newest first. Locked ones come without body/comment. */
 export function useQuotes(enabled = true) {
+  const select = useWithoutHidden<Quote>()
   return useQuery({
     queryKey: qk.quotes(),
     enabled,
+    select,
     queryFn: () =>
       fetchAll<Quote>((from, to) =>
         supabase
@@ -184,9 +196,11 @@ export function useQuotes(enabled = true) {
 }
 
 export function useQuoteReplies(enabled = true) {
+  const select = useWithoutHidden<QuoteReply>()
   return useQuery({
     queryKey: qk.quoteReplies(),
     enabled,
+    select,
     queryFn: () =>
       fetchAll<QuoteReply>((from, to) =>
         supabase.from('quote_replies').select('*').order('created_at', { ascending: true }).range(from, to),

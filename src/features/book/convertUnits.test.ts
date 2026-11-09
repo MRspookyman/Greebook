@@ -12,5 +12,7 @@ describe('reading unit conversion preview', () => {
   })
   it('counts sessions that must be removed instead of violating end > start', () => {
     expect(collapsedSessionCount([{ start_pos: 1, end_pos: 2 }, { start_pos: 2, end_pos: 3 }, { start_pos: 5, end_pos: 10 }], 500, 100)).toBe(1)
+    // A time-only session has nothing to lose and is kept, as edit_reading_units does since 0018.
+    expect(collapsedSessionCount([{ start_pos: 5, end_pos: 5 }], 500, 100)).toBe(0)
   })
 })

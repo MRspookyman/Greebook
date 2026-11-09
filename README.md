@@ -17,6 +17,15 @@ Ambas vistas agrupan un libro por año y respetan los filtros de personas, búsq
 La lista muestra las notas de ambos sin ocultarlas; en relecturas del mismo año cuenta la última
 finalización de cada persona. Las medias y la ordenación usan solo las personas y formatos visibles.
 
+En **Leer**, una sesión puede ser solo de tiempo (releer, o no saber por qué página vas) si dura 5 minutos o más.
+Una sesión con cronómetro cuenta para el día en que empezó (leer de 23:40 a 00:20 es «anoche»), y a partir de 3 h
+pregunta cuánto leíste de verdad. Desde la ficha se puede editar la fecha y los minutos de cualquier sesión; las
+páginas y el borrado, solo en la última. Borrar citas, respuestas o la última sesión muestra «Deshacer» durante
+5 segundos: no se borra en el servidor hasta entonces (o hasta salir de la app).
+
+La app avisa con «Hay una versión nueva · Actualizar» en lugar de recargarse sola, y busca versiones nuevas al volver
+a abrirla. En Android, al mantener pulsado el icono aparecen los atajos Leer, Apuntar páginas y Nueva cita.
+
 En **Citas** puedes buscar por texto, comentario o libro y filtrar por cualquiera de los libros con citas.
 Las citas y notas propias se pueden editar; también tus respuestas. Puedes adjuntar una foto de página
 (JPEG comprimido, máximo 1600 px) sin escribir texto y compartir las citas abiertas como una imagen.
@@ -43,7 +52,7 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
    `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`,
    `0012_avisos.sql`, `0013_citas_fotos.sql`, `0014_libros_editables.sql`, `0015_etiquetas_recomendaciones.sql`,
-   `0016_sesiones_hora.sql` y `0017_abandono.sql` en ese orden.
+   `0016_sesiones_hora.sql`, `0017_abandono.sql` y `0018_sesiones_tiempo.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
@@ -68,6 +77,10 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    para «A qué hora leéis»; solo rellena las antiguas cuando la estimación cae en su mismo día.
    La 0017 añade el motivo al dejar un libro y la función `edit_reading_units`, que cambia formato/unidad de una
    lectura convirtiendo sus sesiones en una sola transacción. Aplícalas antes de desplegar el cliente.
+   La 0018 permite sesiones solo de tiempo (sin páginas nuevas, a partir de 5 minutos, la misma regla que la racha)
+   y hace que `edit_reading_units` las conserve al convertir unidades. Aplícala antes de desplegar el cliente; con
+   el cliente anterior no cambia nada. Vuelve a desplegar también `send-reminders` (nuevo texto del recordatorio):
+   `npx supabase functions deploy send-reminders --project-ref <project-ref> --no-verify-jwt`.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.

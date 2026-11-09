@@ -4,6 +4,7 @@ import { Cover } from '@/components/Cover'
 import { fmt } from '@/lib/dates'
 import type { ReadingWithBook, Session } from '@/lib/types'
 import { formatMinutes, formatUnitDelta } from '@/lib/units'
+import { timeOnly } from '@/lib/sessionRules'
 
 interface Props {
   date: string | null
@@ -39,8 +40,8 @@ export function DaySheet({ date, onClose, sessions, readings, onRegister }: Prop
                   <p>Lectura no disponible</p>
                 )}
                 <p className="text-sm text-muted">
-                  {reading && `+${formatUnitDelta(reading.unit, session.end_pos - session.start_pos)}`}
-                  {session.minutes !== null && `${reading ? ' · ' : ''}${formatMinutes(session.minutes)} de lectura`}
+                  {reading && !timeOnly(session) && `+${formatUnitDelta(reading.unit, session.end_pos - session.start_pos)}`}
+                  {session.minutes !== null && `${reading && !timeOnly(session) ? ' · ' : ''}${formatMinutes(session.minutes)} de lectura`}
                 </p>
               </div>
             </article>

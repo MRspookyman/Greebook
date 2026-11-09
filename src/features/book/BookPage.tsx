@@ -10,7 +10,8 @@ import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
 import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { atLastPage, formatDays, formatFinished, formatLabel, formatMinutes, percentOf, progressFraction } from '@/lib/units'
+import { atLastPage, formatDays, formatFinished, formatLabel, formatMinutes, formatUnitValue, percentOf, progressFraction } from '@/lib/units'
+import { timeOnly } from '@/lib/sessionRules'
 import { readingPace } from './readingPace'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -78,10 +79,6 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const sessions = (sessionsQuery.data ?? [])
     .filter((s) => s.reading_id === reading.id)
     .sort((a, b) => b.read_on.localeCompare(a.read_on) || b.created_at.localeCompare(a.created_at))
-  const newest = sessions.reduce<Session | undefined>(
-    (latest, session) => (!latest || session.created_at > latest.created_at ? session : latest),
-    undefined,
-  )
   const minutes = sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0)
   const today = todayISO()
   const estimate = readingPace(reading, sessions, today)
@@ -459,7 +456,6 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
               )}
               {(allSessions ? sessions : sessions.slice(0, 10)).map((session) => {
                 const dateLabel = fmt(session.read_on, 'd MMM')
-                const editable = own && session.id === newest?.id
                 const content = (
                   <>
                     <time dateTime={session.read_on} aria-label={dateLabel} className="w-10 shrink-0 text-center">
@@ -468,12 +464,16 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     </time>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm">
-                        + {session.end_pos - session.start_pos} {reading.unit === 'pages' ? 'págs.' : '%'}
+                        {timeOnly(session)
+                          ? 'Solo tiempo'
+                          : `+ ${session.end_pos - session.start_pos} ${reading.unit === 'pages' ? 'págs.' : '%'}`}
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        {reading.unit === 'pages'
-                          ? `p. ${session.start_pos} — ${session.end_pos}`
-                          : `${session.start_pos} % — ${session.end_pos} %`}
+                        {timeOnly(session)
+                          ? formatUnitValue(reading.unit, session.start_pos)
+                          : reading.unit === 'pages'
+                            ? `p. ${session.start_pos} — ${session.end_pos}`
+                            : `${session.start_pos} % — ${session.end_pos} %`}
                       </p>
                     </div>
                     {session.minutes !== null && (
@@ -484,19 +484,22 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     )}
                   </>
                 )
-                return (
-                  <div key={session.id} className="flex items-center gap-1 border-b border-rule py-3">
-                    <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3">{content}</div>
-                    {editable && (
-                      <button
-                        className="icon-btn h-11 w-11 shrink-0"
-                        aria-label="Editar la última sesión"
-                        disabled={disabled}
-                        onClick={() => setEditing(session)}
-                      >
-                        <Pencil size={18} aria-hidden="true" />
-                      </button>
-                    )}
+                return own ? (
+                  // Every one of your sessions opens its editor; only the last can change pages.
+                  <button
+                    key={session.id}
+                    type="button"
+                    className="pressable flex min-h-11 w-full items-center gap-3 border-b border-rule py-3 text-left disabled:opacity-60"
+                    aria-label={`Editar la sesión del ${dateLabel}`}
+                    disabled={disabled}
+                    onClick={() => setEditing(session)}
+                  >
+                    {content}
+                    <Pencil size={15} className="shrink-0 text-muted" aria-hidden />
+                  </button>
+                ) : (
+                  <div key={session.id} className="flex min-h-11 items-center gap-3 border-b border-rule py-3">
+                    {content}
                   </div>
                 )
               })}

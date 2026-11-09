@@ -32,7 +32,8 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      // The app offers «Actualizar» (see main.tsx) instead of reloading by itself.
+      registerType: 'prompt',
       injectRegister: false,
       includeAssets: ['icon.svg', 'apple-touch-icon-180x180.png', 'favicon.ico'],
       injectManifest: {
@@ -52,6 +53,15 @@ export default defineConfig({
         launch_handler: { client_mode: ['navigate-existing', 'auto'] },
         background_color: '#f8eee9',
         theme_color: '#f8eee9',
+        // Long-press on the home-screen icon (Android): straight to the three things done most.
+        shortcuts: [
+          { name: 'Leer', short_name: 'Leer', description: 'Empezar el cronómetro', url: '/leer?modo=crono',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Apuntar páginas', short_name: 'Apuntar', description: 'Apuntar lo que has leído', url: '/leer?modo=paginas',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Nueva cita', short_name: 'Cita', description: 'Guardar una frase o una nota', url: '/citas?nueva=1',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+        ],
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

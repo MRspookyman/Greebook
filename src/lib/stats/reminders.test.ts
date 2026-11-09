@@ -18,7 +18,7 @@ describe('shared couple streak for reminders', () => {
     expect([...streak.wildcards]).toEqual(['2026-03-28'])
     expect(streak.wildcardsThisMonth).toBe(1)
     expect(streak.todayPending).toBe(true)
-    expect(dailyReminderBody(streak.current, true, 'Ana')).toBe('Lleváis 3 días seguidos leyendo los dos')
+    expect(dailyReminderBody(streak.current, true, 'Ana')).toBe('Ana ya ha leído hoy: con tu ratito, la racha llega a 4 días')
   })
 
   it('does not replenish spent wildcards when a later streak starts in the same month', () => {
@@ -48,9 +48,14 @@ describe('shared couple streak for reminders', () => {
 })
 
 describe('dailyReminderBody', () => {
-  it('mentions only the couple streak when it is positive', () => {
+  it('mentions the couple streak when it is positive', () => {
     expect(dailyReminderBody(1, false, 'Ana')).toBe('Lleváis 1 día leyendo los dos')
-    expect(dailyReminderBody(5, true, 'Ana')).toBe('Lleváis 5 días seguidos leyendo los dos')
+    expect(dailyReminderBody(5, false, 'Ana')).toBe('Lleváis 5 días seguidos leyendo los dos')
+  })
+
+  it('says what is at stake when the partner has already read today', () => {
+    expect(dailyReminderBody(5, true, 'Ana')).toBe('Ana ya ha leído hoy: con tu ratito, la racha llega a 6 días')
+    expect(dailyReminderBody(1, true, '  ')).toBe('Tu pareja ya ha leído hoy: con tu ratito, la racha llega a 2 días')
   })
 
   it('mentions the partner reading today only when the couple streak is zero', () => {

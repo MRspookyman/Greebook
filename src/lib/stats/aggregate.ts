@@ -14,7 +14,9 @@ export function pagesEquivalent(session: SessionPos, reading: ProgressReading): 
 const UNKNOWN_KINDLE_INTENSITY_PER_PERCENT = 3
 
 /** Calendar intensity uses estimated pages, with an activity-only fallback for unknown Kindle lengths. */
-export function sessionScore(session: SessionPos, reading: ProgressReading): number {
+export function sessionScore(session: SessionPos & { minutes?: number | null }, reading: ProgressReading): number {
+  // Time-only sessions still colour the day: about two minutes per page.
+  if (session.end_pos === session.start_pos) return Math.max(1, Math.round((session.minutes ?? 0) / 2))
   if (reading.unit === 'percent' && !reading.book.page_count) {
     return (session.end_pos - session.start_pos) * UNKNOWN_KINDLE_INTENSITY_PER_PERCENT
   }

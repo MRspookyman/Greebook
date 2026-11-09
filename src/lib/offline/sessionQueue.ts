@@ -8,6 +8,7 @@ import type { ReadingWithBook, Session } from '@/lib/types'
 import { toast } from '@/components/toast'
 import { userMessage } from '@/lib/errors'
 import { todayISO } from '@/lib/dates'
+import { validSessionProgress } from '@/lib/sessionRules'
 
 function apply(op: PendingSession) {
   const { session, readingPatch } = op.payload
@@ -100,7 +101,7 @@ export async function logSession(input: {
 }): Promise<void> {
   const cached = queryClient.getQueryData<ReadingWithBook[]>(qk.readings(input.reading.user_id))
   const reading = cached?.find((r) => r.id === input.reading.id) ?? input.reading
-  if (input.endPos <= reading.current_position || input.endPos > reading.total_units)
+  if (!validSessionProgress(reading.current_position, input.endPos, input.minutes) || input.endPos > reading.total_units)
     throw new Error('El progreso ha cambiado. Revisa la posición e inténtalo de nuevo.')
   await queryClient.cancelQueries({ queryKey: qk.readings(reading.user_id) })
   await queryClient.cancelQueries({ queryKey: qk.sessions(reading.user_id) })

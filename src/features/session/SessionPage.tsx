@@ -17,12 +17,13 @@ import { useQuotes, useReadings, useSessions } from '@/lib/data'
 import { fmt, fromISODate, todayISO, toISODate } from '@/lib/dates'
 import { userMessage } from '@/lib/errors'
 import { logSession } from '@/lib/offline/sessionQueue'
-import { currentStreak } from '@/lib/stats/streak'
+import { streakAfterSave, streakInvite } from '@/lib/stats/streakLines'
 import { formatClock, spokenClock, timerMinutes } from '@/lib/timer'
 import type { Quote, ReadingWithBook } from '@/lib/types'
-import { atLastPage, formatDays, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, progressFraction } from '@/lib/units'
+import { atLastPage, formatMinutes, formatPosition, formatUnitDelta, formatUnitValue, percentOf, physicalPagePosition, progressFraction } from '@/lib/units'
 import { isPartnerReading } from '@/lib/presence'
 import { finishDay } from './finishDay'
+import { TIME_ONLY_MINUTES, validSessionProgress } from '@/lib/sessionRules'
 import { FinishSheet } from './FinishSheet'
 import { SessionStamp } from './SessionStamp'
 import { JointPanel } from '@/features/together/JointPanel'
@@ -49,7 +50,7 @@ type Saved = {
   date: string
   delta: number
   minutes: number | null
-  streak: number
+  streakLine: string
   unlocking: Quote[]
   togetherId: string | null
 }
@@ -218,8 +219,9 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const other = timer && !mine ? choices.find((choice) => choice.id === timer.readingId) : undefined
   const pct = (value: number) => percentOf({ current_position: value, total_units: reading.total_units })
   const readDates = new Set(sessions.map((session) => session.read_on))
-  const readToday = readDates.has(today)
-  const streak = currentStreak(readDates, today)
+  // With a partner, «la racha de los dos», the same one Inicio and Nosotros show.
+  const partnerSessions = useSessions(partner?.id).data
+  const theirDates = partner ? new Set((partnerSessions ?? []).map((session) => session.read_on)) : null
   const dirty = !saved && !mine && (position !== null || minutes !== null || date !== initialDate)
 
   function setMode(value: Mode) {
@@ -261,8 +263,18 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
     if (mine && longTimer && realMinutes.trim() && (typed === null || typed < 1 || typed > timerMinutes(mine, Date.now())))
       return fail('minutes', `Escribe entre 1 y ${timerMinutes(mine, Date.now())} minutos`)
     const sessionMinutes = mine ? (typed ?? timerMinutes(mine, Date.now())) : minutes
-    if (!Number.isInteger(end) || end <= reading.current_position)
+    if (!Number.isInteger(end) || end < reading.current_position)
       return fail('position', pagesUnit ? 'Indica hasta qué página has llegado' : 'Indica a qué porcentaje has llegado')
+    // Without new pages the time alone counts, from a few minutes (same rule as the streak).
+    if (!validSessionProgress(reading.current_position, end, sessionMinutes))
+      return fail(
+        'position',
+        timed
+          ? `Sin páginas nuevas, el tiempo se guarda a partir de ${TIME_ONLY_MINUTES} minutos`
+          : pagesUnit
+            ? 'Indica hasta qué página has llegado o cuánto rato has leído'
+            : 'Indica a qué porcentaje has llegado o cuánto rato has leído',
+      )
     if (end > reading.total_units)
       return fail('position', `Este libro tiene ${formatUnitValue(reading.unit, reading.total_units)}`)
     if (!readOn || readOn > today) return fail('date', 'Elige una fecha que no sea futura')
@@ -282,7 +294,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         date: readOn,
         delta,
         minutes: sessionMinutes,
-        streak: currentStreak(dates, today),
+        streakLine: streakAfterSave(dates, theirDates, today, name),
         unlocking,
         togetherId,
       })
@@ -360,7 +372,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
         aria-busy={busy}
         onClick={() => void save()}
       >
-        {busy ? 'Guardando…' : 'Guardar sesión'}
+        {busy ? 'Guardando…' : delta === 0 && (mine || minutes) ? 'Guardar solo el tiempo' : 'Guardar sesión'}
       </button>
     </>
   )
@@ -549,11 +561,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
               )}
               {!mine && !timer && (
                 <p className="mt-6 text-sm text-muted">
-                  {readToday
-                    ? `Hoy ya has leído · racha de ${formatDays(streak)}`
-                    : streak > 0
-                      ? `Racha de ${formatDays(streak)} · un ratito hoy y sigue`
-                      : 'Un ratito hoy y empieza tu racha'}
+                  {streakInvite(readDates, theirDates, today, name)}
                 </p>
               )}
               {!mine && !timer && nextLocked && (
@@ -621,7 +629,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                 value={end}
                 onChange={change}
                 step={1}
-                min={Math.min(reading.total_units, reading.current_position + 1)}
+                min={reading.current_position}
                 max={reading.total_units}
                 display={
                   <span className="inline-flex items-baseline">
@@ -632,7 +640,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                 }
                 caption={
                   <span className={delta > 0 ? 'text-accent' : undefined}>
-                    +{formatUnitDelta(reading.unit, delta)} · {pct(end)} %
+                    {delta > 0 ? `+${formatUnitDelta(reading.unit, delta)} · ${pct(end)} %` : 'Sin páginas nuevas'}
                   </span>
                 }
                 label={pagesUnit ? 'Página alcanzada' : 'Porcentaje alcanzado'}
@@ -841,9 +849,12 @@ function DraftBar({
 
 function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string }) {
   const { reading } = saved
-  const detail = [`+${formatUnitDelta(reading.unit, saved.delta)}`, saved.minutes ? formatMinutes(saved.minutes) : null]
-    .filter(Boolean)
-    .join(' · ')
+  const detail =
+    saved.delta === 0 && saved.minutes
+      ? `${formatMinutes(saved.minutes)} de lectura`
+      : [`+${formatUnitDelta(reading.unit, saved.delta)}`, saved.minutes ? formatMinutes(saved.minutes) : null]
+          .filter(Boolean)
+          .join(' · ')
   const progress = percentOf(reading)
   // Pace only means something with real time behind it (Bookly-style pages per hour).
   const pace =
@@ -865,8 +876,7 @@ function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string 
             {detail}
           </p>
           <p className="enter mt-1 text-sm text-muted" style={{ '--i': 6 } as CSSProperties}>
-            {saved.streak > 1 ? `Racha de ${formatDays(saved.streak)}` : 'Hoy empieza una racha'} · {progress} % del
-            libro
+            {saved.streakLine} · {progress} % del libro
             {pace !== null && ` · ${pace} págs/hora`}
           </p>
         </section>

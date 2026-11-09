@@ -44,6 +44,8 @@ Usar tokens, no hex locales ni opacidad sobre metadatos. La textura queda detrá
 - Filtros siempre con `.chip` (o `FilterChips`); las filas que se deslizan van a sangre con `.fade-x`. Un filtro sin
   alternativas (un solo año, un solo formato) no se muestra.
 - Porcentaje leído: `percentOf()` (redondea hacia abajo) en todas las pantallas; 100 % solo al terminar.
+- Borrar algo pequeño (cita, respuesta, última sesión) no pregunta: desaparece y el aviso ofrece «Deshacer»
+  (`removeWithUndo`). Lo grande (reiniciar o eliminar una lectura) sigue pidiendo confirmación.
 - Botones y chips redondos (999px), objetivos táctiles de al menos 44px. Los selectores nativos también deben mantener ese mínimo (`min-h-11`), incluido el año de las estadísticas.
 - `.btn-primary`: ciruela de día, miel de noche; una acción dominante por pantalla.
 - `.btn-outline` / `.btn-secondary`: apoyo con filete; `.btn-soft`: papel hundido.

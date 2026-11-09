@@ -7,7 +7,11 @@ import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
 
-self.skipWaiting()
+// A new version waits until the app asks for it («Actualizar»), so it never swaps code under an open screen.
+self.addEventListener('message', (event) => {
+  const data: unknown = event.data
+  if (typeof data === 'object' && data !== null && 'type' in data && data.type === 'SKIP_WAITING') void self.skipWaiting()
+})
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()))
 
 cleanupOutdatedCaches()

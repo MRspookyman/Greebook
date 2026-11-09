@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { useLocation } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 import { Plus, Search } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { useMe } from '@/features/auth/me'
@@ -17,7 +17,16 @@ export function CitasPage() {
   const query = useQuotes()
   const quotes = query.data ?? []
   const [filter, setFilter] = useState<Filter>('all')
-  const [composing, setComposing] = useState(false)
+  const [params, setParams] = useSearchParams()
+  // «Nueva cita» from the home-screen shortcut opens the composer straight away.
+  const [composing, setComposing] = useState(() => params.get('nueva') === '1')
+  useEffect(() => {
+    if (params.get('nueva') !== '1') return
+    setParams((previous) => {
+      previous.delete('nueva')
+      return previous
+    }, { replace: true })
+  }, [params, setParams])
   const [search, setSearch] = useState('')
   const location = useLocation()
   const unseen = useUnseenQuotes()
