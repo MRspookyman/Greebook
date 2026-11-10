@@ -72,8 +72,8 @@ export function story(db: Db, a: string, b: string): Db {
     if (who === 'ab') {
       slip(a, book, 'cita', Math.round(pages * 0.4), pages, 'Esta frase es para ti. La subrayé dos veces.', addDays(end, -8))
       slip(b, book, 'nota', Math.round(pages * 0.7), pages, 'Aquí tuve que parar un rato. Ya me dirás.', addDays(end, -5))
-      slip(a, book, 'carta', null, pages, 'Me alegro de haberlo leído contigo. Me quedo con el final.', end)
-      slip(b, book, 'carta', null, pages, 'No era lo que esperaba y por eso me ha gustado tanto.', addDays(end, 3))
+      slip(a, book, 'nota', null, pages, 'Me alegro de haberlo leído contigo. Me quedo con el final.', end)
+      slip(b, book, 'nota', null, pages, 'No era lo que esperaba y por eso me ha gustado tanto.', addDays(end, 3))
     }
   })
 

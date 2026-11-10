@@ -28,6 +28,8 @@ sql "$root/supabase/migrations/0001_greenbook.sql"
 sql "$root/supabase/migrations/0001_greenbook.sql"
 sql "$root/supabase/migrations/0002_siguiente.sql"
 sql "$root/supabase/migrations/0002_siguiente.sql"
+sql "$root/supabase/migrations/0003_notas_abiertas.sql"
+sql "$root/supabase/migrations/0003_notas_abiertas.sql"
 out="$(sql "$root/supabase/tests/rls.sql")"
 echo "$out"
 echo "$out" | grep -q '^OK' || { echo 'Las pruebas SQL han fallado'; exit 1; }

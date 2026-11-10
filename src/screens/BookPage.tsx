@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, markNext, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  dropReading, editBook, markNext, editSession, finishReading, lightCandle, openBook, placeBookmark, rateReading, removeBook,
   removeBookmark, removeSession, resizeReading, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
 import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
-import type { Book, Profile, Reading, Session, Unit } from '@/lib/types'
+import type { Book, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
 import { Cover } from '@/ui/Book'
 import { Back, Close, Flame, More } from '@/ui/icons'
@@ -185,9 +185,6 @@ export function BookPage() {
         {open === 'finish' && mine && (
           <Finish
             reading={mine}
-            book={book}
-            theirs={theirs}
-            partner={partner}
             onDone={() => {
               close()
               toast('Ya está en la estantería')
@@ -433,23 +430,9 @@ function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean
   )
 }
 
-interface FinishProps {
-  reading: Reading
-  book: Book
-  theirs?: Reading
-  partner: Profile | null
-  onDone: () => void
-}
-
-/** The last page: the book goes to the shelf, and with it, if you want, a final note of what it was for you. */
-function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
-  const { db, me } = usePeople()
+/** The last page: the book goes to the shelf. */
+function Finish({ reading, onDone }: { reading: Reading; onDone: () => void }) {
   const [rating, setRating] = useState<number | null>(reading.rating)
-  const [letter, setLetter] = useState('')
-  const hasLetter = Object.values(db.slips).some(
-    (s) => s.book_id === book.id && s.user_id === me.id && s.kind === 'carta' && !s.deleted_at,
-  )
-  const theirOpen = theirs?.status === 'leyendo' || theirs?.status === 'pendiente'
   return (
     <div className="flex flex-col gap-6">
       <p className="quiet">La última página. El libro pasa a la estantería con tu cinta.</p>
@@ -457,37 +440,11 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
         <p className="label">¿Cuánto te ha gustado? <span className="text-[15px]">(si quieres)</span></p>
         <Stars value={rating} onChange={setRating} />
       </div>
-      {!hasLetter && (
-        <div>
-          <p className="label">
-            Tu nota final <span className="text-[15px]">(si quieres)</span>
-          </p>
-          <div className="slip">
-            <textarea
-              className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45"
-              maxLength={4000}
-              placeholder="Lo que ha sido este libro para ti, cómo te has sentido leyéndolo…"
-              aria-label="Tu nota final"
-              value={letter}
-              onChange={(event) => setLetter(event.currentTarget.value)}
-            />
-          </div>
-          <p className="quiet mt-2 text-[15px]">
-            {!partner ? 'Se queda guardada con el libro, para cuando vuelvas a él.' : null}
-            {partner && <>Se queda guardada con el libro, para cuando volváis a él.{' '}
-            {theirOpen
-              ? `${partner.name} la leerá cuando lo termine y haya escrito la suya.`
-              : theirs?.status === 'terminado'
-                ? `${partner.name} la leerá cuando haya escrito la suya. Y tú, la suya.`
-                : `${partner.name} podrá leerla.`}</>}
-          </p>
-        </div>
-      )}
+      <p className="quiet text-[15.5px]">Si quieres dejar escrito lo que ha sido para ti, hazlo con una nota entre sus páginas.</p>
       <button
         className="btn btn-primary"
         onClick={() => {
           finishReading(reading, rating)
-          if (letter.trim()) leaveSlip({ book, kind: 'carta', page: null, body: letter })
           onDone()
         }}
       >

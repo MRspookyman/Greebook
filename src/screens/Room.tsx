@@ -6,7 +6,7 @@ import {
   waxLeft, type BookView, type Whose,
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
-import { finalNote, waitingFor, slipPlace, type Waiting } from '@/lib/slips'
+import { waitingFor, slipPlace, type Waiting } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
@@ -14,7 +14,7 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Flame, Paper, Plus } from '@/ui/icons'
+import { Flame, Plus } from '@/ui/icons'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { toast } from '@/ui/toast'
 import { useHold } from '@/ui/useHold'
@@ -73,7 +73,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
     () => memoryFor(views, nightOf(new Date(now)), new Set(sessions.map((s) => s.reading_id))),
     [views, sessions, now],
   )
-  const memoryNote = memory ? finalNote(db, memory.book.id, me.id)?.body : null
   const waiting = useMemo(() => waitingFor(db, me.id), [db, me.id])
   const [whose, setWhose] = useState<Whose>('todos')
   const groups = standGroups(stand)
@@ -168,7 +167,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {waiting.length > 0 && partner && (
         <section className="mt-9 flex flex-col gap-3" aria-label="Te espera">
           {waiting.map((thing, i) => (
-            <WaitingCard key={thing.kind + thing.book.id + ('slip' in thing ? thing.slip.id : '')} thing={thing} name={partner.name} i={i}
+            <WaitingCard key={thing.slip.id} thing={thing} name={partner.name} i={i}
               mine={views.find((v) => v.book.id === thing.book.id)?.mine} />
           ))}
         </section>
@@ -179,15 +178,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         <Link to={`/libro/${memory.book.id}`} className="rise mt-9 block text-center" style={{ '--i': 3 } as CSSProperties}>
           <span className="eyebrow block">{memoryLine(memory, partner.name)}</span>
           <span className="mt-1 block text-[22px] italic underline decoration-rule underline-offset-[6px]">{memory.book.title}</span>
-          {memoryNote && (
-            <span className="slip mx-auto mt-4 block max-w-[21em] text-left" style={{ rotate: '-0.6deg' }}>
-              <span className="mb-1 flex items-center gap-2 text-[12.5px] font-semibold tracking-[0.14em] uppercase">
-                <Wax who="me" />
-                <span className="opacity-70">Lo que escribiste entonces</span>
-              </span>
-              <span className="hand line-clamp-4 block leading-[28px]">{memoryNote}</span>
-            </span>
-          )}
         </Link>
       )}
 
@@ -415,30 +405,17 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
   )
 }
 
-/** Something of theirs you can open now: a slip that fell out of the book, or an envelope. */
+/** A note of theirs you haven't read yet. */
 function WaitingCard({ thing, name, i, mine }: { thing: Waiting; name: string; i: number; mine?: BookView['mine'] }) {
-  const title = <em>{thing.book.title}</em>
-  const tab = <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] rounded-l-[3px]" style={{ background: 'var(--you)' }} />
-  if (thing.kind === 'papel') {
-    const place = slipPlace(thing.slip, mine)
-    return (
-      <Link to={`/libro/${thing.book.id}#papeles`} className="slip slip-folded drop pressable block" style={{ '--i': i, rotate: i % 2 ? '0.6deg' : '-0.8deg' } as CSSProperties}>
-        {tab}
-        <span className="hand block">Entre las páginas había algo de {name}</span>
-        <span className="mt-1 block text-[15px] opacity-70">
-          {place && `${place} · `}
-          {title}
-          {thing.opening ? ' · se abrirá en cuanto haya conexión' : ''}
-        </span>
-      </Link>
-    )
-  }
+  const place = slipPlace(thing.slip, mine)
   return (
-    <Link to={`/libro/${thing.book.id}#sobre`} className="slip drop pressable flex items-center gap-3" style={{ '--i': i, backgroundImage: 'none' } as CSSProperties}>
-      {tab}
-      <Paper size={26} className="flex-none opacity-70" />
-      <span className="text-[17px] leading-snug">
-        {thing.kind === 'sobre' ? <>Ya puedes leer lo que {name} escribió al cerrar {title}.</> : <>{name} ha escrito su nota final de {title}. Escribe la tuya y se abre.</>}
+    <Link to={`/libro/${thing.book.id}#papeles`} className="slip slip-folded drop pressable block" style={{ '--i': i, rotate: i % 2 ? '0.6deg' : '-0.8deg' } as CSSProperties}>
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] rounded-l-[3px]" style={{ background: 'var(--you)' }} />
+      <span className="hand block">{name} ha dejado una nota</span>
+      <span className="mt-1 block text-[15px] opacity-70">
+        {place && `${place} · `}
+        <em>{thing.book.title}</em>
+        {thing.opening ? ' · se abrirá en cuanto haya conexión' : ''}
       </span>
     </Link>
   )

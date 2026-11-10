@@ -19,8 +19,6 @@ interface Props {
   foldedLine?: string
   /** Shown above the text: «Tu predicción». */
   label?: string
-  /** It lives in the envelope: it is «read», not «found». */
-  letter?: boolean
   onOpen?: () => void
   onLove?: (loved: boolean) => void
   onEdit?: () => void
@@ -29,7 +27,7 @@ interface Props {
 const day = (iso: string) => fmtDay(isoDate(new Date(iso)))
 
 /** A slip of paper: folded while you can't read it, unfolded with a tap, and marked with whose it is. */
-export function SlipPaper({ slip, mine, author, other, color, place, foldedLine, label, letter, onOpen, onLove, onEdit }: Props) {
+export function SlipPaper({ slip, mine, author, other, color, place, foldedLine, label, onOpen, onLove, onEdit }: Props) {
   const [justOpened, setJustOpened] = useState(false)
   const folded = !mine && (slip.locked || slip.body == null)
   const unopened = !mine && !folded && !slip.seen_at
@@ -49,7 +47,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
             {seal}
             {[place, `de ${author}`].filter(Boolean).join(' · ')}
           </span>
-          <span className="block opacity-70">{foldedLine ?? 'Lo encontrarás al llegar.'}</span>
+          <span className="block opacity-70">{foldedLine ?? 'Se abrirá en cuanto haya conexión.'}</span>
         </p>
       </div>
     )
@@ -70,8 +68,8 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
           {seal}
           <span className="opacity-70">{author}</span>
         </span>
-        <span className="hand block">{author} te dejó algo{place ? ` en la ${place}` : ''}</span>
-        <span className="mt-1 block text-[15px] opacity-70">Toca para desdoblarlo</span>
+        <span className="hand block">{author} ha dejado una nota{place ? ` en la ${place}` : ''}</span>
+        <span className="mt-1 block text-[15px] opacity-70">Toca para leerla</span>
       </button>
     )
   }
@@ -81,10 +79,10 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
     footer = slip.seen_at ? (
       <>
         {slip.loved && <Heart size={15} filled className="mr-1.5 inline -translate-y-px text-[#b8354f]" />}
-        {other} {letter ? 'lo leyó' : 'lo encontró'} el {day(slip.seen_at)}
+        {other} la leyó el {day(slip.seen_at)}
       </>
     ) : (
-      `${other} aún no lo ha ${letter ? 'leído' : 'encontrado'}`
+      `${other} aún no la ha leído`
     )
   } else footer = `${author}, el ${day(slip.created_at)}`
 

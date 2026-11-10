@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { positionFor } from './lock'
-import { envelopeOf, papersOf, slipPlace, waitingFor } from './slips'
+import { papersOf, slipPlace, waitingFor } from './slips'
 import { emptyDb, type Book, type Db, type Reading, type Slip } from './types'
 
 const book: Book = {
@@ -49,54 +49,23 @@ describe('entre páginas', () => {
     const c = slip('me', 'nota')
     const d = slip('you', 'carta')
     const e = slip('me', 'cita', { at: 0.1, deleted_at: 'x' })
-    expect(papersOf(db([], [a, b, c, d, e]), 'b').map((s) => s.id)).toEqual([c.id, b.id, a.id])
-  })
-})
-
-describe('el sobre', () => {
-  it('guarda una predicción y una carta de cada uno', () => {
-    const mine = slip('me', 'prediccion')
-    const theirs = slip('you', 'carta', { locked: true, body: null })
-    const envelope = envelopeOf(db([], [mine, theirs, slip('me', 'nota')]), 'b', 'me')
-    expect(envelope.mine.prediccion?.id).toBe(mine.id)
-    expect(envelope.theirs.carta?.id).toBe(theirs.id)
-    expect(envelope.sealed).toBe(true)
-    expect(envelope.toOpen).toEqual([])
-    expect(envelope.empty).toBe(false)
-  })
-  it('sabe qué se puede abrir ya', () => {
-    const letter = slip('you', 'carta')
-    const seen = slip('you', 'prediccion', { seen_at: 'x' })
-    const envelope = envelopeOf(db([], [letter, seen]), 'b', 'me')
-    expect(envelope.sealed).toBe(false)
-    expect(envelope.toOpen.map((s) => s.id)).toEqual([letter.id])
-  })
-  it('vacío si nadie ha metido nada', () => {
-    expect(envelopeOf(db([], [slip('me', 'nota')]), 'b', 'me').empty).toBe(true)
+    // Old letters are notes about the whole book now.
+    expect(papersOf(db([], [a, b, c, d, e]), 'b').map((s) => s.id)).toEqual([c.id, d.id, b.id, a.id])
   })
 })
 
 describe('lo que te espera', () => {
-  it('un papel suyo que ya puedes leer y no has abierto', () => {
-    const found = slip('you', 'nota', { at: 0.1 })
-    const result = waitingFor(db([reading('me')], [found, slip('you', 'nota', { seen_at: 'x' }), slip('me', 'nota')]), 'me')
-    expect(result).toEqual([{ kind: 'papel', book, slip: found, opening: false }])
+  it('cada nota suya que no has abierto, sea del tipo que sea y vayas por donde vayas', () => {
+    const ahead = slip('you', 'nota', { at: 0.9 })
+    const old = slip('you', 'carta')
+    const seen = slip('you', 'nota', { seen_at: 'x' })
+    const own = slip('me', 'nota')
+    const result = waitingFor(db([reading('me', { position: 10 })], [ahead, old, seen, own]), 'me')
+    expect(result.map((w) => w.slip.id).sort()).toEqual([ahead.id, old.id].sort())
+    expect(result.every((w) => w.kind === 'papel' && !w.opening)).toBe(true)
   })
-  it('un papel doblado no espera… hasta que tu marcapáginas lo alcanza, aunque no haya red', () => {
-    const folded = slip('you', 'nota', { at: 0.25, locked: true, body: null })
-    expect(waitingFor(db([reading('me', { position: 149 })], [folded]), 'me')).toEqual([])
-    expect(waitingFor(db([reading('me', { position: 150 })], [folded]), 'me')).toEqual([
-      { kind: 'papel', book, slip: folded, opening: true },
-    ])
-  })
-  it('un sobre con algo suyo por abrir', () => {
-    const result = waitingFor(db([], [slip('you', 'carta'), slip('you', 'prediccion')]), 'me')
-    expect(result).toEqual([{ kind: 'sobre', book, count: 2 }])
-  })
-  it('su carta, que se abre cuando escribas la tuya', () => {
-    const theirs = slip('you', 'carta', { locked: true, body: null })
-    expect(waitingFor(db([reading('me', { status: 'terminado' })], [theirs]), 'me')).toEqual([{ kind: 'carta', book }])
-    expect(waitingFor(db([reading('me')], [theirs]), 'me')).toEqual([])
-    expect(waitingFor(db([reading('me', { status: 'terminado' })], [theirs, slip('me', 'carta')]), 'me')).toEqual([])
+  it('si este móvil aún la tiene sin texto, se abre en cuanto haya conexión', () => {
+    const stale = slip('you', 'nota', { at: 0.9, locked: true, body: null })
+    expect(waitingFor(db([], [stale]), 'me')).toEqual([{ kind: 'papel', book, slip: stale, opening: true }])
   })
 })

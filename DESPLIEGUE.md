@@ -8,7 +8,7 @@ estáticos). Nada más.
 ### Si ya teníais el Greenbook anterior
 
 1. Supabase → **SQL Editor** → pega entero `supabase/migrations/0001_greenbook.sql` → **Run**. Después, igual,
-   `supabase/migrations/0002_siguiente.sql`.
+   `supabase/migrations/0002_siguiente.sql` y `supabase/migrations/0003_notas_abiertas.sql`.
    - **Borra todos los datos anteriores** (libros, sesiones, citas…).
    - Conserva vuestras dos cuentas, los nombres, quién es pareja de quién y un color para cada uno.
 2. Ya está. Entráis con el mismo email y contraseña.
@@ -22,7 +22,7 @@ Limpieza opcional de lo que ya no se usa (no molesta si se queda):
 ### Si es un proyecto nuevo
 
 1. Authentication → Users → **Add user** dos veces (marca «Auto Confirm User»).
-2. SQL Editor → pega y ejecuta `supabase/migrations/0001_greenbook.sql` y luego `supabase/migrations/0002_siguiente.sql`.
+2. SQL Editor → pega y ejecuta `supabase/migrations/0001_greenbook.sql` y luego `supabase/migrations/0002_siguiente.sql` y `supabase/migrations/0003_notas_abiertas.sql`.
 3. SQL Editor → abre `supabase/seed.sql`, cambia los dos emails y los dos nombres, ejecuta.
 
 ### Tiempo real

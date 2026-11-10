@@ -49,7 +49,7 @@ do $$ begin
 end $$;
 commit;
 
--- ── Javier lo ve todo menos el texto del papel que aún no ha alcanzado ──
+-- ── Javier lo ve todo, también la nota de una página a la que aún no ha llegado ──
 begin;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'javier', true);
@@ -61,10 +61,8 @@ do $$ begin
   assert (select count(*) from sessions) = 1, 'Javier ve la velada de Laura';
   assert (select count(*) from profiles) = 2, 'Javier ve dos perfiles, no tres';
   assert (select count(*) from slips) = 0, 'la tabla de papeles solo enseña los propios';
-  assert (select locked and body is null and page = 100 from slips_for_me()),
-    'el papel de la mitad está doblado y sin texto en el 25 % del libro';
-  assert pg_temp.fails($q$select open_slip('40000000-0000-0000-0000-000000000001')$q$),
-    'un papel doblado no se puede abrir';
+  assert (select not locked and body = 'Aquí lloré' and page = 100 from slips_for_me()),
+    'la nota de la mitad se lee aunque Javier vaya por el 25 % del libro';
   assert pg_temp.fails($q$select slip_locked(s, auth.uid()) from slips s$q$), 'la regla de doblado no se llama a mano';
   assert pg_temp.fails($q$update readings set position = 0 where user_id <> auth.uid() returning id$q$) = false
     and (select position from readings where id = '20000000-0000-0000-0000-00000000000a') = 150,
@@ -72,11 +70,11 @@ do $$ begin
 end $$;
 -- Javier puede corregir el libro, que es de los dos.
 update books set pages = 210 where id = :'libro';
--- Llega a la mitad de SU edición (400 páginas): el papel se desdobla.
+-- Llega a la mitad de SU edición (400 páginas): la nota sigue ahí.
 update readings set position = 200 where id = '20000000-0000-0000-0000-00000000000b';
 do $$ begin
   assert (select pages from books) = 210, 'cualquiera de los dos corrige un libro';
-  assert (select not locked and body = 'Aquí lloré' from slips_for_me()), 'al llegar a su punto, el papel se abre';
+  assert (select not locked and body = 'Aquí lloré' from slips_for_me()), 'la nota se sigue leyendo';
 end $$;
 select open_slip('40000000-0000-0000-0000-000000000001', true);
 commit;
@@ -90,7 +88,7 @@ do $$ begin
   assert (select seen_at is not null and loved and body = 'Aquí lloré mucho' from slips), 'el «lo encontró» es de quien lo recibe';
 end $$;
 
--- El sobre: Laura termina y escribe carta y predicción.
+-- De antes: Laura termina y tenía escritas una carta y una predicción.
 update readings set position = 200, status = 'terminado', finished_on = '2026-11-10' where id = '20000000-0000-0000-0000-00000000000a';
 insert into slips (id, book_id, kind, body) values
   ('40000000-0000-0000-0000-000000000002', :'libro', 'carta', 'Carta de Laura'),
@@ -101,19 +99,18 @@ begin;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'javier', true);
 do $$ begin
-  assert (select bool_and(locked and body is null) from slips_for_me() where kind in ('carta', 'prediccion')),
-    'el sobre está cerrado mientras Javier lee';
+  assert (select bool_and(not locked and body is not null) from slips_for_me() where kind in ('carta', 'prediccion')),
+    'las cartas y predicciones de antes se leen como cualquier nota';
 end $$;
 update readings set position = 400, status = 'terminado' where id = '20000000-0000-0000-0000-00000000000b';
 do $$ begin
-  assert (select locked from slips_for_me() where kind = 'carta'), 'la carta espera a que Javier escriba la suya';
   assert (select not locked and body = 'Acaban juntos' from slips_for_me() where kind = 'prediccion'),
-    'la predicción se abre cuando los dos han cerrado el libro';
+    'y se siguen leyendo al terminar';
 end $$;
 insert into slips (id, book_id, kind, body) values ('40000000-0000-0000-0000-000000000004', :'libro', 'carta', 'Carta de Javier');
 do $$ begin
   assert (select not locked and body = 'Carta de Laura' from slips_for_me() where kind = 'carta' and user_id <> auth.uid()),
-    'escrita la suya, lee la de Laura';
+    'la de Laura se lee';
 end $$;
 -- El canal de la pareja.
 select set_config('realtime.topic', 'pareja:' || :'laura' || ':' || :'javier', true);

@@ -36,9 +36,6 @@ export function Evening() {
 
   const reading = me.candle_reading_id ? db.readings[me.candle_reading_id] : undefined
   const book = reading ? db.books[reading.book_id] : undefined
-  const theirReading = Object.values(db.readings).find(
-    (r) => r.book_id === reading?.book_id && r.user_id !== me.id && !r.deleted_at,
-  )
   const burning = isLit(me, now)
   const theirsLit = isLit(partner, now)
 
@@ -112,18 +109,16 @@ export function Evening() {
           {burning ? 'Apagar la vela' : 'Guardar la velada'}
         </button>
         <button className="btn btn-text self-center" onClick={() => setWriting(true)}>
-          <Paper size={18} /> Dejar un papel entre estas páginas
+          <Paper size={18} /> Dejar una nota entre estas páginas
         </button>
       </footer>
 
-      <Sheet open={writing} onClose={() => setWriting(false)} title="Un papel entre páginas" night>
+      <Sheet open={writing} onClose={() => setWriting(false)} title="Una nota entre páginas" night>
         {writing && (
           <WriteSlip
             book={book}
             mine={reading}
-            theirs={theirReading}
             partner={partner}
-            what="papel"
             onDone={() => setWriting(false)}
           />
         )}

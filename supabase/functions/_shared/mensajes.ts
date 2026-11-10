@@ -33,33 +33,22 @@ export interface SlipNotice {
   locked: boolean
 }
 
-/** «Javier ha dejado algo entre las páginas». A folded slip never shows its text. */
-export function slipNotice({ name, book, bookId, kind, page, body, locked }: SlipNotice): Push {
-  const url = `/libro/${bookId}#${kind === 'carta' || kind === 'prediccion' ? 'sobre' : 'papeles'}`
-  if (kind === 'carta' || kind === 'prediccion') {
-    return {
-      title: kind === 'carta' ? `📝 ${name} ha escrito su nota final` : `📝 ${name} ha dejado una predicción`,
-      body: locked ? `«${book}». Se abrirá a su tiempo.` : `«${book}». Ya puedes leerla.`,
-      url,
-      tag: `sobre:${bookId}`,
-    }
-  }
+/** «Javier ha dejado una nota». Every note is open to both; `locked` only guards against an older server. */
+export function slipNotice({ name, book, bookId, page, body, locked }: SlipNotice): Push {
   return {
-    title: `📄 ${name} ha dejado algo entre las páginas`,
-    body: locked
-      ? `«${book}»${page != null ? `, hacia la página ${page}` : ''}. Lo encontrarás al llegar.`
-      : `«${book}»: ${excerpt(body)}`,
-    url,
+    title: `📄 ${name} ha dejado una nota`,
+    body: locked ? `«${book}»${page != null ? `, hacia la página ${page}` : ''}.` : `«${book}»: ${excerpt(body)}`,
+    url: `/libro/${bookId}#papeles`,
     tag: `papel:${bookId}`,
   }
 }
 
-/** «Laura ha encontrado tu papel». */
-export function foundNotice(name: string, book: string, bookId: string, envelope: boolean): Push {
+/** «Laura ha leído tu nota». */
+export function foundNotice(name: string, book: string, bookId: string, _envelope = false): Push {
   return {
-    title: envelope ? `📝 ${name} ha leído tu nota final` : `📄 ${name} ha encontrado tu papel`,
+    title: `📄 ${name} ha leído tu nota`,
     body: `«${book}»`,
-    url: `/libro/${bookId}#${envelope ? 'sobre' : 'papeles'}`,
+    url: `/libro/${bookId}#papeles`,
     tag: `hallazgo:${bookId}`,
   }
 }
@@ -68,8 +57,8 @@ export function foundNotice(name: string, book: string, bookId: string, envelope
 export function finishedNotice(name: string, book: string, bookId: string, bothDone: boolean): Push {
   return {
     title: `📗 ${name} ha terminado «${book}»`,
-    body: bothDone ? 'Lo habéis cerrado los dos. Mirad vuestras notas finales.' : 'Ya está en vuestra estantería.',
-    url: `/libro/${bookId}#sobre`,
+    body: bothDone ? 'Lo habéis cerrado los dos.' : 'Ya está en vuestra estantería.',
+    url: `/libro/${bookId}`,
     tag: `final:${bookId}`,
   }
 }

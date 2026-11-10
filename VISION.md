@@ -90,13 +90,12 @@ lee el mismo libro, el papel queda doblado hasta que llegue a esa página; enton
 del libro*. Tú ves cuándo lo encontró. Una sola cosa (el papel) sustituye a citas, notas, huellas, respuestas,
 dedicatorias y corazones.
 
-### La nota final (terminar)
+### Una sola forma de escribir
 
-Al cerrar un libro, cada uno puede dejar una **nota final**: lo que ha sido el libro para él, cómo se ha sentido
-leyéndolo, o simplemente cómo lo describiría. No es una predicción ni una reseña: es para tenerlo guardado y
-encontrárselo el día que el libro vuelva. La nota del otro se abre cuando tú has terminado y escrito la tuya, y
-la repisa te devuelve la tuya cuando recuerda el libro. (Antes aquí había un sobre con una predicción; las que
-ya existían se siguen viendo.)
+Dentro de un libro solo se escribe una cosa: **la nota entre páginas**. Puede ser una frase copiada, lo que te ha
+hecho sentir una página, algo para el otro o para ti, o lo que ha sido el libro entero. Va en su página (o en el
+libro entero) y **la veis siempre los dos**: ya no hay papeles doblados, ni sobre, ni predicción, ni carta. Las
+que se escribieron antes se siguen viendo como notas.
 
 Lo demás **recuerda solo**: la estantería crece, y la repisa os devuelve de vez en cuando un momento («hoy
 hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).
@@ -107,9 +106,9 @@ hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).
 
 1. **Un sitio, no un panel.** Una habitación con tres rincones (las velas, la mesilla, la estantería) y un
    menú abajo para ir de uno a otro sin tener que bajar con el dedo. Cada rincón cabe casi entero en la pantalla.
-2. **Gestos, no formularios.** Encender, apagar, doblar un papel, dejar una nota final. Cada gesto tiene como
+2. **Gestos, no formularios.** Encender, apagar, dejar una nota entre páginas. Cada gesto tiene como
    mucho una pregunta detrás.
-3. **Tres cosas memorables.** La vela, el papel entre páginas, la nota final. Todo lo que no sirva a una de las
+3. **Tres cosas memorables.** La vela y la nota entre páginas. Todo lo que no sirva a una de las
    tres, o a la estantería que las guarda, no entra.
 4. **Nunca regañar.** Sin rachas que se rompen, sin metas, sin recordatorios. Lo que se cuenta, se cuenta
    hacia arriba: *noches leyendo los dos*. La invitación a leer es la vela del otro.
@@ -141,7 +140,7 @@ hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).
 | --- | --- |
 | Sesión con cronómetro, «leyendo ahora», leer juntos en directo, latido | **La vela**, las dos velas y el guiño |
 | Citas y notas con bloqueo de spoilers, respuestas, corazones | **Papeles entre páginas** |
-| Opinión a ciegas, valoración | **La nota final**: lo que fue el libro para cada uno |
+| Opinión a ciegas, valoración | Una nota entre páginas, como cualquier otra |
 | Estantería por años, diario, «hace un año», año en libros | **La estantería** de lomos y los recuerdos de la repisa |
 | Racha de los dos | **Noches leyendo los dos** (solo suma) |
 | Lugar de la sesión | Sigue, opcional, al apagar la vela |
@@ -168,7 +167,6 @@ hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).
 - La habitación de una sola pantalla.
 - Encender y apagar con el dedo.
 - El papel que cae del libro al llegar a su página, y «lo encontró el…» para quien lo dejó.
-- La nota final de cada libro.
 - Lomos generados para cada libro, con las cintas de quien lo ha leído.
 - Todo sin conexión.
 - Un «modo ensayo» sin servidor para probar la app en local con dos personas.

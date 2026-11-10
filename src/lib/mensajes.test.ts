@@ -17,26 +17,16 @@ describe('avisos', () => {
     expect(push.url).toBe('/libro/b1#papeles')
   })
 
-  it('un papel doblado nunca viaja con su texto', () => {
-    const push = slipNotice({ ...slip, locked: true })
-    expect(push.body).toBe('«Rayuela», hacia la página 150. Lo encontrarás al llegar.')
-    expect(JSON.stringify(push)).not.toContain('mírame')
+  it('una carta o predicción de antes se avisa como cualquier nota', () => {
+    const push = slipNotice({ ...slip, kind: 'carta' })
+    expect(push.title).toBe('📄 Javier ha dejado una nota')
+    expect(push.url).toBe('/libro/b1#papeles')
   })
 
-  it('lo del sobre no enseña nada, esté o no abierto', () => {
-    for (const locked of [true, false]) {
-      const push = slipNotice({ ...slip, kind: 'carta', locked })
-      expect(push.title).toBe('📝 Javier ha escrito su nota final')
-      expect(push.url).toBe('/libro/b1#sobre')
-      expect(JSON.stringify(push)).not.toContain('mírame')
-    }
-  })
-
-  it('avisa del hallazgo y del final', () => {
-    expect(foundNotice('Laura', 'Rayuela', 'b1', false).title).toBe('📄 Laura ha encontrado tu papel')
-    expect(foundNotice('Laura', 'Rayuela', 'b1', true).title).toBe('📝 Laura ha leído tu nota final')
-    expect(finishedNotice('Laura', 'Rayuela', 'b1', true).body).toBe('Lo habéis cerrado los dos. Mirad vuestras notas finales.')
-    expect(finishedNotice('Laura', 'Rayuela', 'b1', false).body).toBe('Ya está en vuestra estantería.')
+  it('leer una nota y terminar un libro', () => {
+    expect(foundNotice('Laura', 'Rayuela', 'b1').title).toBe('📄 Laura ha leído tu nota')
+    expect(finishedNotice('Laura', 'Rayuela', 'b1', true).body).toBe('Lo habéis cerrado los dos.')
+    expect(finishedNotice('Laura', 'Rayuela', 'b1', false).url).toBe('/libro/b1')
   })
 
   it('recorta los textos largos', () => {
