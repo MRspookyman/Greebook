@@ -134,13 +134,24 @@ export function create(): Remote {
     channel(me, partner, on) {
       const topic = [me, partner].sort().join(':')
       const hear = (event: MessageEvent<{ topic: string; signal: Signal }>) => {
-        if (event.data.topic === topic) on(event.data.signal)
+        // localStorage reaches other tabs a moment after it is written; a real server has no such lag.
+        if (event.data.topic === topic) setTimeout(() => on(event.data.signal), 250)
       }
       wire?.addEventListener('message', hear)
       return {
         send: (signal) => wire?.postMessage({ topic, signal }),
         close: () => wire?.removeEventListener('message', hear),
       }
+    },
+
+    /** The rehearsal has nowhere to keep files: the photo travels inside its own address. */
+    uploadCover(image) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = () => reject(new RemoteError('No se pudo leer la foto', false))
+        reader.readAsDataURL(image)
+      })
     },
 
     async claimPush() {},

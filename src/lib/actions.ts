@@ -1,5 +1,6 @@
 import { fractionOf } from './lock'
 import { isLit } from './model'
+import { formatVerdict } from './verdict'
 import { enqueue, getDb, getMe, keep, patch, save } from './sync/store'
 import { isoDate, minutesBetween, nightOf } from './time'
 import type { Book, Color, Reading, Session, Slip, SlipKind, Status, Unit } from './types'
@@ -198,18 +199,13 @@ export function resizeReading(reading: Reading, unit: Unit, total: number) {
 }
 
 /** Closes the book: it goes to the shelf. */
-export function finishReading(reading: Reading, rating: number | null) {
+export function finishReading(reading: Reading) {
   patch('readings', reading.id, {
     status: 'terminado',
     position: reading.total,
     finished_on: nightOf(new Date()),
-    rating,
   })
   enqueue({ id: uid(), kind: 'notify', what: 'final', ref: reading.id })
-}
-
-export function rateReading(reading: Reading, rating: number | null) {
-  patch('readings', reading.id, { rating })
 }
 
 export function dropReading(reading: Reading) {
@@ -258,6 +254,12 @@ export function leaveSlip({ book, kind, page, body }: NewSlip): Slip {
   save('slips', slip)
   enqueue({ id: uid(), kind: 'notify', what: 'papel', ref: slip.id })
   return slip
+}
+
+/** The stars and words that close a book: they go into its envelope as one slip. */
+export function leaveVerdict(book: Book, rating: number | null, text: string): Slip | null {
+  const body = formatVerdict(rating, text)
+  return body ? leaveSlip({ book, kind: 'carta', page: null, body }) : null
 }
 
 export function editSlip(slip: Slip, body: string) {

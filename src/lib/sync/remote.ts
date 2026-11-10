@@ -39,6 +39,8 @@ export interface Remote {
   openSlip(id: string, loved: boolean | null): Promise<void>
   notify(what: Notice, ref: string): Promise<void>
   channel(me: string, partner: string, on: (signal: Signal) => void): Channel
+  /** Stores a cover photo and returns the address it can be shown from. Needs a connection. */
+  uploadCover(image: Blob): Promise<string>
   claimPush(keys: PushKeys): Promise<void>
   dropPush(endpoint: string): Promise<void>
   hasPush(endpoint: string): Promise<boolean>

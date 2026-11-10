@@ -13,7 +13,7 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Envelope, Plus } from '@/ui/icons'
+import { Envelope, Flame, Plus } from '@/ui/icons'
 import { Rail } from '@/ui/Rail'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { toast } from '@/ui/toast'
@@ -178,7 +178,16 @@ export function Room() {
         {stand.length ? (
           <div className="flex flex-col gap-3">
             {stand.map((view, i) => (
-              <OpenBook key={view.book.id} view={view} partner={partner} forCandle={view === chosen} i={i} />
+              <OpenBook
+                key={view.book.id}
+                view={view}
+                me={me}
+                partner={partner}
+                mineLit={mineLit}
+                theirsLit={theirsLit}
+                forCandle={view === chosen && stand.filter((v) => v.mine?.status === 'leyendo').length > 1}
+                i={i}
+              />
             ))}
           </div>
         ) : (
@@ -328,38 +337,62 @@ function WaitingCard({ thing, name, i, mine }: { thing: Waiting; name: string; i
       {tab}
       <Envelope size={26} className="flex-none opacity-70" />
       <span className="text-[17px] leading-snug">
-        {thing.kind === 'sobre' ? <>El sobre de {title} ya se puede abrir.</> : <>{name} ha dejado su carta en {title}. Escribe la tuya y se abre.</>}
+        {thing.kind === 'sobre' ? <>El sobre de {title} ya se puede abrir.</> : <>{name} ya ha puesto su valoración de {title}. Pon la tuya y se abre el sobre.</>}
       </span>
     </Link>
   )
 }
 
-/** A book open on the nightstand, with the ribbons of whoever is in it. */
-function OpenBook({ view, partner, forCandle, i }: { view: BookView; partner: Profile | null; forCandle: boolean; i: number }) {
+interface OpenBookProps {
+  view: BookView
+  me: Profile
+  partner: Profile | null
+  /** Whose candle is burning for this book right now. */
+  mineLit: boolean
+  theirsLit: boolean
+  /** With several books of mine open: this is the one the candle would be lit for. */
+  forCandle: boolean
+  i: number
+}
+
+/** A book open on the nightstand: whose it is (yours, theirs or both) and who is reading it this minute. */
+function OpenBook({ view, me, partner, mineLit, theirsLit, forCandle, i }: OpenBookProps) {
   const { book, mine, theirs } = view
-  const reading = (r?: typeof mine) => (r && r.status !== 'pendiente' && r.status !== 'dejado' ? r : undefined)
-  const where = [
-    reading(mine) && `Tú, ${mine!.status === 'terminado' ? 'terminado' : fmtPosition(mine!)}`,
-    reading(theirs) && partner && `${partner.name}, ${theirs!.status === 'terminado' ? 'terminado' : fmtPosition(theirs!)}`,
-  ].filter(Boolean)
+  const open = (r?: typeof mine) => (r?.status === 'leyendo' ? r : undefined)
+  const rows = [
+    open(mine) && { who: 'Tú', color: 'var(--me)', reading: mine!, lit: mineLit && me.candle_reading_id === mine!.id, verb: 'leyendo ahora' },
+    open(theirs) && partner && {
+      who: partner.name, color: 'var(--you)', reading: theirs!, lit: theirsLit && partner.candle_reading_id === theirs!.id, verb: 'leyendo ahora',
+    },
+  ].filter((row): row is { who: string; color: string; reading: NonNullable<typeof mine>; lit: boolean; verb: string } => !!row)
+  const both = rows.length === 2
   return (
-    <Link
-      to={`/libro/${book.id}`}
-      className="card pressable rise flex gap-4 p-4"
-      style={{ '--i': i + 2 } as CSSProperties}
-    >
-      <Cover book={book} width={62} />
-      <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+    <Link to={`/libro/${book.id}`} className="card pressable rise flex gap-4 p-4" style={{ '--i': i + 2 } as CSSProperties}>
+      <Cover book={book} width={66} />
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
         <div>
-          <h3 className="line-clamp-2 text-[20px] leading-tight">{book.title}</h3>
+          <p className="eyebrow !text-[10.5px]">{both ? 'Lo leéis los dos' : rows[0]?.who === 'Tú' ? 'Lo lees tú' : `Lo lee ${rows[0]?.who}`}</p>
+          <h3 className="mt-0.5 line-clamp-2 text-[20px] leading-tight">{book.title}</h3>
           <p className="quiet truncate text-[15.5px] italic">{book.author}</p>
         </div>
         <div>
-          <Rail mine={reading(mine)} theirs={reading(theirs)} />
-          <p className="quiet mt-1 text-[14.5px]">
-            {where.join(' · ')}
-            {forCandle && mine?.status === 'leyendo' && where.length < 2 && ' · tu vela es para este'}
-          </p>
+          <Rail mine={open(mine)} theirs={open(theirs)} />
+          <ul className="mt-1.5 flex flex-col gap-0.5 text-[14.5px]">
+            {rows.map((row) => (
+              <li key={row.who} className="flex items-center gap-2">
+                <span aria-hidden className="h-3 w-[7px] flex-none rounded-[1px]" style={{ background: row.color }} />
+                <span className="font-medium">{row.who}</span>
+                <span className="quiet">{fmtPosition(row.reading)}</span>
+                {row.lit ? (
+                  <span className="flex items-center gap-1 text-flame-ink">
+                    <Flame size={14} /> {row.verb}
+                  </span>
+                ) : (
+                  row.who === 'Tú' && forCandle && <span className="quiet">· tu vela es para este</span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </Link>

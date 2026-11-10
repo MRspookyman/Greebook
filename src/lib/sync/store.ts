@@ -104,7 +104,8 @@ export function save<T extends Table>(table: T, row: Row<T>) {
     db: { ...local.db, [table]: { ...local.db[table], [row.id]: row } },
     dirty: local.dirty.includes(key) ? local.dirty : [...local.dirty, key],
   }
-  saveSoon()
+  // Written to the phone at once: closing the app right after must not lose it.
+  saveNow()
   emit()
   syncSoon()
 }
@@ -123,7 +124,8 @@ export function keep<T extends Table>(table: T, row: Row<T>) {
 
 export function enqueue(call: Call) {
   local = { ...local, calls: [...local.calls, call] }
-  saveSoon()
+  // Written to the phone at once: closing the app right after must not lose it.
+  saveNow()
   emit()
   syncSoon()
 }
