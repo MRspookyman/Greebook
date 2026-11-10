@@ -1,66 +1,43 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { searchGoogle } from './googleBooks'
-import { searchOpenLibrary } from './openLibrary'
-import { searchBooks } from './search'
-import { isIsbn, normalizeIsbn } from './searchMode'
+import { describe, expect, it } from 'vitest'
+import { fromGoogle, fromOpenLibrary } from './search'
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }))
-
-afterEach(() => vi.unstubAllGlobals())
-
-function mockFetch() {
-  const fetcher = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ items: [], docs: [] }),
-  })
-  vi.stubGlobal('fetch', fetcher)
-  return fetcher
-}
-
-describe('book search modes', () => {
-  it.each([
-    ['all', 'Patria'],
-    ['title', 'intitle:Patria'],
-    ['author', 'inauthor:Patria'],
-    ['isbn', 'isbn:Patria'],
-  ] as const)('maps Google mode %s to its search operator', async (mode, expected) => {
-    const fetcher = mockFetch()
-    await searchGoogle('Patria', mode)
-    expect(new URL(fetcher.mock.calls[0][0]).searchParams.get('q')).toBe(expected)
+describe('buscar libros', () => {
+  it('lee un resultado de Google Books y pide la portada por https', () => {
+    const [book] = fromGoogle({
+      items: [{
+        id: 'abc',
+        volumeInfo: {
+          title: ' Patria ', authors: ['Fernando Aramburu'], pageCount: 648, publishedDate: '2016-09-06',
+          industryIdentifiers: [{ type: 'ISBN_10', identifier: '8490663196' }, { type: 'ISBN_13', identifier: '9788490663196' }],
+          imageLinks: { thumbnail: 'http://books.google.com/x?id=abc&edge=curl&zoom=1' },
+        },
+      }],
+    })
+    expect(book).toEqual({
+      key: 'g:abc', title: 'Patria', author: 'Fernando Aramburu', pages: 648, year: 2016,
+      isbn: '9788490663196', cover_url: 'https://books.google.com/x?id=abc&zoom=1',
+    })
   })
 
-  it.each([
-    ['all', 'q'],
-    ['title', 'title'],
-    ['author', 'author'],
-    ['isbn', 'isbn'],
-  ] as const)('maps Open Library mode %s to its parameter', async (mode, parameter) => {
-    const fetcher = mockFetch()
-    await searchOpenLibrary('Patria', mode)
-    const params = new URL(fetcher.mock.calls[0][0]).searchParams
-    expect(params.get(parameter)).toBe('Patria')
-    expect(params.get('limit')).toBe('20')
+  it('descarta resultados sin título y tolera los incompletos', () => {
+    const books = fromGoogle({ items: [{ volumeInfo: { title: '' } }, { volumeInfo: { title: 'Nada', pageCount: 0 } }, {}] })
+    expect(books).toHaveLength(1)
+    expect(books[0]).toMatchObject({ title: 'Nada', author: '', pages: null, year: null, isbn: null, cover_url: null })
   })
 
-  it('keeps the selected mode when falling back to Open Library', async () => {
-    const fetcher = mockFetch()
-    await searchBooks('Almudena Grandes', 'author')
-    expect(fetcher).toHaveBeenCalledTimes(2)
-    expect(new URL(fetcher.mock.calls[1][0]).searchParams.get('author')).toBe('Almudena Grandes')
+  it('lee un resultado de Open Library', () => {
+    const [book] = fromOpenLibrary({
+      docs: [{ key: '/works/OL1W', title: 'Rayuela', author_name: ['Julio Cortázar'], number_of_pages_median: 600,
+        first_publish_year: 1963, cover_i: 42, isbn: ['8437604575', '9788437604572'] }],
+    })
+    expect(book).toEqual({
+      key: 'o:/works/OL1W', title: 'Rayuela', author: 'Julio Cortázar', pages: 600, year: 1963,
+      isbn: '9788437604572', cover_url: 'https://covers.openlibrary.org/b/id/42-M.jpg',
+    })
   })
 
-  it.each(['978-84-376-0494-7', '0-8044-2957-X'])('automatically looks up ISBN %s in Todo', async (isbn) => {
-    const fetcher = mockFetch()
-    await searchBooks(isbn)
-    expect(new URL(fetcher.mock.calls[0][0]).searchParams.get('q')).toBe(`isbn:${normalizeIsbn(isbn)}`)
-    expect(new URL(fetcher.mock.calls[1][0]).searchParams.get('isbn')).toBe(normalizeIsbn(isbn))
-  })
-
-  it('normalizes ISBN-10 including a lowercase check digit', () => {
-    expect(normalizeIsbn(' 0 8044-2957-x ')).toBe('080442957X')
-    expect(isIsbn('0 8044-2957-x')).toBe(true)
-    expect(isIsbn('9788437604947')).toBe(true)
-    expect(isIsbn('978843')).toBe(false)
-    expect(isIsbn('Patria')).toBe(false)
+  it('una respuesta vacía no es un error', () => {
+    expect(fromGoogle({})).toEqual([])
+    expect(fromOpenLibrary({})).toEqual([])
   })
 })

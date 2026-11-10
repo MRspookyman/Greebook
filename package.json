@@ -10,22 +10,14 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"supabase/functions/**/*.ts\"",
     "test": "vitest run",
     "icons": "pwa-assets-generator",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:sql": "bash scripts/probar-sql.sh"
   },
   "dependencies": {
-    "@fontsource-variable/literata": "^5.3.0",
-    "@fontsource-variable/nunito": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
     "@fontsource/caveat": "^5.3.0",
-    "@fontsource/young-serif": "^5.3.0",
     "@supabase/supabase-js": "^2.119.0",
-    "@tanstack/query-async-storage-persister": "^5.106.1",
-    "@tanstack/react-query": "^5.106.1",
-    "@tanstack/react-query-persist-client": "^5.106.1",
-    "barcode-detector": "^3.2.3",
-    "date-fns": "^4.4.0",
-    "dexie": "^4.4.7",
     "idb-keyval": "^6.3.0",
-    "lucide-react": "^1.70.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^8.5.1",
@@ -33,9 +25,7 @@
     "workbox-expiration": "^7.4.1",
     "workbox-precaching": "^7.4.1",
     "workbox-routing": "^7.4.1",
-    "workbox-strategies": "^7.4.1",
-    "zod": "^4.6.7",
-    "zxing-wasm": "^3.1.6"
+    "workbox-strategies": "^7.4.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.4",

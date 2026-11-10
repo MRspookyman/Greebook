@@ -38,30 +38,21 @@ export default defineConfig({
       includeAssets: ['icon.svg', 'apple-touch-icon-180x180.png', 'favicon.ico'],
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // Scanner WASM is fetched from our origin on demand, never during PWA installation.
-        globIgnores: ['**/*.wasm'],
+        // Only the alphabets Spanish needs are kept for offline use.
+        globIgnores: ['**/*vietnamese*'],
       },
       manifest: {
         name: 'Greenbook',
         short_name: 'Greenbook',
-        description: 'Nuestro diario de lectura',
+        description: 'Dos velas y una estantería: lo que leemos, juntos',
         lang: 'es',
         id: '/',
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        launch_handler: { client_mode: ['navigate-existing', 'auto'] },
-        background_color: '#f8eee9',
-        theme_color: '#f8eee9',
-        // Long-press on the home-screen icon (Android): straight to the three things done most.
-        shortcuts: [
-          { name: 'Leer', short_name: 'Leer', description: 'Empezar el cronómetro', url: '/leer?modo=crono',
-            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
-          { name: 'Apuntar páginas', short_name: 'Apuntar', description: 'Apuntar lo que has leído', url: '/leer?modo=paginas',
-            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
-          { name: 'Nueva cita', short_name: 'Cita', description: 'Guardar una frase o una nota', url: '/citas?nueva=1',
-            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
-        ],
+        orientation: 'portrait',
+        background_color: '#0e1b15',
+        theme_color: '#0e1b15',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
