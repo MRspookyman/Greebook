@@ -5,13 +5,14 @@ import {
   bookViews, candleReading, dropped, fmtPosition, isLit, live, nightstand, pile, shelves, waxLeft, type BookView,
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
+import { waitingFor, slipPlace, type Waiting } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
 import { usePeople, useNow, useSession } from '@/session'
 import { Cover } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Plus } from '@/ui/icons'
+import { Envelope, Plus } from '@/ui/icons'
 import { Rail } from '@/ui/Rail'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { toast } from '@/ui/toast'
@@ -65,6 +66,7 @@ export function Room() {
   else if (!chosen) line = 'Pon un libro en la mesilla y enciende tu vela.'
   else line = nights ?? 'Las dos velas esperan.'
 
+  const waiting = useMemo(() => waitingFor(db, me.id), [db, me.id])
   const pending = pile(views)
   const years = shelves(views)
   const left = dropped(views)
@@ -136,6 +138,16 @@ export function Room() {
         </p>
         {nights && line !== nights && <p className="eyebrow mt-3 text-center">{nights}</p>}
       </section>
+
+      {/* ── Lo que te espera ── */}
+      {waiting.length > 0 && partner && (
+        <section className="mt-9 flex flex-col gap-3" aria-label="Te espera">
+          {waiting.map((thing, i) => (
+            <WaitingCard key={thing.kind + thing.book.id + ('slip' in thing ? thing.slip.id : '')} thing={thing} name={partner.name} i={i}
+              mine={views.find((v) => v.book.id === thing.book.id)?.mine} />
+          ))}
+        </section>
+      )}
 
       {/* ── La mesilla ── */}
       <section className="mt-12" aria-labelledby="mesilla">
@@ -267,6 +279,35 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
     >
       <Candle color={me.color} lit={lit} wax={lit ? waxLeft(me.candle_lit_at, now) : 1} lean={lean} igniting={hold.progress} />
     </button>
+  )
+}
+
+/** Something of theirs you can open now: a slip that fell out of the book, or an envelope. */
+function WaitingCard({ thing, name, i, mine }: { thing: Waiting; name: string; i: number; mine?: BookView['mine'] }) {
+  const title = <em>{thing.book.title}</em>
+  const tab = <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] rounded-l-[3px]" style={{ background: 'var(--you)' }} />
+  if (thing.kind === 'papel') {
+    const place = slipPlace(thing.slip, mine)
+    return (
+      <Link to={`/libro/${thing.book.id}#papeles`} className="slip slip-folded drop pressable block" style={{ '--i': i, rotate: i % 2 ? '0.6deg' : '-0.8deg' } as CSSProperties}>
+        {tab}
+        <span className="hand block">Entre las páginas había algo de {name}</span>
+        <span className="mt-1 block text-[15px] opacity-70">
+          {place && `${place} · `}
+          {title}
+          {thing.opening ? ' · se abrirá en cuanto haya conexión' : ''}
+        </span>
+      </Link>
+    )
+  }
+  return (
+    <Link to={`/libro/${thing.book.id}#sobre`} className="slip drop pressable flex items-center gap-3" style={{ '--i': i, backgroundImage: 'none' } as CSSProperties}>
+      {tab}
+      <Envelope size={26} className="flex-none opacity-70" />
+      <span className="text-[17px] leading-snug">
+        {thing.kind === 'sobre' ? <>El sobre de {title} ya se puede abrir.</> : <>{name} ha dejado su carta en {title}. Escribe la tuya y se abre.</>}
+      </span>
+    </Link>
   )
 }
 

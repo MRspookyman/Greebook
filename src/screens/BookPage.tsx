@@ -1,12 +1,12 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, finishReading, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  dropReading, editBook, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
   removeBookmark, removeSession, resizeReading, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
 import { bookViews, fmtPosition, fmtProgress, isLit, live, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
-import type { Book, Reading, Session, Unit } from '@/lib/types'
+import type { Book, Profile, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
 import { Cover } from '@/ui/Book'
 import { Back, Close, Flame, More } from '@/ui/icons'
@@ -16,6 +16,7 @@ import { Rail } from '@/ui/Rail'
 import { Sheet } from '@/ui/Sheet'
 import { Stars } from '@/ui/Stars'
 import { toast } from '@/ui/toast'
+import { BookSlips } from './BookSlips'
 
 type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove'
 
@@ -28,6 +29,12 @@ export function BookPage() {
   const navigate = useNavigate()
   const [open, setOpen] = useState<Open>(params.has('cerrar') ? 'finish' : null)
   const [showAll, setShowAll] = useState(false)
+  const { hash } = useLocation()
+
+  // Arriving from «te espera» in the room: go straight to the slips or the envelope.
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [hash])
 
   const view = useMemo(() => bookViews(db, me.id).find((v) => v.book.id === bookId), [db, me.id, bookId])
   const sessions = useMemo(
@@ -117,6 +124,8 @@ export function BookPage() {
         )}
       </section>
 
+      <BookSlips view={view} />
+
       {/* Evenings */}
       {(mySessions.length > 0 || theirSessions.length > 0) && (
         <section className="mt-12" aria-labelledby="veladas">
@@ -155,6 +164,9 @@ export function BookPage() {
         {open === 'finish' && mine && (
           <Finish
             reading={mine}
+            book={book}
+            theirs={theirs}
+            partner={partner}
             onDone={() => {
               close()
               toast('Ya está en la estantería')
@@ -346,8 +358,23 @@ function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean
   )
 }
 
-function Finish({ reading, onDone }: { reading: Reading; onDone: () => void }) {
+interface FinishProps {
+  reading: Reading
+  book: Book
+  theirs?: Reading
+  partner: Profile | null
+  onDone: () => void
+}
+
+/** The last page: the book goes to the shelf, and a letter, if you want, into its envelope. */
+function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
+  const { db, me } = usePeople()
   const [rating, setRating] = useState<number | null>(reading.rating)
+  const [letter, setLetter] = useState('')
+  const hasLetter = Object.values(db.slips).some(
+    (s) => s.book_id === book.id && s.user_id === me.id && s.kind === 'carta' && !s.deleted_at,
+  )
+  const theirOpen = theirs?.status === 'leyendo' || theirs?.status === 'pendiente'
   return (
     <div className="flex flex-col gap-6">
       <p className="quiet">La última página. El libro pasa a la estantería con tu cinta.</p>
@@ -355,10 +382,35 @@ function Finish({ reading, onDone }: { reading: Reading; onDone: () => void }) {
         <p className="label">¿Cuánto te ha gustado? <span className="text-[14px]">(si quieres)</span></p>
         <Stars value={rating} onChange={setRating} />
       </div>
+      {!hasLetter && partner && (
+        <div>
+          <p className="label">
+            Una carta para el sobre <span className="text-[14px]">(si quieres)</span>
+          </p>
+          <div className="slip">
+            <textarea
+              className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45"
+              maxLength={4000}
+              placeholder="Lo que te ha dejado este libro…"
+              aria-label="Tu carta"
+              value={letter}
+              onChange={(event) => setLetter(event.currentTarget.value)}
+            />
+          </div>
+          <p className="quiet mt-2 text-[15px]">
+            {theirOpen
+              ? `${partner.name} la leerá cuando lo termine y haya escrito la suya.`
+              : theirs?.status === 'terminado'
+                ? `${partner.name} la leerá cuando haya escrito la suya. Y tú, la suya.`
+                : `${partner.name} podrá leerla.`}
+          </p>
+        </div>
+      )}
       <button
         className="btn btn-primary"
         onClick={() => {
           finishReading(reading, rating)
+          if (letter.trim()) leaveSlip({ book, kind: 'carta', page: null, body: letter })
           onDone()
         }}
       >

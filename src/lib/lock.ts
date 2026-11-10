@@ -40,3 +40,11 @@ export function isLocked(
       return slip.at != null && open(mine) && fractionOf(mine!.position, mine!.total) < slip.at
   }
 }
+
+/**
+ * The first position in a book of `total` units from which a slip at `at` can be read: the same point
+ * of the book, said in the reader's own edition (or in their Kindle's %).
+ */
+export function positionFor(at: number, total: number): number {
+  return Math.max(0, Math.min(total, Math.ceil((at - 0.000005) * total)))
+}

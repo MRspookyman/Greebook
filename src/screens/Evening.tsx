@@ -6,9 +6,10 @@ import { fmtMinutes, fmtSince, greeting } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
 import { Candle } from '@/ui/Candle'
-import { Back, Minus, Plus } from '@/ui/icons'
+import { Back, Minus, Paper, Plus } from '@/ui/icons'
 import { NumberDial } from '@/ui/NumberDial'
 import { Sheet } from '@/ui/Sheet'
+import { WriteSlip } from '@/ui/WriteSlip'
 
 const PLACES = ['en la cama', 'en el sofá', 'en el tren']
 
@@ -28,10 +29,14 @@ export function Evening() {
   const now = useNow(10_000)
   const navigate = useNavigate()
   const [asking, setAsking] = useState(false)
+  const [writing, setWriting] = useState(false)
   const [farewell, setFarewell] = useState<Farewell | null>(null)
 
   const reading = me.candle_reading_id ? db.readings[me.candle_reading_id] : undefined
   const book = reading ? db.books[reading.book_id] : undefined
+  const theirReading = Object.values(db.readings).find(
+    (r) => r.book_id === reading?.book_id && r.user_id !== me.id && !r.deleted_at,
+  )
   const burning = isLit(me, now)
   const theirsLit = isLit(partner, now)
 
@@ -96,7 +101,23 @@ export function Evening() {
         <button className="btn btn-primary" onClick={() => setAsking(true)}>
           {burning ? 'Apagar la vela' : 'Guardar la velada'}
         </button>
+        <button className="btn btn-text self-center" onClick={() => setWriting(true)}>
+          <Paper size={18} /> Dejar un papel entre estas páginas
+        </button>
       </footer>
+
+      <Sheet open={writing} onClose={() => setWriting(false)} title="Un papel entre páginas" night>
+        {writing && (
+          <WriteSlip
+            book={book}
+            mine={reading}
+            theirs={theirReading}
+            partner={partner}
+            what="papel"
+            onDone={() => setWriting(false)}
+          />
+        )}
+      </Sheet>
 
       <Sheet open={asking} onClose={() => setAsking(false)} title="¿Por dónde vas?" night>
         {asking && <Snuff reading={reading} litAt={me.candle_lit_at} onDone={leave} />}
