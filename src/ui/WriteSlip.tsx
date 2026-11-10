@@ -25,11 +25,19 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
   const total = mine?.total ?? book.pages ?? 0
   const number = Number(page)
   const placed = !loose && page !== '' && number >= 0 && (!total || number <= total)
-  const fate = editing ? '' : partner ? `La veis los dos. ${partner.name} la tendrá la próxima vez que entre.` : 'Se queda guardada con el libro.'
+  const [hidden, setHidden] = useState(!!editing?.hidden)
+  // Hiding only makes sense with someone to hide it from and a page to wait for.
+  const canHide = !!partner && (editing ? editing.at != null : placed)
+  const name = partner?.name ?? ''
+  const fate = !partner
+    ? 'Se queda guardada con el libro.'
+    : hidden && canHide
+      ? `${name} verá que hay una nota, pero no lo que dice hasta que llegue a esa página.`
+      : `${name} puede leerla desde ya, vaya por donde vaya.`
 
   const save = () => {
-    if (editing) editSlip(editing, body)
-    else leaveSlip({ book, kind: 'nota', page: placed ? number : null, body })
+    if (editing) editSlip(editing, body, hidden && canHide)
+    else leaveSlip({ book, kind: 'nota', page: placed ? number : null, body, hidden: hidden && canHide })
     onDone()
   }
 
@@ -67,7 +75,26 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
         </div>
       )}
 
-      {fate && <p className="quiet -mt-1 text-[15.5px]">{fate}</p>}
+      {partner && (
+        <div role="radiogroup" aria-label={`Cómo la ve ${name}`} className="flex flex-wrap gap-2">
+          <button type="button" role="radio" className="chip" aria-checked={!(hidden && canHide)} aria-pressed={!(hidden && canHide)} onClick={() => setHidden(false)}>
+            A la vista
+          </button>
+          <button
+            type="button"
+            role="radio"
+            className="chip disabled:opacity-40"
+            aria-checked={hidden && canHide}
+            aria-pressed={hidden && canHide}
+            disabled={!canHide}
+            onClick={() => setHidden(true)}
+          >
+            Oculta hasta que llegue a la página
+          </button>
+        </div>
+      )}
+
+      <p className="quiet -mt-1 text-[15.5px]">{fate}</p>
 
       <button className="btn btn-primary" disabled={!body.trim()} onClick={save}>
         {editing ? 'Guardar' : 'Dejarla en el libro'}

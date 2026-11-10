@@ -277,12 +277,14 @@ export function removeBookmark(reading: Reading) {
 export interface NewSlip {
   book: Book
   kind: SlipKind
-  /** The page it belongs to in my edition; null spoils nothing. */
+  /** The page it belongs to in my edition; null is about the whole book. */
   page: number | null
   body: string
+  /** Hidden from the other until they reach that page. */
+  hidden?: boolean
 }
 
-export function leaveSlip({ book, kind, page, body }: NewSlip): Slip {
+export function leaveSlip({ book, kind, page, body, hidden = false }: NewSlip): Slip {
   const me = getMe()
   const mine = Object.values(getDb().readings).find((r) => r.user_id === me && r.book_id === book.id && !r.deleted_at)
   const total = mine?.total ?? book.pages ?? 0
@@ -297,6 +299,7 @@ export function leaveSlip({ book, kind, page, body }: NewSlip): Slip {
     body: body.trim().slice(0, 4000),
     seen_at: null,
     loved: false,
+    hidden: hidden && page != null && total > 0,
     created_at: stamp,
     updated_at: stamp,
     deleted_at: null,
@@ -306,8 +309,8 @@ export function leaveSlip({ book, kind, page, body }: NewSlip): Slip {
   return slip
 }
 
-export function editSlip(slip: Slip, body: string) {
-  patch('slips', slip.id, { body: body.trim().slice(0, 4000) })
+export function editSlip(slip: Slip, body: string, hidden: boolean = !!slip.hidden) {
+  patch('slips', slip.id, { body: body.trim().slice(0, 4000), hidden: hidden && slip.at != null })
 }
 
 export function removeSlip(slip: Slip) {

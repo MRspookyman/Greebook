@@ -36,8 +36,10 @@ insert into readings (id, book_id, total, position, status)
   values ('20000000-0000-0000-0000-00000000000a', :'libro', 200, 150, 'leyendo');
 insert into sessions (id, reading_id, day, minutes, from_pos, to_pos)
   values ('30000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-00000000000a', '2026-11-10', 30, 100, 150);
-insert into slips (id, book_id, kind, page, at, body, seen_at, loved)
-  values ('40000000-0000-0000-0000-000000000001', :'libro', 'nota', 100, 0.5, 'Aquí lloré', now(), true);
+insert into slips (id, book_id, kind, page, at, body, seen_at, loved, hidden)
+  values ('40000000-0000-0000-0000-000000000001', :'libro', 'nota', 100, 0.5, 'Aquí lloré', now(), true, true);
+insert into slips (id, book_id, kind, page, at, body)
+  values ('40000000-0000-0000-0000-000000000009', :'libro', 'nota', 180, 0.9, 'A la vista');
 do $$ begin
   assert (select seen_at is null and not loved from slips where id = '40000000-0000-0000-0000-000000000001'),
     'quien escribe no puede marcar su papel como abierto';
@@ -49,7 +51,7 @@ do $$ begin
 end $$;
 commit;
 
--- ── Javier lo ve todo, también la nota de una página a la que aún no ha llegado ──
+-- ── Javier lo ve todo menos el texto de la nota oculta que aún no ha alcanzado ──
 begin;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'javier', true);
@@ -61,8 +63,12 @@ do $$ begin
   assert (select count(*) from sessions) = 1, 'Javier ve la velada de Laura';
   assert (select count(*) from profiles) = 2, 'Javier ve dos perfiles, no tres';
   assert (select count(*) from slips) = 0, 'la tabla de papeles solo enseña los propios';
-  assert (select not locked and body = 'Aquí lloré' and page = 100 from slips_for_me()),
-    'la nota de la mitad se lee aunque Javier vaya por el 25 % del libro';
+  assert (select locked and hidden and body is null and page = 100 from slips_for_me() where id = '40000000-0000-0000-0000-000000000001'),
+    'la nota oculta de la mitad está sin texto en el 25 % del libro';
+  assert (select not locked and body = 'A la vista' from slips_for_me() where id = '40000000-0000-0000-0000-000000000009'),
+    'la nota a la vista se lee aunque esté más adelante';
+  assert pg_temp.fails($q$select open_slip('40000000-0000-0000-0000-000000000001')$q$),
+    'una nota oculta no se puede abrir';
   assert pg_temp.fails($q$select slip_locked(s, auth.uid()) from slips s$q$), 'la regla de doblado no se llama a mano';
   assert pg_temp.fails($q$update readings set position = 0 where user_id <> auth.uid() returning id$q$) = false
     and (select position from readings where id = '20000000-0000-0000-0000-00000000000a') = 150,
@@ -70,11 +76,12 @@ do $$ begin
 end $$;
 -- Javier puede corregir el libro, que es de los dos.
 update books set pages = 210 where id = :'libro';
--- Llega a la mitad de SU edición (400 páginas): la nota sigue ahí.
+-- Llega a la mitad de SU edición (400 páginas): la nota oculta se abre.
 update readings set position = 200 where id = '20000000-0000-0000-0000-00000000000b';
 do $$ begin
   assert (select pages from books) = 210, 'cualquiera de los dos corrige un libro';
-  assert (select not locked and body = 'Aquí lloré' from slips_for_me()), 'la nota se sigue leyendo';
+  assert (select not locked and body = 'Aquí lloré' from slips_for_me() where id = '40000000-0000-0000-0000-000000000001'),
+    'al llegar a su punto, la nota se abre';
 end $$;
 select open_slip('40000000-0000-0000-0000-000000000001', true);
 commit;
@@ -85,7 +92,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', :'laura', true);
 update slips set seen_at = null, loved = false, body = 'Aquí lloré mucho' where id = '40000000-0000-0000-0000-000000000001';
 do $$ begin
-  assert (select seen_at is not null and loved and body = 'Aquí lloré mucho' from slips), 'el «lo encontró» es de quien lo recibe';
+  assert (select seen_at is not null and loved and body = 'Aquí lloré mucho' from slips where id = '40000000-0000-0000-0000-000000000001'),
+    'el «la leyó» es de quien la recibe';
 end $$;
 
 -- De antes: Laura termina y tenía escritas una carta y una predicción.

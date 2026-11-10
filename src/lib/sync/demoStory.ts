@@ -37,11 +37,11 @@ export function story(db: Db, a: string, b: string): Db {
       from_pos: from, to_pos: to, place, created_at: at(day), updated_at: at(day), deleted_at: null,
     }
   }
-  const slip = (user: string, book: string, kind: Slip['kind'], page: number | null, total: number, body: string, day: string, seen = true) => {
+  const slip = (user: string, book: string, kind: Slip['kind'], page: number | null, total: number, body: string, day: string, seen = true, hidden = false) => {
     const id = uuid(++n, 4)
     db.slips[id] = {
       id, user_id: user, book_id: book, kind, page, at: page == null ? null : fractionOf(page, total), body,
-      seen_at: seen ? at(addDays(day, 2)) : null, loved: seen && n % 2 === 0,
+      seen_at: seen ? at(addDays(day, 2)) : null, loved: seen && n % 2 === 0, hidden,
       created_at: at(day), updated_at: at(day), deleted_at: null,
     }
   }
@@ -95,7 +95,7 @@ export function story(db: Db, a: string, b: string): Db {
         Math.round((position * (k + 1)) / 4), places[k % places.length])
     }
   }
-  slip(b, shared, 'nota', 150, 600, 'Cuando llegues aquí, mírame. Sé la cara que vas a poner.', addDays(today, -3), false)
+  slip(b, shared, 'nota', 150, 600, 'Cuando llegues aquí, mírame. Sé la cara que vas a poner.', addDays(today, -3), false, true)
   slip(b, shared, 'cita', 198, 600, '«Andábamos sin buscarnos pero sabiendo que andábamos para encontrarnos.»', addDays(today, -2), false)
   slip(a, shared, 'cita', 93, 600, '«Toco tu boca, con un dedo toco el borde de tu boca.»', addDays(today, -6))
 

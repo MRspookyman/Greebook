@@ -1,8 +1,10 @@
 import type { Reading, Slip } from './types'
 
 /**
- * Notes are never folded any more: both of you always see every note in a book. `isLocked` stays as the one
- * place that says so (the server's `slip_locked()` says the same) and for the «ensayo» server.
+ * When a note is hidden from the person looking at it: only if its author chose to hide it until its page,
+ * and the reader hasn't got there yet. The server applies the same rule (`slip_locked()` in
+ * supabase/migrations/0004_notas_ocultas.sql) and is the one that withholds the text; this copy lets the app
+ * say what will open, and runs the «ensayo» server.
  */
 
 type Mark = Pick<Reading, 'status' | 'position' | 'total'> | null | undefined
@@ -15,13 +17,14 @@ export function fractionOf(position: number, total: number): number {
 }
 
 export function isLocked(
-  _slip: Pick<Slip, 'user_id' | 'kind' | 'at'>,
-  _viewer: string,
-  _mine?: Mark,
-  _theirs?: Mark,
-  _viewerWroteLetter?: boolean,
+  slip: Pick<Slip, 'user_id' | 'at' | 'hidden'>,
+  viewer: string,
+  /** The viewer's bookmark in that book, if any. */
+  mine: Mark,
 ): boolean {
-  return false
+  if (slip.user_id === viewer || !slip.hidden || slip.at == null) return false
+  // Still ahead of them: on the pile or being read, and short of that page.
+  return !!mine && (mine.status === 'pendiente' || mine.status === 'leyendo') && fractionOf(mine.position, mine.total) < slip.at
 }
 
 /**

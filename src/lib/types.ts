@@ -71,7 +71,8 @@ export interface Session {
 export type SlipKind = 'cita' | 'nota' | 'prediccion' | 'carta'
 
 /**
- * A note between the pages of a book: the only thing written inside one, and always open to both. New ones
+ * A note between the pages of a book: the only thing written inside one. Its author chooses whether both see it
+ * from the start or the other finds it on reaching its page. New ones
  * are all «nota»; the other kinds are from before and are shown the same way.
  */
 export interface Slip {
@@ -86,6 +87,8 @@ export interface Slip {
   body: string | null
   seen_at: string | null
   loved: boolean
+  /** The author chose to hide it from the other until they reach its page. Only means something with a page. */
+  hidden?: boolean
   created_at: string
   updated_at: string
   deleted_at: string | null

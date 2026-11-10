@@ -64,8 +64,11 @@ describe('lo que te espera', () => {
     expect(result.map((w) => w.slip.id).sort()).toEqual([ahead.id, old.id].sort())
     expect(result.every((w) => w.kind === 'papel' && !w.opening)).toBe(true)
   })
-  it('si este móvil aún la tiene sin texto, se abre en cuanto haya conexión', () => {
-    const stale = slip('you', 'nota', { at: 0.9, locked: true, body: null })
-    expect(waitingFor(db([], [stale]), 'me')).toEqual([{ kind: 'papel', book, slip: stale, opening: true }])
+  it('una nota oculta no espera hasta que tu marcapáginas la alcanza, aunque no haya red', () => {
+    const hidden = slip('you', 'nota', { at: 0.25, hidden: true, locked: true, body: null })
+    expect(waitingFor(db([reading('me', { position: 149 })], [hidden]), 'me')).toEqual([])
+    expect(waitingFor(db([reading('me', { position: 150 })], [hidden]), 'me')).toEqual([
+      { kind: 'papel', book, slip: hidden, opening: true },
+    ])
   })
 })

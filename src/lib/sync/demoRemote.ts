@@ -49,10 +49,7 @@ const mark = (db: Db, user: string, book: string): Reading | undefined =>
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]
 
 function fold(db: Db, slip: Slip, viewer: string): Slip {
-  const wroteLetter = Object.values(db.slips).some(
-    (s) => s.user_id === viewer && s.book_id === slip.book_id && s.kind === 'carta' && !s.deleted_at,
-  )
-  const locked = isLocked(slip, viewer, mark(db, viewer, slip.book_id), mark(db, slip.user_id, slip.book_id), wroteLetter)
+  const locked = isLocked(slip, viewer, mark(db, viewer, slip.book_id))
   return { ...slip, locked, body: locked ? null : slip.body }
 }
 

@@ -47,7 +47,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
             {seal}
             {[place, `de ${author}`].filter(Boolean).join(' · ')}
           </span>
-          <span className="block opacity-70">{foldedLine ?? 'Se abrirá en cuanto haya conexión.'}</span>
+          <span className="block opacity-70">{foldedLine ?? 'La encontrarás al llegar.'}</span>
         </p>
       </div>
     )
@@ -82,7 +82,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
         {other} la leyó el {day(slip.seen_at)}
       </>
     ) : (
-      `${other} aún no la ha leído`
+      `${other} aún no la ha leído${slip.hidden && slip.at != null ? ' · oculta hasta que llegue' : ''}`
     )
   } else footer = `${author}, el ${day(slip.created_at)}`
 

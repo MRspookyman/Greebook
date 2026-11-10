@@ -33,11 +33,13 @@ export interface SlipNotice {
   locked: boolean
 }
 
-/** «Javier ha dejado una nota». Every note is open to both; `locked` only guards against an older server. */
+/** «Javier ha dejado una nota». A note hidden until its page never travels with its text. */
 export function slipNotice({ name, book, bookId, page, body, locked }: SlipNotice): Push {
   return {
     title: `📄 ${name} ha dejado una nota`,
-    body: locked ? `«${book}»${page != null ? `, hacia la página ${page}` : ''}.` : `«${book}»: ${excerpt(body)}`,
+    body: locked
+      ? `«${book}»${page != null ? `, hacia la página ${page}` : ''}. La encontrarás al llegar.`
+      : `«${book}»: ${excerpt(body)}`,
     url: `/libro/${bookId}#papeles`,
     tag: `papel:${bookId}`,
   }

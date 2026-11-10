@@ -17,6 +17,12 @@ describe('avisos', () => {
     expect(push.url).toBe('/libro/b1#papeles')
   })
 
+  it('una nota oculta nunca viaja con su texto', () => {
+    const push = slipNotice({ ...slip, locked: true })
+    expect(push.body).toBe('«Rayuela», hacia la página 150. La encontrarás al llegar.')
+    expect(JSON.stringify(push)).not.toContain('mírame')
+  })
+
   it('una carta o predicción de antes se avisa como cualquier nota', () => {
     const push = slipNotice({ ...slip, kind: 'carta' })
     expect(push.title).toBe('📄 Javier ha dejado una nota')
