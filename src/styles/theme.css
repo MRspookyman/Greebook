@@ -322,10 +322,14 @@ input[type='search']::-webkit-search-cancel-button {
   transform-origin: 50% 100%;
   animation: gb-flicker 1.9s ease-in-out infinite reverse;
 }
-.flame-wrap {
+.flame-lean {
   transform-box: fill-box;
   transform-origin: 50% 100%;
   transition: transform 900ms var(--ease);
+}
+.flame-wrap {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
   animation: gb-catch 700ms var(--spring) both;
 }
 .flame-wrap.tremble {

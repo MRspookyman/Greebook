@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { loadRemote, type Remote } from '@/lib/sync/remote'
 import { closeStore, getDb, openStore, sync, useDb, useSyncStatus } from '@/lib/sync/store'
 import { SessionContext } from './session'
+import { disablePush, reclaimPush } from '@/lib/push'
 import { toast } from '@/ui/toast'
 import { Toaster } from '@/ui/Toaster'
 import { Login } from '@/screens/Login'
@@ -48,6 +49,7 @@ export default function App() {
     if (!remote || !userId) return
     let alive = true
     void openStore(remote, userId, toast).then(() => alive && setReadyFor(userId))
+    void reclaimPush(remote)
     return () => {
       alive = false
       closeStore()
@@ -56,6 +58,7 @@ export default function App() {
 
   const signOut = useCallback(async () => {
     // Nothing of yours stays on a phone you have left.
+    if (remote) await disablePush(remote)
     closeStore({ wipe: true })
     await remote?.signOut()
   }, [remote])

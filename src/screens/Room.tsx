@@ -9,7 +9,8 @@ import { waitingFor, slipPlace, type Waiting } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
-import { usePeople, useNow, useSession } from '@/session'
+import { memoryFor, memoryLine } from '@/lib/memory'
+import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
 import { Envelope, Plus } from '@/ui/icons'
@@ -66,6 +67,11 @@ export function Room() {
   else if (!chosen) line = 'Pon un libro en la mesilla y enciende tu vela.'
   else line = nights ?? 'Las dos velas esperan.'
 
+  const wink = useWink(partner?.name)
+  const memory = useMemo(
+    () => memoryFor(views, nightOf(new Date(now)), new Set(sessions.map((s) => s.reading_id))),
+    [views, sessions, now],
+  )
   const waiting = useMemo(() => waitingFor(db, me.id), [db, me.id])
   const pending = pile(views)
   const years = shelves(views)
@@ -114,9 +120,15 @@ export function Room() {
       <section className="relative mt-1" aria-label="La repisa">
         <div className="flex items-end justify-center gap-9">
           {partner && (
-            <div className="rise flex flex-col items-center">
-              <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} lean={mineLit ? 1 : 0} />
-            </div>
+            <button
+              type="button"
+              className="rise rounded-[20px]"
+              disabled={!(mineLit && theirsLit)}
+              aria-label={mineLit && theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}`}
+              onClick={wink.send}
+            >
+              <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} lean={mineLit ? 1 : 0} tremble={wink.received} />
+            </button>
           )}
           <MyCandle me={me} lit={mineLit} now={now} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onLight={light} onOpen={() => navigate('/velada')} />
         </div>
@@ -137,6 +149,7 @@ export function Room() {
           {line}
         </p>
         {nights && line !== nights && <p className="eyebrow mt-3 text-center">{nights}</p>}
+        {mineLit && theirsLit && partner && <p className="quiet mt-2 text-center text-[15px]">Toca su vela para mandarle un guiño.</p>}
       </section>
 
       {/* ── Lo que te espera ── */}
@@ -147,6 +160,14 @@ export function Room() {
               mine={views.find((v) => v.book.id === thing.book.id)?.mine} />
           ))}
         </section>
+      )}
+
+      {/* ── Lo que vuelve ── */}
+      {memory && partner && (
+        <Link to={`/libro/${memory.book.id}`} className="rise mt-9 block text-center" style={{ '--i': 3 } as CSSProperties}>
+          <span className="eyebrow block">{memoryLine(memory, partner.name)}</span>
+          <span className="mt-1 block text-[22px] italic underline decoration-rule underline-offset-[6px]">{memory.book.title}</span>
+        </Link>
       )}
 
       {/* ── La mesilla ── */}

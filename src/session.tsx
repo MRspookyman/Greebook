@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { useDb } from '@/lib/sync/store'
+import { onSignal, sendSignal, useDb } from '@/lib/sync/store'
+import { toast } from '@/ui/toast'
 import type { Remote } from '@/lib/sync/remote'
 import type { Db, Profile } from '@/lib/types'
 
@@ -38,4 +39,30 @@ export function useNow(everyMs = 20_000): number {
     }
   }, [everyMs])
   return now
+}
+
+/**
+ * The «guiño»: while both candles burn, touching theirs makes your flame shiver on their screen and
+ * their phone buzz. Nothing is stored. Returns a counter that changes with each one received, and how to send one.
+ */
+export function useWink(name: string | undefined): { received: number; send: () => void } {
+  const [received, setReceived] = useState(0)
+  useEffect(
+    () =>
+      onSignal((signal) => {
+        if (signal !== 'guino') return
+        setReceived((n) => n + 1)
+        navigator.vibrate?.([120, 90, 220])
+        toast(`${name ?? 'Tu pareja'} te manda un guiño`)
+      }),
+    [name],
+  )
+  return {
+    received,
+    send: () => {
+      navigator.vibrate?.(15)
+      sendSignal('guino')
+      toast('Guiño enviado')
+    },
+  }
 }

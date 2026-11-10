@@ -69,14 +69,13 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
       )}
 
       {lit && (
-        <g
-          key={tremble}
-          className={`flame-wrap${tremble ? ' tremble' : ''}`}
-          style={{ transform: `rotate(${lean * 8}deg)` }}
-        >
-          <g transform={`translate(60 ${wick + 3})`}>
-            <path className="flame" d="M0 0C-14 -9 -10 -27 0 -46C10 -27 14 -9 0 0Z" fill={`url(#${id}f)`} />
-            <path className="flame-core" d="M0 -2C-6 -7 -4.5 -17 0 -27C4.5 -17 6 -7 0 -2Z" fill="var(--flame-core)" />
+        // The lean sits outside the animated group: an animation would otherwise replace its transform.
+        <g className="flame-lean" style={{ transform: `rotate(${lean * 9}deg)` }}>
+          <g key={tremble} className={`flame-wrap${tremble ? ' tremble' : ''}`}>
+            <g transform={`translate(60 ${wick + 3})`}>
+              <path className="flame" d="M0 0C-14 -9 -10 -27 0 -46C10 -27 14 -9 0 0Z" fill={`url(#${id}f)`} />
+              <path className="flame-core" d="M0 -2C-6 -7 -4.5 -17 0 -27C4.5 -17 6 -7 0 -2Z" fill="var(--flame-core)" />
+            </g>
           </g>
         </g>
       )}

@@ -29,6 +29,40 @@ Limpieza opcional de lo que ya no se usa (no molesta si se queda):
 La app usa un único canal privado por pareja (Broadcast). No hay que publicar ninguna tabla. La migración
 crea las políticas sobre `realtime.messages`; no hay nada que activar a mano.
 
+### Avisos (push)
+
+Una sola función, `avisar`. La app la llama con la sesión de quien hace algo; la función comprueba quién es,
+lee la fila en el servidor y manda el aviso a su pareja. No hay cron, webhooks ni secretos dentro de SQL.
+
+1. Genera un par de claves **una vez** (si ya teníais avisos, valen las mismas):
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+2. Guarda los secretos de la función (sustituye `<ref>` por el Reference ID del proyecto):
+
+   ```bash
+   npx supabase secrets set --project-ref <ref> VAPID_PUBLIC_KEY=<pública> VAPID_PRIVATE_KEY=<privada> VAPID_SUBJECT=mailto:<vuestro email>
+   ```
+
+3. Despliega la función. **Sin** `--no-verify-jwt`: tiene que exigir sesión.
+
+   ```bash
+   npx supabase functions deploy avisar --project-ref <ref> --use-api
+   ```
+
+4. Pon la clave pública en Cloudflare como `VITE_VAPID_PUBLIC_KEY` y vuelve a desplegar la app.
+5. En cada móvil: avatar (arriba a la derecha) → **Avisarme en este móvil**. En iPhone hay que añadir antes
+   Greenbook a la pantalla de inicio.
+
+Avisa de cuatro cosas: el otro enciende su vela (como mucho una vez cada tres horas), deja un papel (si está
+doblado para ti, el aviso no lleva su texto), encuentra uno tuyo, o termina un libro.
+
+> La función no se ha podido ejecutar en el entorno donde se escribió (no había Deno ni un proyecto de
+> Supabase). El texto de los avisos sí está cubierto por tests; el envío reutiliza el módulo que ya
+> funcionaba en el Greenbook anterior. Probadla una vez tras desplegar.
+
 ## 2. Cloudflare
 
 Igual que hasta ahora: el Worker `greebook` sirve la carpeta `dist` (ver `wrangler.jsonc`).

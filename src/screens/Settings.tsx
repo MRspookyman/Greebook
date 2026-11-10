@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { updateMe } from '@/lib/actions'
-import { useSyncStatus } from '@/lib/sync/store'
+import { disablePush, enablePush, pushState, type PushState } from '@/lib/push'
+import { getDb, useSyncStatus } from '@/lib/sync/store'
 import { usePeople, useSession } from '@/session'
 import { Candle } from '@/ui/Candle'
 import { ColorPicker } from '@/ui/ColorPicker'
@@ -15,6 +16,31 @@ export function Settings() {
   const navigate = useNavigate()
   const [name, setName] = useState(me.name)
   const [leaving, setLeaving] = useState(false)
+  const [push, setPush] = useState<PushState | null>(null)
+  useEffect(() => {
+    let alive = true
+    void pushState(remote).then((state) => alive && setPush(state)).catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [remote])
+  const partnerName = partner?.name ?? 'tu pareja'
+  const PUSH_LINES: Record<PushState, string> = {
+    on: `Este móvil te avisa cuando ${partnerName} enciende su vela, te deja un papel o encuentra uno tuyo.`,
+    off: `Que este móvil te avise cuando ${partnerName} encienda su vela o te deje algo.`,
+    denied: 'Los avisos están bloqueados para Greenbook en los ajustes de este móvil.',
+    'needs-install': 'En el iPhone los avisos funcionan al añadir Greenbook a la pantalla de inicio (Compartir → Añadir a inicio).',
+    unsupported: 'Este navegador no admite avisos.',
+    unconfigured: 'Los avisos aún no están configurados en este despliegue.',
+  }
+  const exportAll = () => {
+    const blob = new Blob([JSON.stringify(getDb(), null, 2)], { type: 'application/json' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `greenbook-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+  }
 
   return (
     <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-16" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
@@ -53,7 +79,34 @@ export function Settings() {
         </div>
       </section>
 
-      <section className="mt-12 border-t border-rule pt-6">
+      {!remote.ensayo && push && (
+        <section className="mt-10 border-t border-rule pt-6">
+          <h2 className="title">Avisos</h2>
+          <p className="quiet mt-2 text-[16px]">{PUSH_LINES[push]}</p>
+          {(push === 'on' || push === 'off') && (
+            <button
+              className={`btn mt-4 ${push === 'on' ? 'btn-line' : 'btn-primary'}`}
+              onClick={() =>
+                void (push === 'on' ? disablePush(remote) : enablePush(remote))
+                  .then(setPush)
+                  .catch(() => setPush('off'))
+              }
+            >
+              {push === 'on' ? 'Dejar de avisarme aquí' : 'Avisarme en este móvil'}
+            </button>
+          )}
+        </section>
+      )}
+
+      <section className="mt-10 border-t border-rule pt-6">
+        <h2 className="title">Lo vuestro es vuestro</h2>
+        <p className="quiet mt-2 text-[16px]">Una copia de todo lo que hay en este móvil: libros, veladas y papeles.</p>
+        <button className="btn btn-line mt-4" onClick={exportAll}>
+          Guardar una copia
+        </button>
+      </section>
+
+      <section className="mt-10 border-t border-rule pt-6">
         <p className="quiet text-[16px]">
           {remote.ensayo
             ? 'Modo ensayo: todo se guarda solo en este navegador.'

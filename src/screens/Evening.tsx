@@ -4,7 +4,7 @@ import { burnedMinutes, saveEvening, snuffCandle } from '@/lib/actions'
 import { fmtProgress, isLit, knownPlaces, live, waxLeft } from '@/lib/model'
 import { fmtMinutes, fmtSince, greeting } from '@/lib/time'
 import type { Reading } from '@/lib/types'
-import { usePeople, useNow } from '@/session'
+import { usePeople, useNow, useWink } from '@/session'
 import { Candle } from '@/ui/Candle'
 import { Back, Minus, Paper, Plus } from '@/ui/icons'
 import { NumberDial } from '@/ui/NumberDial'
@@ -28,6 +28,7 @@ export function Evening() {
   const { db, me, partner } = usePeople()
   const now = useNow(10_000)
   const navigate = useNavigate()
+  const wink = useWink(partner?.name)
   const [asking, setAsking] = useState(false)
   const [writing, setWriting] = useState(false)
   const [farewell, setFarewell] = useState<Farewell | null>(null)
@@ -83,9 +84,15 @@ export function Evening() {
       <div className="relative flex flex-1 flex-col items-center justify-center px-8 text-center">
         <div className="flex items-end justify-center">
           {partner && (
-            <div className="-mr-2 mb-1 opacity-90">
-              <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} size={62} lean={1} />
-            </div>
+            <button
+              type="button"
+              className="-mr-2 mb-1 rounded-[14px] opacity-90"
+              disabled={!(burning && theirsLit)}
+              aria-label={theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}, apagada`}
+              onClick={wink.send}
+            >
+              <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} size={62} lean={1} tremble={wink.received} />
+            </button>
           )}
           <Candle color={me.color} lit={burning} wax={waxLeft(me.candle_lit_at, now)} size={150} lean={theirsLit ? -1 : 0} />
           {partner && <div className="w-[54px]" aria-hidden />}
@@ -94,7 +101,9 @@ export function Evening() {
         <p className="quiet mt-2 text-[17px]">
           {burning ? `${capital(fmtProgress(reading))} · encendida ${fmtSince(me.candle_lit_at, now)}` : 'La vela se consumió mientras leías.'}
         </p>
-        {partner && theirsLit && <p className="mt-4 text-[17px] text-flame-ink">{partner.name} también está leyendo.</p>}
+        {partner && theirsLit && (
+          <p className="mt-4 text-[17px] text-flame-ink">{partner.name} también está leyendo. Toca su vela para un guiño.</p>
+        )}
       </div>
 
       <footer className="relative flex flex-col gap-1 px-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>
