@@ -2,10 +2,9 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
-  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, live, nightstand, pile, progressOf, shelves, standGroups,
+  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, live, nightstand, pile, progressOf, shelves, standGroups,
   waxLeft, type BookView, type Whose,
 } from '@/lib/model'
-import { useNextUp } from '@/lib/next'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { waitingFor, slipPlace, type Waiting } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
@@ -76,16 +75,16 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   )
   const waiting = useMemo(() => waitingFor(db, me.id), [db, me.id])
   const [whose, setWhose] = useState<Whose>('todos')
-  const next = useNextUp(me.id)
   const groups = standGroups(stand)
   const myOpen = groups.both.length + groups.mine.length
-  const allPending = pile(views, next)
+  const allPending = pile(views)
   const allYears = shelves(views)
   const pending = allPending.filter((view) => heldBy(view, whose, 'pendiente'))
   const years = allYears
     .map(({ year, books }) => ({ year, books: books.filter((view) => heldBy(view, whose, 'terminado')) }))
     .filter(({ books }) => books.length > 0)
-  const nextUp = pending.find((view) => view.book.id === next && view.mine?.status === 'pendiente')
+  const myNext = pending.find((view) => isNext(view.mine))
+  const theirNext = pending.find((view) => isNext(view.theirs))
   const left = dropped(views)
   /** Moves the candle to another open book: at once if it is burning, for next time if it isn't. */
   const moveCandle = (view: BookView) => {
@@ -291,9 +290,20 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         {pending.length > 0 && (
           <div className="mt-6">
             <p className="eyebrow">Por leer</p>
-            {nextUp && (
-              <p className="quiet mt-1 text-[15.5px]">
-                El siguiente: <em className="text-ink">{nextUp.book.title}</em>
+            {myNext && (
+              <p className="quiet mt-1.5 flex items-center gap-2 text-[15.5px]">
+                <Wax who="me" />
+                <span>
+                  Tu siguiente: <em className="text-ink">{myNext.book.title}</em>
+                </span>
+              </p>
+            )}
+            {theirNext && partner && (
+              <p className="quiet mt-1 flex items-center gap-2 text-[15.5px]">
+                <Wax who="you" />
+                <span>
+                  El siguiente de {partner.name}: <em className="text-ink">{theirNext.book.title}</em>
+                </span>
               </p>
             )}
             <Shelf items={pending.map(item((s) => s === 'pendiente'))} onOpen={open} />

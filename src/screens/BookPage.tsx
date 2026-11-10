@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  dropReading, editBook, markNext, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
   removeBookmark, removeSession, resizeReading, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
-import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, progressOf, tally } from '@/lib/model'
-import { setNextUp, useNextUp } from '@/lib/next'
+import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
 import type { Book, Profile, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
@@ -31,7 +30,6 @@ export function BookPage() {
   const navigate = useNavigate()
   const [open, setOpen] = useState<Open>(params.has('cerrar') ? 'finish' : params.has('unirme') ? 'place' : null)
   const [fixing, setFixing] = useState<Session | null>(null)
-  const next = useNextUp(me.id)
   const [showAll, setShowAll] = useState(false)
   const { hash } = useLocation()
 
@@ -222,10 +220,10 @@ export function BookPage() {
             </>
           )}
           {mine?.status === 'pendiente' &&
-            (next === book.id ? (
-              <Option onClick={() => { setNextUp(me.id, null); close() }}>Ya no es el siguiente</Option>
+            (isNext(mine) ? (
+              <Option onClick={() => { markNext(mine, false); close() }}>Ya no es el siguiente</Option>
             ) : (
-              <Option onClick={() => { setNextUp(me.id, book.id); close(); toast('Será el siguiente. Va el primero de la pila.') }}>
+              <Option onClick={() => { markNext(mine, true); close(); toast('Será el siguiente. Va el primero de la pila.') }}>
                 Que sea el siguiente que lea
               </Option>
             ))}

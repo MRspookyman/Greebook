@@ -44,6 +44,8 @@ export interface Reading {
   started_on: string | null
   finished_on: string | null
   rating: number | null
+  /** Marked as «el siguiente» of my pile, and since when. Only means something while it is pending. */
+  next_at?: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null

@@ -201,6 +201,7 @@ export function placeBookmark(book: Book, { status, unit, total, finishedYear }:
     started_on: existing?.started_on ?? (status === 'leyendo' ? today : null),
     finished_on: finished ? (finishedYear && finishedYear < Number(today.slice(0, 4)) ? `${finishedYear}-12-31` : today) : null,
     rating: existing?.rating ?? null,
+    next_at: status === 'pendiente' ? (existing?.next_at ?? null) : null,
     created_at: existing?.created_at ?? stamp,
     updated_at: stamp,
     deleted_at: null,
@@ -209,10 +210,23 @@ export function placeBookmark(book: Book, { status, unit, total, finishedYear }:
   return reading
 }
 
+/** Marks a pending book as the next one I'll read (or unmarks it). There is only one at a time. */
+export function markNext(reading: Reading, next: boolean) {
+  if (next) {
+    for (const other of Object.values(getDb().readings)) {
+      if (other.user_id === reading.user_id && other.id !== reading.id && other.next_at && !other.deleted_at) {
+        patch('readings', other.id, { next_at: null })
+      }
+    }
+  }
+  patch('readings', reading.id, { next_at: next ? nowIso() : null })
+}
+
 /** From the pile (or back from the shelf) onto the nightstand. */
 export function openBook(reading: Reading) {
   patch('readings', reading.id, {
     status: 'leyendo',
+    next_at: null,
     started_on: reading.started_on ?? isoDate(new Date()),
     finished_on: null,
     position: reading.status === 'terminado' ? 0 : reading.position,

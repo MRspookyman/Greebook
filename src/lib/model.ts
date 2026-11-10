@@ -97,13 +97,17 @@ export function heldBy(view: BookView, whose: Whose, status: Reading['status']):
 }
 
 /** Waiting to be read by someone, and open for no one. */
-export function pile(views: BookView[], next?: string | null): BookView[] {
+/** Whether this bookmark is its owner's «siguiente»: the book of the pile they mean to read next. */
+export const isNext = (reading?: Reading) => reading?.status === 'pendiente' && !!reading.next_at
+
+export function pile(views: BookView[]): BookView[] {
+  // Whoever's «siguiente» it is, it stands first on the plank; mine before theirs.
+  const rank = (v: BookView) => Number(isNext(v.mine)) * 2 + Number(isNext(v.theirs))
   return views
     .filter((v) => (v.mine?.status === 'pendiente' || v.theirs?.status === 'pendiente') &&
       v.mine?.status !== 'leyendo' && v.theirs?.status !== 'leyendo')
     .sort((a, b) =>
-      // The one marked as «el siguiente» stands first on the plank.
-      Number(b.book.id === next) - Number(a.book.id === next) || a.book.created_at.localeCompare(b.book.created_at))
+      rank(b) - rank(a) || a.book.created_at.localeCompare(b.book.created_at))
 }
 
 /** The day a book joined the shelf: the first time one of you finished it. */

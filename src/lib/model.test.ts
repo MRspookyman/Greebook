@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookViews, byNewest, candleReading, dropped, heldBy, isLit, nightstand, pile, shelves, standGroups, tally, waxLeft,
+  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, nightstand, pile, shelves, standGroups, tally, waxLeft,
 } from './model'
 import { stepMinutes } from './time'
 import { emptyDb, type Book, type Db, type Reading, type Session } from './types'
@@ -157,7 +157,10 @@ describe('de quién es cada libro', () => {
       'me',
     )
     expect(pile(more).map((v) => v.book.id)).toEqual(['a', 'bb'])
-    expect(pile(more, 'bb').map((v) => v.book.id)).toEqual(['bb', 'a'])
+    more[1].mine!.next_at = '2026-11-10T10:00:00Z'
+    expect(pile(more).map((v) => v.book.id)).toEqual(['bb', 'a'])
+    // Once it is open it is no longer «el siguiente».
+    expect(isNext({ ...more[1].mine!, status: 'leyendo' })).toBe(false)
   })
 
   it('las veladas se ordenan de la más reciente a la más antigua', () => {

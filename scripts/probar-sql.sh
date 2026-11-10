@@ -26,6 +26,8 @@ sql "$root/supabase/tests/stubs.sql"
 sql "$root/supabase/migrations/0001_greenbook.sql"
 # Una segunda pasada: la migración se puede repetir y sigue conservando quiénes sois.
 sql "$root/supabase/migrations/0001_greenbook.sql"
+sql "$root/supabase/migrations/0002_siguiente.sql"
+sql "$root/supabase/migrations/0002_siguiente.sql"
 out="$(sql "$root/supabase/tests/rls.sql")"
 echo "$out"
 echo "$out" | grep -q '^OK' || { echo 'Las pruebas SQL han fallado'; exit 1; }
