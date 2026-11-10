@@ -60,6 +60,19 @@ const MODE_KEY = 'gb.session.mode'
 /** Past this, a running timer was probably forgotten: ask how long the reading really was. */
 const LONG_MINUTES = 180
 
+const PLACE_KEY = 'gb.session.place'
+const PLACES = ['cama', 'sofá', 'terraza', 'tren', 'cafetería', 'de viaje']
+
+/** The last place is offered again: most nights are read in the same spot. */
+function storedPlace(): string | null {
+  try {
+    const value = localStorage.getItem(PLACE_KEY)
+    return value && PLACES.includes(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
 function storedMode(): Mode {
   try {
     return localStorage.getItem(MODE_KEY) === 'paginas' ? 'paginas' : 'crono'
@@ -164,6 +177,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
   const [saved, setSaved] = useState<Saved | null>(null)
   const [finished, setFinished] = useState<ReadingWithBook | null>(null)
   const [tracing, setTracing] = useState(false)
+  const [place, setPlaceState] = useState<string | null>(storedPlace)
 
   const name = partner?.display_name ?? 'Tu pareja'
   // On the last page there's nothing left to record: the next step is marking it as read.
@@ -234,6 +248,15 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       /* Remembering the last mode is a convenience. */
     }
   }
+  function setPlace(value: string | null) {
+    setPlaceState(value)
+    try {
+      if (value) localStorage.setItem(PLACE_KEY, value)
+      else localStorage.removeItem(PLACE_KEY)
+    } catch {
+      /* Remembering the place is a convenience. */
+    }
+  }
   function change(value: number) {
     setPosition(value)
     setError(null)
@@ -286,6 +309,7 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
       await logSession({
         reading, readOn, endPos: end, minutes: sessionMinutes, togetherId,
         startedAt: timed && mine ? new Date(mine.startedAt).toISOString() : undefined,
+        place,
       })
       if (timed) stopTimer()
       const dates = new Set(sessions.map((session) => session.read_on))
@@ -708,6 +732,25 @@ function SessionScreen({ reading, choices }: { reading: ReadingWithBook; choices
                   )}
                 </div>
               )}
+            </section>
+          )}
+
+          {(!timing || mine) && !lastPage && (
+            <section className="rule mt-6 space-y-3 pt-5" aria-label="Dónde lees">
+              <h2 className="eyebrow">¿Dónde? · opcional</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {PLACES.map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className="chip px-3"
+                    aria-pressed={place === value}
+                    onClick={() => setPlace(place === value ? null : value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
             </section>
           )}
 

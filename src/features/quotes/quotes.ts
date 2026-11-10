@@ -87,14 +87,19 @@ export async function markQuotesSeen(ids: string[]): Promise<void> {
 }
 
 /** ❤️ on/off on a partner's quote, optimistic: it shows at once, without asking the server who you are first. */
-export async function toggleQuoteHeart(quoteId: string, userId: string): Promise<void> {
+export function toggleQuoteHeart(quoteId: string, userId: string): Promise<void> {
+  return toggleHeart('quote', quoteId, userId)
+}
+
+/** The same heart on a quote or on one of your partner's sessions (0020). */
+export async function toggleHeart(targetType: 'quote' | 'session', quoteId: string, userId: string): Promise<void> {
   await queryClient.cancelQueries({ queryKey: qk.reactions() })
   const before = queryClient.getQueryData<Reaction[]>(qk.reactions()) ?? []
   const existing = before.find((r) => r.user_id === userId && r.target_id === quoteId)
   const reaction: Reaction = {
     id: crypto.randomUUID(),
     user_id: userId,
-    target_type: 'quote',
+    target_type: targetType,
     target_id: quoteId,
     emoji: '❤️',
     created_at: new Date().toISOString(),

@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, BookCheck, ChevronDown, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
+import { ArrowLeft, BookCheck, ChevronDown, Heart, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
-import { qk, useQuotes, useReadings, useSessions } from '@/lib/data'
+import { qk, useQuotes, useReactions, useReadings, useRecommendations, useSessions } from '@/lib/data'
+import { toggleHeart } from '@/features/quotes/quotes'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
@@ -77,6 +78,12 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
     .filter((q) => q.book_id === reading.book_id)
     .sort((a, b) => (a.page ?? 0) - (b.page ?? 0))
   const [quoting, setQuoting] = useState(false)
+  const reactions = useReactions().data ?? []
+  // The words that came with the book when your partner recommended it: its dedication.
+  const dedication = (useRecommendations().data ?? []).find(
+    (row) => row.book_id === reading.book_id && row.to_user === reading.user_id && row.status !== 'dismissed' && row.message.trim(),
+  )
+  const giver = dedication ? (dedication.from_user === userId ? profile : partner) : null
   const sessions = (sessionsQuery.data ?? [])
     .filter((s) => s.reading_id === reading.id)
     .sort((a, b) => b.read_on.localeCompare(a.read_on) || b.created_at.localeCompare(a.created_at))
@@ -278,6 +285,16 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </p>
         </div>
       </header>
+      {dedication && giver && (
+        <figure className="rounded-[18px] bg-[color-mix(in_oklab,var(--amber)_9%,var(--surface))] px-4 py-3">
+          <blockquote className="hand wrap-anywhere" style={{ color: `var(--${giver.accent})` }}>
+            {dedication.message}
+          </blockquote>
+          <figcaption className="mt-1 text-xs text-muted">
+            {dedication.from_user === userId ? `Se lo recomendaste a ${partner?.display_name ?? 'tu pareja'}` : `Te lo recomendó ${giver.display_name}`}
+          </figcaption>
+        </figure>
+      )}
       {own ? (
         <button
           type="button"
@@ -450,6 +467,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                           : reading.unit === 'pages'
                             ? `p. ${session.start_pos} — ${session.end_pos}`
                             : `${session.start_pos} % — ${session.end_pos} %`}
+                        {session.place ? ` · ${session.place}` : ''}
                       </p>
                     </div>
                     {session.minutes !== null && (
@@ -471,11 +489,28 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
                     onClick={() => setEditing(session)}
                   >
                     {content}
+                    {reactions.some((r) => r.target_id === session.id && r.user_id !== userId) && (
+                      <Heart size={15} className="shrink-0 text-rose" fill="currentColor" aria-label={`Le gusta a ${partner?.display_name ?? 'tu pareja'}`} />
+                    )}
                     <Pencil size={15} className="shrink-0 text-muted" aria-hidden />
                   </button>
                 ) : (
                   <div key={session.id} className="flex min-h-11 items-center gap-3 border-b border-rule py-3">
                     {content}
+                    {(() => {
+                      const liked = reactions.some((r) => r.target_id === session.id && r.user_id === userId)
+                      return (
+                        <button
+                          type="button"
+                          className={`-mr-2 grid h-11 w-11 flex-none place-items-center rounded-full transition-colors duration-150 ${liked ? 'text-rose' : 'text-muted'}`}
+                          aria-pressed={liked}
+                          aria-label={`Me gusta la sesión del ${dateLabel}`}
+                          onClick={() => void toggleHeart('session', session.id, userId).catch(() => toast('No se pudo guardar el corazón'))}
+                        >
+                          <Heart size={19} fill={liked ? 'currentColor' : 'none'} aria-hidden />
+                        </button>
+                      )
+                    })()}
                   </div>
                 )
               })}

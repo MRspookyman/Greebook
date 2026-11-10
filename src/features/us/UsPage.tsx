@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Lamp, Mail, ScrollText } from 'lucide-react'
+import { Dices, Lamp, Mail, ScrollText } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
+import { FilterChips } from '@/components/FilterChips'
 import { Spine } from '@/components/Spine'
 import { useMe } from '@/features/auth/me'
 import { QuoteCard } from '@/features/quotes/QuoteCard'
@@ -26,6 +27,8 @@ export function UsPage() {
   const opinions = useOpinions(!!partner).data ?? []
   const partnerOpinionBooks = usePartnerOpinionBooks(!!partner).data ?? []
   const [letterOpen, setLetterOpen] = useState(false)
+  const [shelfYear, setShelfYear] = useState<string | null>(null)
+  const [drawn, setDrawn] = useState<string | null>(null)
   if (!partner)
     return (
       <section className="space-y-4">
@@ -33,10 +36,16 @@ export function UsPage() {
         <p>Vuestro rincón estará aquí al vincular las dos cuentas.</p>
       </section>
     )
-  const year = c.today.slice(0, 4)
+  const thisYear = c.today.slice(0, 4)
+  const shelfYears = [
+    ...new Set(
+      [...c.mineReadings, ...c.theirReadings].flatMap((r) => (r.status === 'finished' && r.finished_on ? [r.finished_on.slice(0, 4)] : [])),
+    ),
+  ].sort((a, b) => b.localeCompare(a))
+  const year = shelfYear && shelfYears.includes(shelfYear) ? shelfYear : shelfYears.includes(thisYear) ? thisYear : (shelfYears[0] ?? thisYear)
   const month = c.today.slice(0, 7)
   const previous = (() => {
-    const d = new Date(Number(year), Number(month.slice(5, 7)) - 2, 1)
+    const d = new Date(Number(thisYear), Number(month.slice(5, 7)) - 2, 1)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })()
   const monthNights = c.rows.filter((r) => r.started_at.startsWith(month) && c.minutes.has(r.id)).length
@@ -106,6 +115,7 @@ export function UsPage() {
   const pending = together.filter(
     (item) => (!item.partner_answer && item.partner_id === userId) || (item.partner_answer === 'yes' && !item.start_on),
   )
+  const waiting = together.filter((item) => !pending.includes(item) && !item.start_on)
   const firstDate = [...c.rows.map((r) => r.started_at.slice(0, 10)), ...c.sessions.map((s) => s.read_on)].sort()[0]
   const [first, second] = partner.is_gift_recipient ? [partner, profile] : [profile, partner]
   const summaryFor = summaryYear(c.today)
@@ -216,6 +226,9 @@ export function UsPage() {
       {shelfBooks.length > 0 && (
         <section className="space-y-3" aria-labelledby="estanteria">
           <h2 id="estanteria">Vuestra estantería de {year}</h2>
+          {shelfYears.length > 1 && (
+            <FilterChips bleed options={shelfYears.map((value) => ({ value, label: value }))} value={year} onChange={setShelfYear} aria-label="Año de la estantería" />
+          )}
           <div className="shelf" role="list" aria-label={`Estantería de ${year}`}>
             {shelfBooks.map(({ reading, readers }) => (
               <Spine key={reading.book_id} reading={reading} readers={readers} />
@@ -281,20 +294,37 @@ export function UsPage() {
 
       {together.filter((item) => !pending.includes(item)).length > 0 && (
         <section className="space-y-2" aria-labelledby="juntos">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 id="juntos">Queremos leer juntos</h2>
+            {waiting.length > 1 && (
+              <button
+                type="button"
+                className="btn btn-link px-1 text-sm"
+                onClick={() => {
+                  const pool = waiting.filter((item) => item.id !== drawn)
+                  setDrawn(pool[Math.floor(Math.random() * pool.length)].id)
+                }}
+              >
+                <Dices size={16} aria-hidden /> {drawn ? 'Otro' : 'A suertes'}
+              </button>
+            )}
           </div>
+          <p className="sr-only" aria-live="polite">
+            {drawn ? `Ha salido «${waiting.find((item) => item.id === drawn)?.book.title ?? ''}»` : ''}
+          </p>
           {together
             .filter((item) => !pending.includes(item))
             .map((item) => (
               <div
                 key={item.id}
-                className="flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2 first-of-type:border-0"
+                className={`flex min-h-[72px] items-center gap-3.5 border-t border-rule py-2 first-of-type:border-0 ${item.id === drawn ? '-mx-3 rounded-[18px] border-transparent bg-[color-mix(in_oklab,var(--amber)_16%,var(--surface))] px-3' : ''}`}
+                style={item.id === drawn ? { animation: 'gb-pop-in 360ms var(--ease) both' } : undefined}
               >
                 <Cover book={item.book} width={44} />
                 <p className="min-w-0">
                   <b className="font-serif text-[17px] font-normal">{item.book.title}</b>
                   {item.reason && <span className="block text-[13px] text-muted">{item.reason}</span>}
+                  {item.id === drawn && <span className="block text-[13px] font-extrabold text-amber-ink">¡Este! ¿Lo empezáis?</span>}
                 </p>
               </div>
             ))}

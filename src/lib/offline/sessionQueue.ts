@@ -98,6 +98,7 @@ export async function logSession(input: {
   minutes: number | null
   togetherId?: string | null
   startedAt?: string | null
+  place?: string | null
 }): Promise<void> {
   const cached = queryClient.getQueryData<ReadingWithBook[]>(qk.readings(input.reading.user_id))
   const reading = cached?.find((r) => r.id === input.reading.id) ?? input.reading
@@ -126,6 +127,8 @@ export async function logSession(input: {
           input.startedAt ??
           (input.readOn === todayISO() ? new Date(now - (input.minutes ?? 0) * 60_000).toISOString() : null),
         ...(input.togetherId ? { together_id: input.togetherId } : {}),
+        // Only sent when chosen: sessions without a place don't depend on migration 0020.
+        ...(input.place?.trim() ? { place: input.place.trim().slice(0, 40) } : {}),
       },
       readingPatch: {
         current_position: input.endPos,

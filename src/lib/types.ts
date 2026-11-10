@@ -124,7 +124,7 @@ export interface Message {
 export interface Reaction {
   id: string
   user_id: string
-  target_type: 'message' | 'quote'
+  target_type: 'message' | 'quote' | 'session'
   target_id: string
   emoji: '❤️'
   created_at: string

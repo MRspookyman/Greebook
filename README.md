@@ -38,6 +38,13 @@ Las citas y notas propias se pueden editar; también tus respuestas. Puedes adju
 En Kindle sin número de páginas, una cita con página espera hasta terminar la lectura (o abrirla antes);
 sin página o marcada «Sin spoilers» se ve directamente.
 
+**Vuestro diario** (Nosotros) cuenta mes a mes los libros empezados, terminados y dejados, las citas y las noches
+leyendo a la vez. Un libro terminado muestra su **recuerdo** (fechas y tiempo de cada uno, la lectura día a día, noches
+a la vez, citas) y se comparte como imagen. En Inicio aparece «Hace un año…» cuando hay un libro de esas fechas.
+Al apuntar una sesión se puede decir dónde se leyó; en la ficha de tu pareja puedes dejar un corazón en sus sesiones;
+la frase de una recomendación queda como dedicatoria en la ficha; la estantería de Nosotros cambia de año y
+«Queremos leer juntos» puede elegir uno a suertes. En Biblioteca, etiqueta, año, formato y orden están en «Filtrar».
+
 ## Desarrollo
 
 ```bash
@@ -57,7 +64,8 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    `0004_partner_notifications.sql`, `0005_pareja.sql`, `0006_notify_never_blocks.sql`, `0007_rincon.sql`,
    `0008_citas.sql`, `0009_leer_juntos.sql`, `0010_historico_ebook.sql`, `0011_avisos_privacidad.sql`,
    `0012_avisos.sql`, `0013_citas_fotos.sql`, `0014_libros_editables.sql`, `0015_etiquetas_recomendaciones.sql`,
-   `0016_sesiones_hora.sql`, `0017_abandono.sql`, `0018_sesiones_tiempo.sql` y `0019_opiniones.sql` en ese orden.
+   `0016_sesiones_hora.sql`, `0017_abandono.sql`, `0018_sesiones_tiempo.sql`, `0019_opiniones.sql` y
+   `0020_lugares_corazones.sql` en ese orden.
    La 0008 copia notas y huellas a las citas compartidas (no borra las tablas viejas).
    La 0010 se aplica manualmente también a proyectos existentes, después de la 0009:
    añade fechas de fin con precisión e histórico, convierte audiolibros a Kindle (%) y prepara el borrado de lecturas.
@@ -89,6 +97,9 @@ Opcional, con Docker: `npx supabase start` levanta un Supabase local con las mig
    La 0019 crea `book_opinions`, la opinión a ciegas: una frase por persona y libro terminado. La de tu pareja no se
    puede leer (tampoco desde la API) hasta que escribes la tuya; `partner_opinion_books()` solo dice si ya la escribió.
    Añade el aviso al escribirla: vuelve a desplegar `notify-partner` (el texto nunca va en el aviso).
+   La 0020 añade el lugar opcional de cada sesión (`sessions.place`) y permite dejar un corazón en las sesiones
+   de tu pareja. Aplícala antes de desplegar el cliente: sin ella, guardar una sesión *con lugar* o dar un corazón
+   a una sesión falla (las sesiones sin lugar se guardan igual). No necesita volver a desplegar funciones.
 2. **Authentication → Users → Add user** (marca *Auto Confirm User*) para ella y para ti.
    Copia sus UUID en `supabase/seed.sql`, ajusta los nombres y ejecútalo.
 3. **Authentication → Providers → Email**: desactiva *Allow new users to sign up*.
