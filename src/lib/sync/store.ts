@@ -52,7 +52,8 @@ const subscribe = (listener: () => void) => {
 }
 
 function emit() {
-  const pending = local.dirty.length + local.calls.length
+  // Notices for the partner are not changes of yours: they don't count as something waiting.
+  const pending = local.dirty.length + local.calls.filter((call) => call.kind === 'open').length
   if (pending !== status.pending) status = { ...status, pending }
   listeners.forEach((listener) => listener())
 }
@@ -189,7 +190,10 @@ async function flush(server: Remote): Promise<boolean> {
       if (call.kind === 'open') await server.openSlip(call.slip, call.loved)
       else await server.notify(call.what, call.ref)
     } catch (error) {
-      if (!(error instanceof RemoteError) || !error.permanent) throw error
+      const permanent = error instanceof RemoteError && error.permanent
+      // A notice is a courtesy: it waits only while the phone is really offline, and it never holds up
+      // anything else (the function may not even be deployed).
+      if (call.kind === 'notify' ? !navigator.onLine : !permanent) break
     }
     told ||= call.kind === 'open'
     local = { ...local, calls: local.calls.filter((c) => c.id !== call.id) }

@@ -249,9 +249,11 @@ export function Room() {
         <p className="quiet mt-12 text-center text-[13.5px]">
           {remote.ensayo
             ? 'Modo ensayo: todo vive en este navegador.'
-            : status.pending
-              ? `Sin conexión: ${status.pending === 1 ? 'un cambio espera' : `${status.pending} cambios esperan`} en este móvil.`
-              : 'Sin conexión. Todo sigue funcionando.'}
+            : status.offline
+              ? status.pending
+                ? `Sin conexión: ${status.pending === 1 ? 'un cambio espera' : `${status.pending} cambios esperan`} en este móvil.`
+                : 'Sin conexión. Todo sigue funcionando.'
+              : 'Guardando…'}
         </p>
       )}
     </main>

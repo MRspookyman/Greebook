@@ -105,9 +105,9 @@ export function create(): Remote {
     },
 
     async notify(what, ref) {
+      // A notice is a courtesy. Whatever goes wrong, the store decides whether it is worth another try.
       const { error } = await supabase.functions.invoke('avisar', { body: { what, ref } })
-      // A notice is a courtesy: only a missing network is worth retrying.
-      if (error && error.name === 'FunctionsFetchError') throw failure(error)
+      if (error) throw failure(error)
     },
 
     channel(me, partner, on) {
