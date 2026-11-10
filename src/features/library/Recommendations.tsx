@@ -31,7 +31,7 @@ export function Recommendations() {
   if (query.isError) return <button className="btn btn-outline" onClick={() => void query.refetch()}>Reintentar cargar recomendaciones</button>
   return <>
     {incoming.length > 0 && <section className="space-y-3" aria-label="Recomendaciones para ti">
-      {incoming.map((row) => <article key={row.id} className="rounded-card border border-rule bg-surface p-4 space-y-3">
+      {incoming.map((row) => <article key={row.id} className="card space-y-3">
         <p className="lbl">{partner?.display_name ?? 'Tu pareja'} te lo recomienda</p>
         <div className="flex gap-3"><Cover book={row.book} width={48} /><div className="min-w-0"><h2 className="font-serif break-words">{row.book.title}</h2>{row.message && <p className="mt-2 text-sm break-words">{row.message}</p>}</div></div>
         <div className="flex flex-wrap gap-2"><button className="btn btn-primary" disabled={!online || busy} onClick={() => setSelected(row)}>Añadir a pendientes</button><button className="btn btn-outline" disabled={!online || busy} onClick={() => void dismiss(row.id)}>Ahora no</button></div>

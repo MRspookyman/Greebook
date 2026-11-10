@@ -510,6 +510,11 @@
     height: 26%;
     pointer-events: none;
   }
+  /* On a printed cover the title is usually up there: shorter marks, closer to the edge. */
+  .book-ribbons-photo {
+    right: 6%;
+    height: 17%;
+  }
   .book-ribbon {
     width: max(5px, var(--ribbon-w, 8px));
     height: 100%;

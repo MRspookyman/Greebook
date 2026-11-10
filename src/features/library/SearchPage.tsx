@@ -93,7 +93,7 @@ export function SearchPage() {
           <div className="space-y-3" role="status">
             <span className="sr-only">Buscando libros…</span>
             {[0, 1, 2].map((n) => (
-              <div key={n} className="flex animate-pulse gap-4 rounded-card border border-rule bg-surface p-4">
+              <div key={n} className="card flex animate-pulse gap-4">
                 <div className="h-[132px] w-[88px] shrink-0 rounded bg-border" />
                 <div className="flex-1 space-y-3 py-2">
                   <div className="bg-border h-5 w-3/4 rounded" />
@@ -126,7 +126,7 @@ export function SearchPage() {
             {results.data.map((book, index) => (
               <li
                 key={`${book.google_id ?? book.openlibrary_key ?? book.title}:${index}`}
-                className="overflow-hidden rounded-card border border-rule bg-surface shadow-[var(--paper-shadow)]"
+                className="card overflow-hidden p-0"
               >
                 <button
                   className="pressable flex min-h-44 w-full items-center gap-4 p-4 text-left"

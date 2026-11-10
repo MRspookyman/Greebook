@@ -139,7 +139,7 @@ export function StatsPage() {
               return (
                 <article key={metric.label} className="rule min-h-32 py-4 pr-3 even:pl-4">
                   <h2 className="eyebrow text-muted">{metric.label}</h2>
-                  <p className="folio mt-2 text-[32px] leading-none">
+                  <p className={`folio mt-2 leading-none ${metric.format ? 'text-[25px] whitespace-nowrap' : 'text-[32px]'}`}>
                     <CountUp value={metric.value} format={metric.format ?? formatNumber} />
                   </p>
                   {change !== null && change >= 0 ? (

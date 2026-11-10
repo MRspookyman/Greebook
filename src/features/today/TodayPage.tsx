@@ -142,27 +142,30 @@ export function TodayPage() {
             )}
           </Link>
         </div>
-        <h1 className="display">
-          {greeting()},
-          <br />
-          <span style={{ color: `var(--${profile.accent})` }}>{profile.display_name}</span>
+        <h1 className="display text-[28px]">
+          {greeting()}, <span style={{ color: `var(--${profile.accent})` }}>{profile.display_name}</span>
         </h1>
         <p className="flex items-start gap-2 text-[15px] text-muted">{todayLine}</p>
+        {partner && (
+          // The week of the two of you sits with today's line: it is what that line talks about.
+          <Link
+            to="/nosotros/racha"
+            className="pressable -mx-1 block rounded-[18px] px-1 pt-2"
+            aria-label={`Racha de los dos: ${formatDays(streak)}. Ver el calendario`}
+          >
+            <WeekStamps
+              today={today}
+              mine={mine}
+              theirs={theirs}
+              profile={profile}
+              partner={partner}
+              wildcards={couple.wildcards}
+            />
+          </Link>
+        )}
       </header>
 
       <NowCard active={active} partnerReadings={partnerReadings.data ?? []} onRead={read} />
-
-      {partner && forMe.count > 0 && (
-        <Link
-          to="/nosotros"
-          className="card enter flex min-h-14 items-center gap-3 py-3"
-          style={{ '--i': 1 } as CSSProperties}
-        >
-          <Avatar person={partner} size={30} />
-          <span className="min-w-0 flex-1 text-sm">{pendingLine(forMe.items.map(({ item }) => item), name)}</span>
-          <ChevronRight size={18} aria-hidden />
-        </Link>
-      )}
 
       {readings.isPending ? (
         <div className="h-56 animate-pulse rounded-[22px] bg-sunk" role="status" aria-label="Cargando lecturas" />
@@ -256,6 +259,18 @@ export function TodayPage() {
         </section>
       )}
 
+      {partner && forMe.count > 0 && (
+        <Link
+          to="/nosotros"
+          className="card enter flex min-h-14 items-center gap-3 py-3"
+          style={{ '--i': 1 } as CSSProperties}
+        >
+          <Avatar person={partner} size={30} />
+          <span className="min-w-0 flex-1 text-sm">{pendingLine(forMe.items.map(({ item }) => item), name)}</span>
+          <ChevronRight size={18} aria-hidden />
+        </Link>
+      )}
+
       {partner && partnerNow && (
         <Link
           to={`/libro/${partnerNow.id}`}
@@ -283,26 +298,6 @@ export function TodayPage() {
           </span>
           <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
         </Link>
-      )}
-
-      {partner && (
-        <section className="enter space-y-3" style={{ '--i': 3 } as CSSProperties} aria-labelledby="racha">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="racha">Racha de los dos</h2>
-            <span className="pill">
-              <Lamp size={15} className="text-amber-ink" aria-hidden />
-              {formatDays(streak)}
-            </span>
-          </div>
-          <WeekStamps
-            today={today}
-            mine={mine}
-            theirs={theirs}
-            profile={profile}
-            partner={partner}
-            wildcards={couple.wildcards}
-          />
-        </section>
       )}
 
       {latest && partner && (

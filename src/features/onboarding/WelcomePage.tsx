@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router'
 import { useMe } from '@/features/auth/me'
 import { PushEnableButton } from '@/features/profile/PushEnableButton'
 import { useUpdateProfile } from '@/lib/data'
+import { Logo } from '@/components/Logo'
 
 export function WelcomePage() {
   const { userId, profile } = useMe()
@@ -55,15 +56,19 @@ export function WelcomePage() {
         className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 py-12"
         style={{ animation: 'gb-fade-up 300ms ease-out' }}
       >
-        <p className="font-serif text-2xl text-green">Greenbook</p>
+        <Logo size={34} />
           <form onSubmit={submit} className="flex flex-col gap-6">
-            <p className="folio text-muted">
-              Paso {step} de 2
+            <p className="eyebrow" aria-label={`Paso ${step} de 2`}>
+              <span className="flex gap-1.5" aria-hidden>
+                {[1, 2].map((n) => (
+                  <i key={n} className={`h-1.5 w-8 rounded-full ${n <= step ? 'bg-plum' : 'bg-rule'}`} />
+                ))}
+              </span>
             </p>
             {step === 1 ? (
               <>
-                <h1 tabIndex={-1} className="display display-italic focus-heading">
-                  Tu rincón de lectura
+                <h1 tabIndex={-1} className="display focus-heading">
+                  Tu rincón <span className="display-italic">de lectura</span>
                 </h1>
                 <label className="label">
                   Tu nombre
@@ -96,8 +101,8 @@ export function WelcomePage() {
               </>
             ) : (
               <>
-                <h1 tabIndex={-1} className="display display-italic focus-heading">
-                  Un ratito para leer
+                <h1 tabIndex={-1} className="display focus-heading">
+                  Un ratito <span className="display-italic">para leer</span>
                 </h1>
                 <label className="label">
                   Hora del recordatorio

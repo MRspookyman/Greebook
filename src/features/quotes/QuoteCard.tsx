@@ -19,7 +19,7 @@ import { removeWithUndo } from '@/lib/undo'
 
 /** Quiet icon actions at the end of a card: share, edit, delete. */
 const iconAction =
-  'grid h-11 w-11 place-items-center rounded-full text-muted transition-[color,transform] duration-150 hover:text-ink active:scale-95 disabled:opacity-50'
+  'grid h-11 w-10 place-items-center rounded-full text-muted transition-[color,transform] duration-150 hover:text-ink active:scale-95 disabled:opacity-50'
 
 const ago = (iso: string) => {
   const date = new Date(iso)
@@ -305,7 +305,7 @@ export function QuoteCard({
       <div className="-mx-2 flex items-center border-t border-dashed border-rule pt-1">
         {mine ? (
           partnerLiked && (
-            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold text-rose">
+            <span className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold whitespace-nowrap text-rose">
               <Heart size={18} fill="currentColor" aria-hidden />
               Le gusta<span className="sr-only"> a {partner?.display_name}</span>
             </span>
@@ -334,7 +334,7 @@ export function QuoteCard({
         {quote.shared && !replying && (
           <button
             type="button"
-            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold"
+            className="flex min-h-11 items-center gap-1.5 px-2 text-sm font-extrabold whitespace-nowrap"
             onClick={() => setReplying(true)}
           >
             <Reply size={18} aria-hidden /> Responder

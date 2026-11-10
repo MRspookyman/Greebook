@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { BookCheck, ChevronRight, Lock, LockOpen, Pause, Play, X } from 'lucide-react'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
+import { ProgressBar } from '@/components/ProgressBar'
 import { RollingNumber } from '@/components/RollingNumber'
 import { Segmented } from '@/components/Segmented'
 import { Stepper } from '@/components/Stepper'
@@ -880,6 +881,16 @@ function SavedPanel({ saved, partnerName }: { saved: Saved; partnerName: string 
             {pace !== null && ` · ${pace} págs/hora`}
           </p>
         </section>
+      )}
+      {!saved.togetherId && (
+        <div className="card enter mt-8 flex items-center gap-3.5 text-left" style={{ '--i': 7 } as CSSProperties}>
+          <Cover book={reading.book} width={44} />
+          <div className="grid min-w-0 flex-1 gap-1.5">
+            <p className="truncate font-extrabold">{reading.book.title}</p>
+            <ProgressBar value={progressFraction(reading)} />
+            <p className="text-[13px] text-muted">{formatPosition(reading)}</p>
+          </div>
+        </div>
       )}
       {first && (
         <Link

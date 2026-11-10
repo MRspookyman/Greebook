@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { ArrowDownUp, LayoutGrid, List, Plus, Search } from 'lucide-react'
+import { LayoutGrid, List, Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { EmptyState } from '@/components/EmptyState'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -58,6 +59,7 @@ export function LibraryPage() {
     try { return localStorage.getItem('gb.library.finishedView') === 'list' ? 'list' : 'covers' } catch { return 'covers' }
   })
   const [sort, setSort] = useState<FinishedSort>('average')
+  const [filtering, setFiltering] = useState(false)
   const all = [...(mineQuery.data ?? []), ...(partner ? theirsQuery.data ?? [] : [])]
   const people = [
     { person: profile, label: 'Tú', active: !partner || active.mine, key: 'mine' as const },
@@ -94,6 +96,10 @@ export function LibraryPage() {
   ]
   const selectedSort = sortOptions.some((option) => option.value === sort) ? sort : 'average'
   const groups = finishedGroups(cards, selectedSort, userId, partner?.id)
+  const finishedFilters = view === 'finished'
+  const hasFilters = tagOptions.length > 0 || finishedFilters
+  const activeFilters =
+    Number(selectedTag !== 'all') + (finishedFilters ? Number(selectedYear !== 'all') + Number(selectedFormat !== 'all') : 0)
 
   return (
     <section className="min-w-0 space-y-6">
@@ -143,8 +149,6 @@ export function LibraryPage() {
             </div>
           )}
         </div>
-        {tagOptions.length > 0 && <FilterChips bleed options={[{ value: 'all', label: 'Todas las etiquetas' }, ...tagOptions.map((value) => ({ value, label: value }))]} value={selectedTag} onChange={setTag} aria-label="Etiqueta" />}
-        {tagsQuery.isError && <button className="btn btn-outline" onClick={() => void tagsQuery.refetch()}>Reintentar cargar etiquetas</button>}
       </div>
       <Segmented<ReadingStatus>
         options={tabs.map((tab) => ({ ...tab, count: shelves[tab.value].length }))}
@@ -170,20 +174,27 @@ export function LibraryPage() {
       ) : (
         <>
           {view === 'want' && <><Recommendations /><ReadingPicker readings={all} /></>}
-          {view === 'finished' && (
-            <div className="min-w-0 space-y-3">
-              {years.length > 1 && <FilterChips bleed options={[{ value: 'all', label: 'Todos los años' }, ...years.map((value) => ({ value, label: value }))]} value={selectedYear} onChange={setYear} aria-label="Año de finalización" />}
-              {formats.size > 1 && <FilterChips<Format | 'all'> bleed options={[{ value: 'all', label: 'Papel y Kindle' }, ...(['paper', 'ebook'] as const).map((value) => ({ value, label: formatLabel(value) }))]} value={selectedFormat} onChange={setFormat} aria-label="Formato del libro" />}
-              <div className="flex items-center gap-2">
-                <label className="relative block min-w-0 flex-1">
-                  <ArrowDownUp className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" size={16} aria-hidden />
-                  <span className="sr-only">Ordenar leídos</span>
-                  <select className="input min-h-11 py-2 pl-10" value={selectedSort} onChange={(event) => setSort(event.target.value as FinishedSort)}>
-                    {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
+          {hasFilters && (
+            <div className="flex min-w-0 items-center gap-2">
+              {hasFilters && (
+                <button type="button" className="chip" aria-haspopup="dialog" onClick={() => setFiltering(true)}>
+                  <SlidersHorizontal size={16} aria-hidden />
+                  {finishedFilters ? 'Filtrar y ordenar' : 'Filtrar'}
+                  {activeFilters > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-plum px-1 text-xs text-on-plum tabular-nums">
+                      {activeFilters}
+                    </span>
+                  )}
+                </button>
+              )}
+              {activeFilters > 0 && (
+                <button type="button" className="btn btn-link min-h-11 px-1 text-sm" onClick={() => { setTag('all'); setYear('all'); setFormat('all') }}>
+                  Quitar
+                </button>
+              )}
+              {finishedFilters && (
                 <Segmented
-                  className="w-[108px] shrink-0"
+                  className="ml-auto w-[108px] shrink-0"
                   options={[
                     { value: 'covers', label: <><LayoutGrid size={18} aria-hidden /><span className="sr-only">Portadas</span></> },
                     { value: 'list', label: <><List size={18} aria-hidden /><span className="sr-only">Lista</span></> },
@@ -195,7 +206,7 @@ export function LibraryPage() {
                   }}
                   aria-label="Vista de los leídos"
                 />
-              </div>
+              )}
             </div>
           )}
           {cards.length === 0 ? (
@@ -218,7 +229,7 @@ export function LibraryPage() {
                       const date = card.reading.finished_on ? formatFinished(card.reading.finished_on, card.reading.finished_precision) : 'Sin fecha'
                       return (
                         <li key={card.key} className="enter min-w-0" style={{ '--i': Math.min(index, 8) } as CSSProperties}>
-                          <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={finishedView === 'list' ? 'pressable flex min-h-11 gap-3 rounded-card border border-rule bg-surface p-3' : 'pressable block min-h-11 min-w-0'}>
+                          <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={finishedView === 'list' ? 'card pressable flex min-h-11 gap-3 p-3' : 'pressable block min-h-11 min-w-0'}>
                             <div className="shrink-0"><Cover book={book} width={finishedView === 'list' ? 44 : undefined} /></div>
                             <div className="min-w-0 flex-1">
                               <h3 className={`font-serif leading-snug break-words ${finishedView === 'list' ? 'text-base' : 'mt-2 line-clamp-2 text-[13px]'}`}>{book.title}</h3>
@@ -254,7 +265,7 @@ export function LibraryPage() {
                 const readers = people.filter(({ active, person }) => active && card.matches.some((reading) => reading.user_id === person.id))
                 return (
                   <li key={card.key} className="enter min-w-0" style={{ '--i': Math.min(index, 8) } as CSSProperties}>
-                    <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={view === 'reading' ? 'pressable flex min-h-11 gap-4 rounded-card border border-rule bg-surface p-4' : 'pressable block min-h-11 min-w-0'}>
+                    <Link to={`/libro/${cardTarget(card, all, userId).id}`} className={view === 'reading' ? 'card pressable flex min-h-11 gap-4' : 'pressable block min-h-11 min-w-0'}>
                       {view === 'reading' ? (
                         <>
                           <div className="shrink-0"><Cover book={book} width={56} ribbons={owners.map(({ person }) => person.accent)} /></div>
@@ -302,6 +313,37 @@ export function LibraryPage() {
           )}
         </>
       )}
+      <BottomSheet open={filtering} onClose={() => setFiltering(false)} title={finishedFilters ? 'Filtrar y ordenar' : 'Filtrar'}>
+        <div className="space-y-5 pb-2">
+          {tagOptions.length > 0 && (
+            <div className="space-y-2">
+              <p className="lbl">Etiqueta</p>
+              <FilterChips options={[{ value: 'all', label: 'Todas' }, ...tagOptions.map((value) => ({ value, label: value }))]} value={selectedTag} onChange={setTag} aria-label="Etiqueta" />
+            </div>
+          )}
+          {finishedFilters && years.length > 1 && (
+            <div className="space-y-2">
+              <p className="lbl">Año</p>
+              <FilterChips options={[{ value: 'all', label: 'Todos' }, ...years.map((value) => ({ value, label: value }))]} value={selectedYear} onChange={setYear} aria-label="Año de finalización" />
+            </div>
+          )}
+          {finishedFilters && formats.size > 1 && (
+            <div className="space-y-2">
+              <p className="lbl">Formato</p>
+              <FilterChips<Format | 'all'> options={[{ value: 'all', label: 'Papel y Kindle' }, ...(['paper', 'ebook'] as const).map((value) => ({ value, label: formatLabel(value) }))]} value={selectedFormat} onChange={setFormat} aria-label="Formato del libro" />
+            </div>
+          )}
+          {finishedFilters && (
+            <div className="space-y-2">
+              <p className="lbl">Ordenar por</p>
+              <FilterChips<FinishedSort> options={sortOptions} value={selectedSort} onChange={setSort} aria-label="Ordenar leídos" />
+            </div>
+          )}
+          <button type="button" className="btn btn-primary w-full" onClick={() => setFiltering(false)}>
+            Ver {cards.length} {cards.length === 1 ? 'libro' : 'libros'}
+          </button>
+        </div>
+      </BottomSheet>
     </section>
   )
 }

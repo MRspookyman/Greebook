@@ -45,10 +45,10 @@ export function Segmented<T extends string>({ options, value, onChange, classNam
             type="button"
             aria-pressed={on}
             onClick={() => onChange(o.value)}
-            className={`relative z-[1] flex min-h-11 items-center justify-center gap-1 rounded-full px-1 text-[14px] font-extrabold transition-colors duration-150 ${on ? 'text-ink' : 'text-muted'}`}
+            className={`relative z-[1] flex min-h-11 items-center justify-center gap-1 rounded-full px-0.5 text-[13.5px] font-extrabold whitespace-nowrap transition-colors duration-150 ${on ? 'text-ink' : 'text-muted'}`}
           >
             {o.label}
-            {o.count !== undefined && <span className="text-xs font-bold tabular-nums">{o.count}</span>}
+            {o.count !== undefined && <span className="text-[11.5px] font-bold tabular-nums opacity-80">{o.count}</span>}
           </button>
         )
       })}

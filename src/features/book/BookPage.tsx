@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
 import { differenceInCalendarDays } from 'date-fns'
-import { ArrowLeft, BookCheck, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
+import { ArrowLeft, BookCheck, ChevronDown, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useQuotes, useReadings, useSessions } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
@@ -13,6 +13,7 @@ import { fmt, fromISODate, todayISO } from '@/lib/dates'
 import { atLastPage, formatDays, formatFinished, formatLabel, formatMinutes, formatUnitValue, percentOf, progressFraction } from '@/lib/units'
 import { timeOnly } from '@/lib/sessionRules'
 import { readingPace } from './readingPace'
+import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { ProgressBar } from '@/components/ProgressBar'
 import { Segmented } from '@/components/Segmented'
@@ -95,6 +96,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [abandoning, setAbandoning] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
   const [readingPending, setReadingPending] = useState<number | null>(null)
   useEffect(() => {
     const subscription = liveQuery(() =>
@@ -277,40 +279,24 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         </div>
       </header>
       {own ? (
-        <fieldset disabled={disabled || (reading.status === 'finished' && !sessionsQuery.isSuccess)}>
-          <Segmented
-            variant="underline"
-            aria-label="Estado de la lectura"
-            options={(Object.keys(statuses) as Reading['status'][]).map((value) => ({ value, label: statuses[value] }))}
-            value={reading.status}
-            onChange={(status) => {
-              if (status === 'abandoned') {
-                setAbandoning(true)
-                return
-              }
-              void patch({
-                status,
-                ...(status === 'reading' && !reading.started_on ? { started_on: today } : {}),
-                ...(status === 'finished'
-                  ? { current_position: reading.total_units }
-                  : reading.status === 'finished'
-                    ? { current_position: sessions.reduce((max, session) => Math.max(max, session.end_pos), 0) }
-                    : {}),
-                finished_on: status === 'finished' ? (reading.finished_on ?? today) : null,
-                finished_precision: status === 'finished' ? 'day' : null,
-                ...(status === 'reading' || status === 'want' || status === 'finished' ? { backfilled: false } : {}),
-              })
-            }}
-          />
-        </fieldset>
+        <button
+          type="button"
+          className="chip"
+          aria-haspopup="dialog"
+          disabled={disabled || (reading.status === 'finished' && !sessionsQuery.isSuccess)}
+          onClick={() => setStatusOpen(true)}
+        >
+          <span className="h-2 w-2 rounded-full bg-accent" aria-hidden />
+          {statuses[reading.status]}
+          <ChevronDown size={16} aria-hidden />
+          <span className="sr-only">Cambiar el estado de la lectura</span>
+        </button>
       ) : (
         <p className="text-sm text-muted">{statuses[reading.status]}</p>
       )}
       {reading.status === 'abandoned' && reading.abandon_reason && (
         <p className="text-sm text-muted">{reading.abandon_reason}</p>
       )}
-      <BookTags bookId={reading.book_id} />
-      {own && (reading.status === 'reading' || reading.status === 'finished') && <RecommendButton bookId={reading.book_id} />}
       <div
         className={reading.status === 'finished' ? 'grid' : 'hidden !my-0'}
         style={{ gridTemplateRows: reading.status === 'finished' ? '1fr' : '0fr' }}
@@ -379,6 +365,8 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </dl>
         </section>
       )}
+      <BookTags bookId={reading.book_id} />
+      {own && (reading.status === 'reading' || reading.status === 'finished') && <RecommendButton bookId={reading.book_id} />}
       {own && !online && <p className="text-xs text-muted">Sin conexión: puedes registrar sesiones, pero no editar.</p>}
       {own && pending > 0 && (
         <p className="text-xs text-muted">Espera a que se sincronicen las sesiones para editar.</p>
@@ -576,6 +564,37 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
           </div>,
           document.body,
         )}
+      {own && (
+        <BottomSheet open={statusOpen} onClose={() => setStatusOpen(false)} title="Estado de la lectura">
+          <div className="pb-3">
+          <Segmented
+            variant="underline"
+            aria-label="Estado de la lectura"
+            options={(Object.keys(statuses) as Reading['status'][]).map((value) => ({ value, label: statuses[value] }))}
+            value={reading.status}
+            onChange={(status) => {
+              setStatusOpen(false)
+              if (status === 'abandoned') {
+                setAbandoning(true)
+                return
+              }
+              void patch({
+                status,
+                ...(status === 'reading' && !reading.started_on ? { started_on: today } : {}),
+                ...(status === 'finished'
+                  ? { current_position: reading.total_units }
+                  : reading.status === 'finished'
+                    ? { current_position: sessions.reduce((max, session) => Math.max(max, session.end_pos), 0) }
+                    : {}),
+                finished_on: status === 'finished' ? (reading.finished_on ?? today) : null,
+                finished_precision: status === 'finished' ? 'day' : null,
+                ...(status === 'reading' || status === 'want' || status === 'finished' ? { backfilled: false } : {}),
+              })
+            }}
+          />
+          </div>
+        </BottomSheet>
+      )}
       {own && (
         <ReadingOptionsSheet
           reading={reading}

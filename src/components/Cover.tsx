@@ -92,7 +92,7 @@ export function Cover({ book, width, className = '', children, priority = false,
       {marks.length > 0 && (
         <span
           aria-hidden
-          className="book-ribbons"
+          className={`book-ribbons ${fallback ? '' : 'book-ribbons-photo'}`}
           style={{ '--ribbon-w': `${ribbonWidth}px` } as CSSProperties}
         >
           {marks.map((accent, index) => (
