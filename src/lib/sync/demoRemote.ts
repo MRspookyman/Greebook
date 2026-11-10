@@ -144,6 +144,16 @@ export function create(): Remote {
       }
     },
 
+    /** The rehearsal has nowhere to keep files: the photo travels inside its own address. */
+    uploadCover(image) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = () => reject(new RemoteError('No se pudo leer la foto', false))
+        reader.readAsDataURL(image)
+      })
+    },
+
     async claimPush() {},
     async dropPush() {},
     async hasPush() {

@@ -123,6 +123,17 @@ export function create(): Remote {
       }
     },
 
+    async uploadCover(image) {
+      const { data } = await supabase.auth.getSession()
+      const user = data.session?.user.id
+      if (!user) throw new RemoteError('Sin sesión', false)
+      // Each photo gets its own name inside the uploader's folder: nothing is ever overwritten.
+      const path = `${user}/${crypto.randomUUID()}.jpg`
+      const { error } = await supabase.storage.from('book-covers').upload(path, image, { contentType: 'image/jpeg', cacheControl: '31536000' })
+      if (error) throw new RemoteError(error.message, false)
+      return supabase.storage.from('book-covers').getPublicUrl(path).data.publicUrl
+    },
+
     async claimPush(keys) {
       const { error, status } = await supabase.rpc('claim_push_subscription', {
         p_endpoint: keys.endpoint,

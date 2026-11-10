@@ -24,6 +24,12 @@ Limpieza opcional de lo que ya no se usa (no molesta si se queda):
 2. SQL Editor → pega y ejecuta `supabase/migrations/0001_greenbook.sql`.
 3. SQL Editor → abre `supabase/seed.sql`, cambia los dos emails y los dos nombres, ejecuta.
 
+### Fotos de portada
+
+`supabase/migrations/0002_portadas.sql` da permiso para subir fotos de portada al bucket `book-covers`
+(cada uno a su carpeta; las imágenes son públicas por su dirección, como cualquier portada). No borra nada.
+En vuestro proyecto **ya está aplicada**; en uno nuevo, ejecútala después de la 0001.
+
 ### Tiempo real
 
 La app usa un único canal privado por pareja (Broadcast). No hay que publicar ninguna tabla. La migración

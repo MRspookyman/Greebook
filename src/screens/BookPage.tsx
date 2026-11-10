@@ -8,7 +8,8 @@ import { searchBooks } from '@/lib/books/search'
 import { bookViews, fmtPosition, fmtProgress, isLit, live, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
 import type { Book, Profile, Reading, Session, Unit } from '@/lib/types'
-import { usePeople, useNow } from '@/session'
+import { shrinkCover } from '@/lib/cover'
+import { usePeople, useNow, useSession } from '@/session'
 import { Cover } from '@/ui/Book'
 import { Back, Close, Flame, More } from '@/ui/icons'
 import { NumberDial } from '@/ui/NumberDial'
@@ -421,7 +422,22 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
   const [cover, setCover] = useState(book.cover_url ?? '')
   /** Covers found for this title: undefined before looking, null while looking. */
   const [found, setFound] = useState<string[] | null | undefined>(undefined)
-  const validCover = cover.trim() === '' || /^https:\/\/\S+$/.test(cover.trim())
+  const { remote } = useSession()
+  const [uploading, setUploading] = useState<'no' | 'yes' | 'failed'>('no')
+  // A photo in the rehearsal lives inside its own address; on the real server every cover is an https one.
+  const validCover =
+    cover.trim() === '' || /^https:\/\/\S+$/.test(cover.trim()) || (remote.ensayo && cover.startsWith('data:image/'))
+  const upload = (file: File | undefined) => {
+    if (!file) return
+    setUploading('yes')
+    shrinkCover(file)
+      .then((image) => remote.uploadCover(image))
+      .then((url) => {
+        setCover(url)
+        setUploading('no')
+      })
+      .catch(() => setUploading('failed'))
+  }
   const look = () => {
     setFound(null)
     searchBooks(`${title} ${author}`.trim(), new AbortController().signal)
@@ -458,6 +474,19 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
         <div className="flex items-start gap-4">
           <Cover key={cover} book={{ ...book, title: title || book.title, author, cover_url: validCover && cover.trim() ? cover.trim() : null }} width={72} />
           <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+            <label className="chip cursor-pointer focus-within:outline-2 focus-within:outline-[var(--flame)]">
+              {uploading === 'yes' ? 'Subiendo…' : 'Subir una foto'}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={uploading === 'yes'}
+                onChange={(event) => {
+                  upload(event.currentTarget.files?.[0])
+                  event.currentTarget.value = ''
+                }}
+              />
+            </label>
             <button type="button" className="chip" onClick={look}>
               Buscar portadas
             </button>
@@ -468,6 +497,11 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
             )}
           </div>
         </div>
+        {uploading === 'failed' && (
+          <p role="alert" className="mt-3 text-[15px] text-danger">
+            No se ha podido subir la foto. Hace falta conexión; prueba otra vez.
+          </p>
+        )}
         {found === null && <p className="quiet mt-3 text-[15px]">Buscando…</p>}
         {found?.length === 0 && <p className="quiet mt-3 text-[15px]">No he encontrado ninguna. Puedes pegar la dirección de una imagen.</p>}
         {!!found?.length && (
@@ -496,12 +530,12 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
           autoCapitalize="none"
           autoCorrect="off"
           placeholder="https://…"
-          value={cover}
+          value={cover.startsWith('data:') ? '' : cover}
           onChange={(e) => setCover(e.currentTarget.value)}
         />
         {!validCover && <p className="mt-1 text-[15px] text-danger">Tiene que empezar por https://</p>}
       </fieldset>
-      <button className="btn btn-primary mt-2" disabled={!title.trim() || !validCover}>Guardar</button>
+      <button className="btn btn-primary mt-2" disabled={!title.trim() || !validCover || uploading === 'yes'}>Guardar</button>
     </form>
   )
 }
