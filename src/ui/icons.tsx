@@ -52,3 +52,9 @@ export const Star = ({ filled, ...p }: P & { filled?: boolean }) => (
     <path d="m12 4 2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7z" />
   </Icon>
 )
+export const BookOpen = (p: P) => (
+  <Icon {...p}><path d="M12 6.5c-2-1.3-4.6-1.7-8-1.5v12.5c3.4-.2 6 .2 8 1.5 2-1.3 4.6-1.7 8-1.5V5c-3.4-.2-6 .2-8 1.5ZM12 6.5V19" /></Icon>
+)
+export const Spines = (p: P) => (
+  <Icon {...p}><path d="M5 5h3.5v13H5zM8.5 7.5H12V18H8.5zM13.6 6.300l3.300-.9 3.100 11.7-3.300.9zM3.5 20h17" /></Icon>
+)

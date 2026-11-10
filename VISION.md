@@ -103,7 +103,8 @@ hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).
 
 ## 3. Principios de diseño
 
-1. **Un sitio, no un panel.** Una habitación con scroll. Sin pestañas. Si algo necesita un menú, sobra.
+1. **Un sitio, no un panel.** Una habitación con tres rincones (las velas, la mesilla, la estantería) y un
+   menú abajo para ir de uno a otro sin tener que bajar con el dedo. Cada rincón cabe casi entero en la pantalla.
 2. **Gestos, no formularios.** Encender, apagar, doblar un papel, abrir un sobre. Cada gesto tiene como
    mucho una pregunta detrás.
 3. **Tres cosas memorables.** La vela, el papel entre páginas, el sobre. Todo lo que no sirva a una de las

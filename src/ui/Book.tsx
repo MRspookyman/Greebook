@@ -39,8 +39,13 @@ export function Spine({ book, ribbons = [], onClick, style }: SpineProps) {
         <span
           key={color + i}
           aria-hidden
-          className="absolute -top-[7px] h-[15px] w-[6px] rounded-t-[1px]"
-          style={{ left: 5 + i * 8, background: color, boxShadow: '0 1px 2px rgb(0 0 0 / 0.35)' }}
+          className="absolute -top-[9px] h-[19px] w-[8px] rounded-t-[1.5px]"
+          style={{
+            left: 4 + i * 9,
+            background: color,
+            boxShadow: '0 1px 2px rgb(0 0 0 / 0.4)',
+            clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)',
+          }}
         />
       ))}
       <span aria-hidden className="absolute inset-x-0 top-0 h-5 opacity-60" style={{ backgroundImage: BANDS[spine.band] }} />
@@ -67,6 +72,32 @@ export function Spine({ book, ribbons = [], onClick, style }: SpineProps) {
           {book.title}
         </span>
       </span>
+    </button>
+  )
+}
+
+/** A book lying on its side, for the ones left halfway: the title reads along the spine. */
+export function Lying({ book, onClick, style }: Pick<SpineProps, 'book' | 'onClick' | 'style'>) {
+  const spine = spineOf(book)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${book.title}${book.author ? `, de ${book.author}` : ''}`}
+      className="pressable relative block max-w-full flex-none truncate rounded-l-[3px] rounded-r-[1px] px-7 text-center text-[14px] font-medium"
+      style={{
+        width: spine.height + 96,
+        height: Math.round(spine.width * 0.78),
+        lineHeight: `${Math.round(spine.width * 0.78)}px`,
+        background: spine.cloth.bg,
+        color: spine.cloth.ink,
+        boxShadow: 'inset 0 3px 4px -2px rgb(255 255 255 / 0.22), inset 0 -4px 6px -3px rgb(0 0 0 / 0.5)',
+        ...style,
+      }}
+    >
+      <span aria-hidden className="absolute inset-y-0 left-2.5 w-px bg-current opacity-45" />
+      <span aria-hidden className="absolute inset-y-0 right-2.5 w-px bg-current opacity-45" />
+      {book.title}
     </button>
   )
 }

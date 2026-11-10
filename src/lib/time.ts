@@ -52,6 +52,15 @@ export function fmtMinutes(minutes: number): string {
   return rest ? `${Math.floor(m / 60)} h ${pad(rest)}` : `${Math.floor(m / 60)} h`
 }
 
+/**
+ * The minutes buttons go five by five but land on round numbers: 23 goes down to 20 and up to 25.
+ * Anything in between is typed by hand.
+ */
+export function stepMinutes(value: number, direction: 1 | -1, min = 1, max = 600, step = 5): number {
+  const next = direction > 0 ? (Math.floor(value / step) + 1) * step : (Math.ceil(value / step) - 1) * step
+  return Math.max(min, Math.min(max, next))
+}
+
 /** «ahora mismo», «hace 12 min», «hace 2 h». For how long a candle has been burning. */
 export function fmtSince(iso: string, now: number): string {
   const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000))

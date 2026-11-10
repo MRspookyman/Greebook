@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  dropReading, editBook, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
   removeBookmark, removeSession, resizeReading, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
-import { bookViews, fmtPosition, fmtProgress, isLit, live, tally } from '@/lib/model'
+import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, progressOf, tally } from '@/lib/model'
+import { setNextUp, useNextUp } from '@/lib/next'
 import { fmtDay, fmtMinutes } from '@/lib/time'
 import type { Book, Profile, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
@@ -12,10 +13,11 @@ import { Cover } from '@/ui/Book'
 import { Back, Close, Flame, More } from '@/ui/icons'
 import { NumberDial } from '@/ui/NumberDial'
 import { PlacementForm } from '@/ui/Placement'
-import { Rail } from '@/ui/Rail'
 import { Sheet } from '@/ui/Sheet'
+import { MinutesField } from '@/ui/Minutes'
 import { Stars } from '@/ui/Stars'
 import { toast } from '@/ui/toast'
+import { PersonRow, Wax } from '@/ui/Who'
 import { BookSlips } from './BookSlips'
 
 type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove'
@@ -27,7 +29,9 @@ export function BookPage() {
   const { db, me, partner } = usePeople()
   const now = useNow()
   const navigate = useNavigate()
-  const [open, setOpen] = useState<Open>(params.has('cerrar') ? 'finish' : null)
+  const [open, setOpen] = useState<Open>(params.has('cerrar') ? 'finish' : params.has('unirme') ? 'place' : null)
+  const [fixing, setFixing] = useState<Session | null>(null)
+  const next = useNextUp(me.id)
   const [showAll, setShowAll] = useState(false)
   const { hash } = useLocation()
 
@@ -45,11 +49,12 @@ export function BookPage() {
   const { book, mine, theirs } = view
   const close = () => {
     setOpen(null)
-    if (params.has('cerrar')) setParams({}, { replace: true })
+    if (params.has('cerrar') || params.has('unirme')) setParams({}, { replace: true })
   }
   const candleHere = isLit(me, now) && me.candle_reading_id === mine?.id
-  const mySessions = sessions.filter((s) => s.user_id === me.id).sort((a, b) => (b.started_at ?? b.created_at).localeCompare(a.started_at ?? a.created_at))
-  const theirSessions = sessions.filter((s) => s.user_id !== me.id)
+  const evenings = byNewest(sessions)
+  const total = tally(sessions)
+  const shared = sessions.some((s) => s.user_id === me.id) && sessions.some((s) => s.user_id !== me.id)
 
   const light = () => {
     if (!mine) return
@@ -59,7 +64,7 @@ export function BookPage() {
   }
 
   return (
-    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-24" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
+    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
       <div className="flex items-center justify-between">
         <button className="icon-btn -ml-2" aria-label="Volver a la habitación" onClick={() => navigate(-1)}>
           <Back />
@@ -79,11 +84,12 @@ export function BookPage() {
 
       {/* Where each of you is */}
       <section className="mt-7" aria-label="Marcapáginas">
-        <Rail mine={present(mine)} theirs={present(theirs)} />
-        <ul className="mt-2 flex flex-col gap-1 text-[16.5px]">
-          {mine && <Where who="Tú" second color="var(--me)" reading={mine} />}
-          {theirs && partner && <Where who={partner.name} color="var(--you)" reading={theirs} />}
-        </ul>
+        <div className="flex flex-col gap-3">
+          {mine && <PersonRow who="me" name="Tú" text={whereText(mine, true)} at={present(mine) && progressOf(mine)} />}
+          {theirs && partner && (
+            <PersonRow who="you" name={partner.name} text={whereText(theirs, false)} at={present(theirs) && progressOf(theirs)} />
+          )}
+        </div>
       </section>
 
       {/* What you can do with it now */}
@@ -127,29 +133,46 @@ export function BookPage() {
       <BookSlips view={view} />
 
       {/* Evenings */}
-      {(mySessions.length > 0 || theirSessions.length > 0) && (
+      {evenings.length > 0 && (
         <section className="mt-12" aria-labelledby="veladas">
           <h2 id="veladas" className="eyebrow mb-3">
             Veladas
           </h2>
-          <div className="flex flex-col gap-1 text-[17px]">
-            {mySessions.length > 0 && <Tally who="Tú" sessions={mySessions} />}
-            {theirSessions.length > 0 && partner && <Tally who={partner.name} sessions={theirSessions} />}
-          </div>
-          {mySessions.length > 0 && (
-            <ul className="mt-4 border-t border-rule">
-              {(showAll ? mySessions : mySessions.slice(0, 4)).map((session) => (
-                <Evening key={session.id} session={session} unit={mine?.unit ?? 'paginas'} />
-              ))}
-            </ul>
-          )}
-          {mySessions.length > 4 && !showAll && (
+          <p className="quiet text-[16.5px]">
+            {[
+              `${total.nights === 1 ? 'Una noche' : `${total.nights} noches`}${shared ? ' entre los dos' : ''}`,
+              total.minutes > 0 && fmtMinutes(total.minutes),
+              total.place && `sobre todo ${total.place}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+          <ul className="mt-4 border-t border-rule">
+            {(showAll ? evenings : evenings.slice(0, 5)).map((session) => {
+              const own = session.user_id === me.id
+              return (
+                <Evening
+                  key={session.id}
+                  session={session}
+                  own={own}
+                  name={own ? 'Tú' : (partner?.name ?? '')}
+                  unit={(own ? mine : theirs)?.unit ?? 'paginas'}
+                  onFix={() => setFixing(session)}
+                />
+              )
+            })}
+          </ul>
+          {evenings.length > 5 && !showAll && (
             <button className="btn btn-text -ml-2" onClick={() => setShowAll(true)}>
-              Ver las {mySessions.length}
+              Ver las {evenings.length}
             </button>
           )}
         </section>
       )}
+
+      <Sheet open={!!fixing} onClose={() => setFixing(null)} title="Corregir la velada">
+        {fixing && mine && <FixEvening session={fixing} reading={mine} onDone={() => setFixing(null)} />}
+      </Sheet>
 
       <Sheet open={open === 'log'} onClose={close} title="¿Por dónde vas?">
         {open === 'log' && mine && (
@@ -198,6 +221,14 @@ export function BookPage() {
               <Option onClick={() => { dropReading(mine); close(); toast('Dejado a medias. No pasa nada.') }}>Dejarlo a medias</Option>
             </>
           )}
+          {mine?.status === 'pendiente' &&
+            (next === book.id ? (
+              <Option onClick={() => { setNextUp(me.id, null); close() }}>Ya no es el siguiente</Option>
+            ) : (
+              <Option onClick={() => { setNextUp(me.id, book.id); close(); toast('Será el siguiente. Va el primero de la pila.') }}>
+                Que sea el siguiente que lea
+              </Option>
+            ))}
           {mine?.status === 'terminado' && <Option onClick={() => { openBook(mine); close() }}>Volver a leerlo</Option>}
           <Option danger onClick={() => setOpen('remove')}>Quitarlo de mi lado…</Option>
         </div>
@@ -248,61 +279,107 @@ export function BookPage() {
 /** A bookmark only shows on the line once the book has been opened. */
 const present = (reading?: Reading) => (reading && reading.status !== 'pendiente' ? reading : undefined)
 
-function Where({ who, color, reading, second }: { who: string; color: string; reading: Reading; second?: boolean }) {
-  const text =
-    reading.status === 'terminado'
-      ? `${second ? 'lo terminaste' : 'lo terminó'}${reading.finished_on ? ` el ${fmtDay(reading.finished_on)}` : ''}`
-      : reading.status === 'pendiente'
-        ? `${second ? 'lo tienes' : 'lo tiene'} por leer`
-        : reading.status === 'dejado'
-          ? `${second ? 'lo dejaste' : 'lo dejó'} en la ${fmtPosition(reading)}`
-          : `${second ? 'vas' : 'va'} por la ${fmtProgress(reading)}`
-  return (
-    <li className="flex items-baseline gap-2.5">
-      <span aria-hidden className="h-3 w-[7px] flex-none translate-y-px rounded-[1px]" style={{ background: color }} />
-      <span>
-        <span className="font-medium">{who}</span> <span className="quiet">{text}</span>
-      </span>
-    </li>
-  )
+/** «vas por la página 142 de 600», «lo terminó el 3 de mayo». */
+function whereText(reading: Reading, second: boolean): string {
+  if (reading.status === 'terminado') {
+    return `${second ? 'lo terminaste' : 'lo terminó'}${reading.finished_on ? ` el ${fmtDay(reading.finished_on)}` : ''}`
+  }
+  if (reading.status === 'pendiente') return `${second ? 'lo tienes' : 'lo tiene'} por leer`
+  if (reading.status === 'dejado') return `${second ? 'lo dejaste' : 'lo dejó'} en la ${fmtPosition(reading)}`
+  return `${second ? 'vas' : 'va'} por la ${fmtProgress(reading)}`
 }
 
-function Tally({ who, sessions }: { who: string; sessions: Session[] }) {
-  const { nights, minutes, place } = tally(sessions)
-  return (
-    <p>
-      <span className="font-medium">{who}:</span>{' '}
-      <span className="quiet">
-        {[nights === 1 ? 'una noche' : `${nights} noches`, minutes > 0 && fmtMinutes(minutes), place && `sobre todo ${place}`]
-          .filter(Boolean)
-          .join(' · ')}
-      </span>
-    </p>
-  )
+interface EveningProps {
+  session: Session
+  /** It is mine: I can correct it or take it away. */
+  own: boolean
+  name: string
+  unit: Unit
+  onFix: () => void
 }
 
-function Evening({ session, unit }: { session: Session; unit: Unit }) {
+function Evening({ session, own, name, unit, onFix }: EveningProps) {
   const read = session.to_pos - session.from_pos
   const range = unit === 'porcentaje' ? `hasta el ${session.to_pos} %` : read > 0 ? `p. ${session.from_pos}–${session.to_pos}` : `p. ${session.to_pos}`
+  const detail = [range, session.minutes && fmtMinutes(session.minutes), session.place].filter(Boolean).join(' · ')
+  const text = (
+    <>
+      <span className="flex items-center gap-2 text-[16.5px]">
+        <Wax who={own ? 'me' : 'you'} />
+        <span>
+          <span className="font-medium">{name}</span> <span className="quiet">· {fmtDay(session.day)}</span>
+        </span>
+      </span>
+      <span className="quiet block truncate pl-[19px] text-[15px]">{detail}</span>
+    </>
+  )
   return (
-    <li className="flex items-center gap-3 border-b border-rule py-2">
-      <div className="min-w-0 flex-1">
-        <p className="text-[16.5px]">{fmtDay(session.day)}</p>
-        <p className="quiet truncate text-[14.5px]">
-          {[range, session.minutes && fmtMinutes(session.minutes), session.place].filter(Boolean).join(' · ')}
-        </p>
+    <li className="flex items-center gap-1 border-b border-rule">
+      {own ? (
+        <button type="button" className="pressable min-w-0 flex-1 py-2 text-left" aria-label={`Corregir tu velada del ${fmtDay(session.day)}: ${detail}`} onClick={onFix}>
+          {text}
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1 py-2">{text}</div>
+      )}
+      {own && (
+        <>
+          <button className="quiet min-h-11 px-2 text-[15px] underline decoration-rule underline-offset-4" aria-hidden tabIndex={-1} onClick={onFix}>
+            Corregir
+          </button>
+          <button
+            className="icon-btn quiet"
+            aria-label={`Quitar la velada del ${fmtDay(session.day)}`}
+            onClick={() => {
+              removeSession(session)
+              toast('Velada quitada', { label: 'Deshacer', run: () => restoreSession(session) })
+            }}
+          >
+            <Close size={18} />
+          </button>
+        </>
+      )}
+    </li>
+  )
+}
+
+/** A saved evening, corrected: the page, the minutes and the place. */
+function FixEvening({ session, reading, onDone }: { session: Session; reading: Reading; onDone: () => void }) {
+  const [position, setPosition] = useState(session.to_pos)
+  const [minutes, setMinutes] = useState(session.minutes ?? 0)
+  const [place, setPlace] = useState(session.place ?? '')
+  const percent = reading.unit === 'porcentaje'
+  return (
+    <div className="flex flex-col gap-6 pt-2">
+      <p className="quiet -mt-2">{fmtDay(session.day)}</p>
+      <NumberDial
+        value={position}
+        onChange={setPosition}
+        max={reading.total}
+        label={percent ? 'Porcentaje al que llegaste' : 'Página a la que llegaste'}
+        suffix={percent ? '% del libro' : `de ${reading.total} páginas`}
+      />
+      <div className="flex items-start justify-between gap-3">
+        <span className="quiet pt-2.5">Leíste</span>
+        <MinutesField value={minutes} onChange={setMinutes} min={0} />
+      </div>
+      <div>
+        <label className="label" htmlFor="fix-place">
+          ¿Dónde? <span className="text-[15px]">(si quieres)</span>
+        </label>
+        <input id="fix-place" className="field" maxLength={40} placeholder="en la cama, en el tren…" value={place} onChange={(event) => setPlace(event.currentTarget.value)} />
       </div>
       <button
-        className="icon-btn quiet"
-        aria-label={`Quitar la velada del ${fmtDay(session.day)}`}
+        className="btn btn-primary"
         onClick={() => {
-          removeSession(session)
-          toast('Velada quitada', { label: 'Deshacer', run: () => restoreSession(session) })
+          editSession(session, { position, minutes: minutes || null, place: place || null })
+          onDone()
+          toast('Velada corregida')
         }}
       >
-        <Close size={18} />
+        Guardar
       </button>
-    </li>
+    </div>
   )
 }
 
@@ -334,7 +411,7 @@ function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean
       />
       <div>
         <label className="label" htmlFor="log-minutes">
-          ¿Cuánto rato, más o menos? <span className="text-[14px]">(minutos, si quieres)</span>
+          ¿Cuánto rato, más o menos? <span className="text-[15px]">(minutos, si quieres)</span>
         </label>
         <input
           id="log-minutes"
@@ -379,13 +456,13 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
     <div className="flex flex-col gap-6">
       <p className="quiet">La última página. El libro pasa a la estantería con tu cinta.</p>
       <div>
-        <p className="label">¿Cuánto te ha gustado? <span className="text-[14px]">(si quieres)</span></p>
+        <p className="label">¿Cuánto te ha gustado? <span className="text-[15px]">(si quieres)</span></p>
         <Stars value={rating} onChange={setRating} />
       </div>
       {!hasLetter && partner && (
         <div>
           <p className="label">
-            Una carta para el sobre <span className="text-[14px]">(si quieres)</span>
+            Una carta para el sobre <span className="text-[15px]">(si quieres)</span>
           </p>
           <div className="slip">
             <textarea

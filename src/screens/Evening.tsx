@@ -6,7 +6,8 @@ import { fmtMinutes, fmtSince, greeting } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow, useWink } from '@/session'
 import { Candle } from '@/ui/Candle'
-import { Back, Minus, Paper, Plus } from '@/ui/icons'
+import { Back, Paper } from '@/ui/icons'
+import { MinutesField } from '@/ui/Minutes'
 import { NumberDial } from '@/ui/NumberDial'
 import { Sheet } from '@/ui/Sheet'
 import { WriteSlip } from '@/ui/WriteSlip'
@@ -171,23 +172,13 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
         suffix={percent ? '% del libro' : `de ${reading.total} páginas`}
       />
 
-      <div className="flex items-center justify-between gap-3">
-        <span className="quiet">Has leído</span>
-        <div className="flex items-center gap-2">
-          <button className="icon-btn bg-ink/10" aria-label="Cinco minutos menos" onClick={() => setMinutes((m) => Math.max(1, m - 5))}>
-            <Minus size={18} />
-          </button>
-          <span className="min-w-[5.2em] text-center text-[19px]" aria-live="polite">
-            {fmtMinutes(minutes)}
-          </span>
-          <button className="icon-btn bg-ink/10" aria-label="Cinco minutos más" onClick={() => setMinutes((m) => Math.min(600, m + 5))}>
-            <Plus size={18} />
-          </button>
-        </div>
+      <div className="flex items-start justify-between gap-3">
+        <span className="quiet pt-2.5">Has leído</span>
+        <MinutesField value={minutes} onChange={setMinutes} />
       </div>
 
       <div>
-        <p className="quiet mb-2">¿Dónde? <span className="text-[14.5px]">(si quieres)</span></p>
+        <p className="quiet mb-2">¿Dónde? <span className="text-[15px]">(si quieres)</span></p>
         <div className="flex flex-wrap gap-2">
           {places.map((name) => (
             <button

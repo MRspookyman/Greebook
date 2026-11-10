@@ -30,6 +30,11 @@ export function lightCandle(reading: Reading) {
   if (!already) enqueue({ id: uid(), kind: 'notify', what: 'vela', ref: me.id })
 }
 
+/** Decides which open book the candle is for, without lighting it. */
+export function chooseCandle(reading: Reading) {
+  patch('profiles', getMe(), { candle_reading_id: reading.id })
+}
+
 export function snuffCandle() {
   patch('profiles', getMe(), { candle_lit_at: null })
 }
@@ -76,6 +81,33 @@ export function saveEvening({ reading, position, minutes, place, startedAt }: Ev
 /** Minutes the candle has been burning, capped at what a candle lasts. */
 export function burnedMinutes(litAt: string, now: number): number {
   return Math.min(180, minutesBetween(litAt, now))
+}
+
+export interface EveningFix {
+  /** Where the bookmark ended up that evening. */
+  position: number
+  minutes: number | null
+  place: string | null
+}
+
+/** Corrects a saved evening. If it was the last one, the bookmark follows the corrected page. */
+export function editSession(session: Session, { position, minutes, place }: EveningFix) {
+  const db = getDb()
+  const reading = db.readings[session.reading_id]
+  const to = Math.max(0, Math.min(reading?.total ?? position, Math.round(position)))
+  const at = (s: Session) => s.started_at ?? s.created_at
+  const later = Object.values(db.sessions).some(
+    (s) => s.reading_id === session.reading_id && !s.deleted_at && s.id !== session.id && at(s) > at(session),
+  )
+  patch('sessions', session.id, {
+    to_pos: to,
+    from_pos: Math.min(session.from_pos, to),
+    minutes: minutes && minutes > 0 ? Math.min(1440, Math.round(minutes)) : null,
+    place: place?.trim().slice(0, 40) || null,
+  })
+  if (reading && !later && reading.status === 'leyendo' && reading.position === session.to_pos && to !== session.to_pos) {
+    patch('readings', reading.id, { position: to })
+  }
 }
 
 export function removeSession(session: Session) {

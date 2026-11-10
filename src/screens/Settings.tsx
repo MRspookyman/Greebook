@@ -43,7 +43,7 @@ export function Settings() {
   }
 
   return (
-    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-16" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
+    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-28" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
       <button className="icon-btn -ml-2" aria-label="Volver a la habitación" onClick={() => navigate(-1)}>
         <Back />
       </button>
@@ -135,7 +135,7 @@ export function Settings() {
             Cerrar sesión
           </button>
         )}
-        <p className="quiet mt-8 text-[13px]">Greenbook · {__APP_VERSION__}</p>
+        <p className="quiet mt-8 text-[15px]">Greenbook · {__APP_VERSION__}</p>
       </section>
     </main>
   )

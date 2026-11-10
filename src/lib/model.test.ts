@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { bookViews, candleReading, dropped, isLit, nightstand, pile, shelves, tally, waxLeft } from './model'
+import {
+  bookViews, byNewest, candleReading, dropped, heldBy, isLit, nightstand, pile, shelves, standGroups, tally, waxLeft,
+} from './model'
+import { stepMinutes } from './time'
 import { emptyDb, type Book, type Db, type Reading, type Session } from './types'
 
 const book = (id: string, extra: Partial<Book> = {}): Book => ({
@@ -117,5 +120,64 @@ describe('veladas', () => {
       session('1', '2026-11-02T08:00:00Z', { place: 'en el tren', minutes: null }),
     ]
     expect(tally(sessions)).toEqual({ nights: 2, minutes: 45, place: 'en la cama' })
+  })
+})
+
+describe('de quién es cada libro', () => {
+  const data = db(
+    [book('a'), book('bb'), book('ccc'), book('dddd')],
+    [
+      reading('1', 'me', 'a'), reading('2', 'you', 'a'),
+      reading('3', 'me', 'bb'), reading('4', 'you', 'bb', { status: 'terminado', finished_on: '2026-03-01' }),
+      reading('5', 'you', 'ccc'), reading('6', 'me', 'ccc', { status: 'pendiente' }),
+      reading('7', 'me', 'dddd', { status: 'pendiente' }),
+    ],
+  )
+  const views = bookViews(data, 'me')
+
+  it('la mesilla se reparte en los dos, tú y el otro, según quién lo tenga abierto', () => {
+    const groups = standGroups(nightstand(views, []))
+    expect(groups.both.map((v) => v.book.id)).toEqual(['a'])
+    expect(groups.mine.map((v) => v.book.id)).toEqual(['bb'])
+    expect(groups.theirs.map((v) => v.book.id)).toEqual(['ccc'])
+  })
+
+  it('el filtro de la estantería mira solo los marcapáginas en ese estado', () => {
+    const [, bb, ccc] = views
+    expect(heldBy(bb, 'tu', 'terminado')).toBe(true)
+    expect(heldBy(bb, 'yo', 'terminado')).toBe(false)
+    expect(heldBy(bb, 'dos', 'terminado')).toBe(false)
+    expect(heldBy(bb, 'todos', 'terminado')).toBe(true)
+    expect(heldBy(ccc, 'yo', 'pendiente')).toBe(true)
+  })
+
+  it('«el siguiente» va el primero de la pila', () => {
+    const more = bookViews(
+      db([book('a'), book('bb')], [reading('1', 'me', 'a', { status: 'pendiente' }), reading('2', 'me', 'bb', { status: 'pendiente' })]),
+      'me',
+    )
+    expect(pile(more).map((v) => v.book.id)).toEqual(['a', 'bb'])
+    expect(pile(more, 'bb').map((v) => v.book.id)).toEqual(['bb', 'a'])
+  })
+
+  it('las veladas se ordenan de la más reciente a la más antigua', () => {
+    const list = [session('1', '2026-11-01T22:00:00Z'), session('1', '2026-11-09T22:00:00Z')]
+    expect(byNewest(list).map((s) => s.day)).toEqual(['2026-11-09', '2026-11-01'])
+  })
+})
+
+describe('los minutos de una velada', () => {
+  it('los botones van de cinco en cinco y caen en números redondos', () => {
+    expect(stepMinutes(23, -1)).toBe(20)
+    expect(stepMinutes(23, 1)).toBe(25)
+    expect(stepMinutes(20, -1)).toBe(15)
+    expect(stepMinutes(20, 1)).toBe(25)
+  })
+
+  it('no bajan del mínimo ni pasan del máximo', () => {
+    expect(stepMinutes(3, -1)).toBe(1)
+    expect(stepMinutes(1, 1)).toBe(5)
+    expect(stepMinutes(5, -1, 0)).toBe(0)
+    expect(stepMinutes(598, 1)).toBe(600)
   })
 })

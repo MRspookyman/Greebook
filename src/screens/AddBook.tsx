@@ -58,7 +58,7 @@ export function AddBook() {
   const theirs = already && Object.values(db.readings).find((r) => r.book_id === already.id && r.user_id !== getMe() && !r.deleted_at)
 
   return (
-    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-16" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
+    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-28" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
       <button className="icon-btn -ml-2" aria-label="Volver" onClick={() => navigate(-1)}>
         <Back />
       </button>
@@ -96,7 +96,7 @@ export function AddBook() {
               <span className="min-w-0 flex-1">
                 <span className="line-clamp-2 block text-[18.5px] leading-tight">{found.title}</span>
                 <span className="quiet block truncate text-[15px] italic">{found.author}</span>
-                <span className="quiet block text-[13.5px]">
+                <span className="quiet block text-[15px]">
                   {[found.year, found.pages && `${found.pages} páginas`].filter(Boolean).join(' · ')}
                 </span>
               </span>

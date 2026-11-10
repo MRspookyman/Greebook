@@ -13,7 +13,7 @@ export function Toaster() {
   return (
     <div
       className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-4"
-      style={{ bottom: 'calc(20px + env(safe-area-inset-bottom))' }}
+      style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
       aria-live="polite"
     >
       {list.map((item) => (

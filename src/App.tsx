@@ -6,6 +6,7 @@ import { SessionContext } from './session'
 import { disablePush, reclaimPush } from '@/lib/push'
 import { toast } from '@/ui/toast'
 import { Toaster } from '@/ui/Toaster'
+import { Nav } from '@/ui/Nav'
 import { Login } from '@/screens/Login'
 import { Welcome } from '@/screens/Welcome'
 import { Room } from '@/screens/Room'
@@ -113,13 +114,16 @@ function Gate({ userId }: { userId: string }) {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Room />} />
+        <Route path="/" element={<Room section="velas" />} />
+        <Route path="/mesilla" element={<Room section="mesilla" />} />
+        <Route path="/estanteria" element={<Room section="estanteria" />} />
         <Route path="/velada" element={<Evening />} />
         <Route path="/libro/:bookId" element={<BookPage />} />
         <Route path="/anadir" element={<AddBook />} />
         <Route path="/ajustes" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Nav />
     </BrowserRouter>
   )
 }

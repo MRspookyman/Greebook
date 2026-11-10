@@ -67,12 +67,43 @@ export function nightstand(views: BookView[], sessions: Session[]): BookView[] {
     })
 }
 
+/** The nightstand sorted by whose book it is: open for both, only for me, only for the other. */
+export interface Stand {
+  both: BookView[]
+  mine: BookView[]
+  theirs: BookView[]
+}
+
+export function standGroups(stand: BookView[]): Stand {
+  const open = (r?: Reading) => r?.status === 'leyendo'
+  return {
+    both: stand.filter((v) => open(v.mine) && open(v.theirs)),
+    mine: stand.filter((v) => open(v.mine) && !open(v.theirs)),
+    theirs: stand.filter((v) => !open(v.mine) && open(v.theirs)),
+  }
+}
+
+/** Whose books the shelf shows: everything, what both have, what I have, what the other has. */
+export type Whose = 'todos' | 'dos' | 'yo' | 'tu'
+
+/** Whether a book counts for that filter, looking only at bookmarks in the given status. */
+export function heldBy(view: BookView, whose: Whose, status: Reading['status']): boolean {
+  const mine = view.mine?.status === status
+  const theirs = view.theirs?.status === status
+  if (whose === 'dos') return mine && theirs
+  if (whose === 'yo') return mine
+  if (whose === 'tu') return theirs
+  return mine || theirs
+}
+
 /** Waiting to be read by someone, and open for no one. */
-export function pile(views: BookView[]): BookView[] {
+export function pile(views: BookView[], next?: string | null): BookView[] {
   return views
     .filter((v) => (v.mine?.status === 'pendiente' || v.theirs?.status === 'pendiente') &&
       v.mine?.status !== 'leyendo' && v.theirs?.status !== 'leyendo')
-    .sort((a, b) => a.book.created_at.localeCompare(b.book.created_at))
+    .sort((a, b) =>
+      // The one marked as «el siguiente» stands first on the plank.
+      Number(b.book.id === next) - Number(a.book.id === next) || a.book.created_at.localeCompare(b.book.created_at))
 }
 
 /** The day a book joined the shelf: the first time one of you finished it. */
@@ -132,6 +163,12 @@ export function fmtProgress(reading: Pick<Reading, 'unit' | 'position' | 'total'
 }
 
 export const progressOf = (reading: Pick<Reading, 'position' | 'total'>) => fractionOf(reading.position, reading.total)
+
+/** Sessions newest first. */
+export function byNewest(sessions: Session[]): Session[] {
+  const at = (s: Session) => s.started_at ?? s.created_at
+  return [...sessions].sort((a, b) => at(b).localeCompare(at(a)))
+}
 
 /** What a set of sessions adds up to. */
 export function tally(sessions: Session[]): { nights: number; minutes: number; place: string | null } {

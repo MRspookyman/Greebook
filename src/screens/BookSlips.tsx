@@ -8,6 +8,7 @@ import { usePeople } from '@/session'
 import { Envelope as EnvelopeIcon, Paper } from '@/ui/icons'
 import { Sheet } from '@/ui/Sheet'
 import { SlipPaper } from '@/ui/SlipPaper'
+import { Wax } from '@/ui/Who'
 import { WriteSlip } from '@/ui/WriteSlip'
 
 type Writing = null | { what: 'papel' | 'prediccion' | 'carta'; editing?: Slip }
@@ -46,9 +47,9 @@ export function BookSlips({ view }: { view: BookView }) {
   const myAt = mine && mine.status === 'leyendo' ? fractionOf(mine.position, mine.total) : null
   const here = papers.findIndex((slip) => slip.at != null && myAt != null && slip.at > myAt)
   const marker = mine && myAt != null && papers.some((s) => s.at != null) && (
-    <li key="here" className="flex items-center gap-3 py-1 text-[13px] font-semibold tracking-[0.14em] uppercase" aria-label={`Vas por la ${fmtPosition(mine)}`}>
+    <li key="here" className="flex items-center gap-3 py-1 text-[13.5px] font-semibold tracking-[0.14em] uppercase" aria-label={`Vas por la ${fmtPosition(mine)}`}>
       <span className="h-px flex-1 bg-rule" />
-      <span className="h-3 w-[7px] rounded-[1px]" style={{ background: 'var(--me)' }} aria-hidden />
+      <Wax who="me" />
       <span className="quiet">Tú, {fmtPosition(mine)}</span>
       <span className="h-px flex-1 bg-rule" />
     </li>
@@ -187,8 +188,9 @@ export function BookSlips({ view }: { view: BookView }) {
 
 function Sealed({ children }: { children: React.ReactNode }) {
   return (
-    <p className="slip slip-folded !py-3 text-[16px]">
+    <p className="slip slip-folded flex items-center gap-2 !py-3 text-[16px]">
       <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] rounded-l-[3px]" style={{ background: 'var(--you)' }} />
+      <Wax who="you" />
       {children}
     </p>
   )
