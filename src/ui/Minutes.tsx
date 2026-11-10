@@ -46,12 +46,10 @@ export function MinutesField({ value, onChange, min = 1, max = 600 }: Props) {
       onPointerLeave={stop}
       onPointerCancel={stop}
       onContextMenu={(event) => event.preventDefault()}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          setTyping(null)
-          nudge(direction)
-        }
+      onClick={(event) => {
+        if (event.detail !== 0) return
+        setTyping(null)
+        nudge(direction)
       }}
     >
       {icon}

@@ -22,7 +22,7 @@ export function BookSlips({ view }: { view: BookView }) {
   const envelope = useMemo(() => envelopeOf(db, book.id, me.id), [db, book.id, me.id])
   const name = partner?.name ?? 'Tu pareja'
 
-  const paper = (slip: Slip, label?: string, foldedLine?: string) => {
+  const paper = (slip: Slip, label?: string) => {
     const own = slip.user_id === me.id
     return (
       <SlipPaper
@@ -35,7 +35,6 @@ export function BookSlips({ view }: { view: BookView }) {
         place={slipPlace(slip, mine ?? (own ? undefined : theirs))}
         label={label}
         letter={slip.kind === 'carta' || slip.kind === 'prediccion'}
-        foldedLine={foldedLine}
         onOpen={() => openSlip(slip)}
         onLove={(loved) => openSlip(slip, loved)}
         onEdit={() => setWriting({ what: slip.kind === 'cita' || slip.kind === 'nota' ? 'papel' : slip.kind, editing: slip })}

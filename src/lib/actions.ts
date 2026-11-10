@@ -39,6 +39,12 @@ export function snuffCandle() {
   patch('profiles', getMe(), { candle_lit_at: null })
 }
 
+/** A bookmark leaving the nightstand must not leave its candle burning. */
+function snuffForReading(reading: Reading) {
+  const me = getDb().profiles[getMe()]
+  if (me?.candle_reading_id === reading.id && me.candle_lit_at) snuffCandle()
+}
+
 export interface Evening {
   reading: Reading
   /** Where the bookmark ends up. */
@@ -162,13 +168,29 @@ export function editBook(book: Book, changes: Partial<Pick<Book, 'title' | 'auth
   patch('books', book.id, changes)
 }
 
+/** What removeBook took away, so «Deshacer» can put exactly that back. */
+export interface RemovedBook {
+  book: Book
+  readings: Reading[]
+}
+
 /** Takes a book off the shelf for both, with every bookmark of mine in it. */
-export function removeBook(book: Book) {
+export function removeBook(book: Book): RemovedBook {
   const stamp = nowIso()
-  for (const reading of Object.values(getDb().readings)) {
-    if (reading.book_id === book.id && reading.user_id === getMe()) patch('readings', reading.id, { deleted_at: stamp })
+  const readings = Object.values(getDb().readings).filter(
+    (reading) => reading.book_id === book.id && reading.user_id === getMe() && !reading.deleted_at,
+  )
+  for (const reading of readings) {
+    snuffForReading(reading)
+    patch('readings', reading.id, { deleted_at: stamp })
   }
   patch('books', book.id, { deleted_at: stamp })
+  return { book, readings }
+}
+
+export function restoreBook({ book, readings }: RemovedBook) {
+  save('books', { ...(getDb().books[book.id] ?? book), deleted_at: null })
+  for (const reading of readings) restoreBookmark(reading)
 }
 
 // ── Bookmarks ──
@@ -245,6 +267,7 @@ export function resizeReading(reading: Reading, unit: Unit, total: number) {
 
 /** Closes the book: it goes to the shelf. */
 export function finishReading(reading: Reading, rating: number | null) {
+  snuffForReading(reading)
   patch('readings', reading.id, {
     status: 'terminado',
     position: reading.total,
@@ -260,16 +283,22 @@ export function rateReading(reading: Reading, rating: number | null) {
 
 export function dropReading(reading: Reading) {
   patch('readings', reading.id, { status: 'dejado' })
-  const me = getDb().profiles[getMe()]
-  if (me?.candle_reading_id === reading.id && me.candle_lit_at) snuffCandle()
+  snuffForReading(reading)
 }
 
 export function shelveForLater(reading: Reading) {
+  snuffForReading(reading)
   patch('readings', reading.id, { status: 'pendiente' })
 }
 
 export function removeBookmark(reading: Reading) {
+  snuffForReading(reading)
   patch('readings', reading.id, { deleted_at: nowIso() })
+  return reading
+}
+
+export function restoreBookmark(reading: Reading) {
+  save('readings', { ...(getDb().readings[reading.id] ?? reading), deleted_at: null })
 }
 
 // ── Slips ──
@@ -325,5 +354,5 @@ export function openSlip(slip: Slip, loved: boolean | null = null) {
 }
 
 export function restoreSession(session: Session) {
-  patch('sessions', session.id, { deleted_at: null })
+  save('sessions', { ...(getDb().sessions[session.id] ?? session), deleted_at: null })
 }

@@ -26,7 +26,7 @@ export function Welcome() {
       <div className="rise mt-8 flex flex-col gap-6" style={{ '--i': 3 } as React.CSSProperties}>
         <div>
           <label className="label" htmlFor="name">
-            ¿Cómo te llama?
+            ¿Cómo te llamas?
           </label>
           <input
             id="name"

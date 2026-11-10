@@ -34,7 +34,8 @@ export interface SyncStatus {
 }
 
 const fresh = (): Local => ({ v: 1, db: emptyDb(), dirty: [], calls: [], cursors: {} })
-const storageKey = (userId: string) => `gb:${userId}`
+/** Where a person's copy of everything lives on this device. */
+export const storageKey = (userId: string) => `gb:${userId}`
 
 let remote: Remote | null = null
 let me = ''
@@ -263,7 +264,9 @@ export async function openStore(server: Remote, userId: string, onProblem: (mess
   document.addEventListener('visibilitychange', wake)
   window.addEventListener('pagehide', saveNow)
   heartbeat = setInterval(wake, 60_000)
-  await sync()
+  // Returning readers can open their local room even while the network is unreachable.
+  if (local.db.profiles[userId]) void sync()
+  else await sync()
 }
 
 export function closeStore({ wipe = false } = {}) {

@@ -2,15 +2,15 @@
 --
 -- 1. Crea los dos usuarios en Authentication → Users → Add user (marca «Auto Confirm User»).
 -- 2. Ejecuta antes supabase/migrations/0001_greenbook.sql.
--- 3. Cambia abajo los dos emails y los dos nombres, y ejecuta esto en el SQL Editor.
+-- 3. Comprueba abajo los dos emails y los dos nombres, y ejecuta esto en el SQL Editor.
 --
 -- Si venís del Greenbook anterior no hace falta: la migración conserva vuestros perfiles.
 
 do $$
 declare
-  a_email text := 'ella@example.com';   -- ✏️
-  a_name  text := 'Laura';              -- ✏️
-  b_email text := 'el@example.com';     -- ✏️
+  a_email text := 'lauritaguardia.jimenez@gmail.com';
+  a_name  text := 'Laura';
+  b_email text := 'javiermartinezmegiass@gmail.com';
   b_name  text := 'Javier';             -- ✏️
   a uuid;
   b uuid;

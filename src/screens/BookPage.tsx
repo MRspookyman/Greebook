@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   dropReading, editBook, markNext, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
-  removeBookmark, removeSession, resizeReading, restoreSession, saveEvening, shelveForLater,
+  removeBookmark, removeSession, resizeReading, restoreBook, restoreBookmark, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
 import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
@@ -17,6 +17,8 @@ import { MinutesField } from '@/ui/Minutes'
 import { Stars } from '@/ui/Stars'
 import { toast } from '@/ui/toast'
 import { PersonRow, Wax } from '@/ui/Who'
+import { PlaceField } from '@/ui/PlaceField'
+import { useBack } from '@/ui/useBack'
 import { BookSlips } from './BookSlips'
 
 type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove'
@@ -28,6 +30,7 @@ export function BookPage() {
   const { db, me, partner } = usePeople()
   const now = useNow()
   const navigate = useNavigate()
+  const back = useBack()
   const [open, setOpen] = useState<Open>(params.has('cerrar') ? 'finish' : params.has('unirme') ? 'place' : null)
   const [fixing, setFixing] = useState<Session | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -64,7 +67,7 @@ export function BookPage() {
   return (
     <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-32" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
       <div className="flex items-center justify-between">
-        <button className="icon-btn -ml-2" aria-label="Volver a la habitación" onClick={() => navigate(-1)}>
+        <button className="icon-btn -ml-2" aria-label="Volver" onClick={back}>
           <Back />
         </button>
         <button className="icon-btn -mr-2" aria-label="Más opciones" onClick={() => setOpen('more')}>
@@ -100,7 +103,7 @@ export function BookPage() {
             <button className="btn btn-soft" onClick={() => setOpen('log')}>
               Apuntar por dónde voy
             </button>
-            <button className="btn btn-text self-center" onClick={() => setOpen('finish')}>
+            <button className="btn btn-text self-center" onClick={() => { finishReading(mine, mine.rating); setOpen('finish') }}>
               Lo he terminado
             </button>
           </>
@@ -228,7 +231,7 @@ export function BookPage() {
               </Option>
             ))}
           {mine?.status === 'terminado' && <Option onClick={() => { openBook(mine); close() }}>Volver a leerlo</Option>}
-          <Option danger onClick={() => setOpen('remove')}>Quitarlo de mi lado…</Option>
+          <Option danger onClick={() => setOpen('remove')}>Quitarlo…</Option>
         </div>
       </Sheet>
 
@@ -238,7 +241,8 @@ export function BookPage() {
             <button
               className="btn btn-line"
               onClick={() => {
-                removeBookmark(mine)
+                const removed = removeBookmark(mine)
+                toast('Marcapáginas quitado', { label: 'Deshacer', run: () => restoreBookmark(removed) })
                 close()
                 if (!theirs) navigate('/', { replace: true })
               }}
@@ -249,7 +253,8 @@ export function BookPage() {
           <button
             className="btn btn-line btn-danger"
             onClick={() => {
-              removeBook(book)
+              const removed = removeBook(book)
+              toast('Libro quitado', { label: 'Deshacer', run: () => restoreBook(removed) })
               navigate('/', { replace: true })
             }}
           >
@@ -264,7 +269,7 @@ export function BookPage() {
       </Sheet>
 
       <Sheet open={open === 'edit'} onClose={close} title="Corregir el libro">
-        {open === 'edit' && <Edit book={book} onDone={close} />}
+        {open === 'edit' && <Edit book={book} reading={mine} onDone={close} />}
       </Sheet>
 
       <Sheet open={open === 'size'} onClose={close} title="¿Cómo lo cuentas?">
@@ -345,7 +350,7 @@ function Evening({ session, own, name, unit, onFix }: EveningProps) {
 function FixEvening({ session, reading, onDone }: { session: Session; reading: Reading; onDone: () => void }) {
   const [position, setPosition] = useState(session.to_pos)
   const [minutes, setMinutes] = useState(session.minutes ?? 0)
-  const [place, setPlace] = useState(session.place ?? '')
+  const [place, setPlace] = useState<string | null>(session.place)
   const percent = reading.unit === 'porcentaje'
   return (
     <div className="flex flex-col gap-6 pt-2">
@@ -361,12 +366,7 @@ function FixEvening({ session, reading, onDone }: { session: Session; reading: R
         <span className="quiet pt-2.5">Leíste</span>
         <MinutesField value={minutes} onChange={setMinutes} min={0} />
       </div>
-      <div>
-        <label className="label" htmlFor="fix-place">
-          ¿Dónde? <span className="text-[15px]">(si quieres)</span>
-        </label>
-        <input id="fix-place" className="field" maxLength={40} placeholder="en la cama, en el tren…" value={place} onChange={(event) => setPlace(event.currentTarget.value)} />
-      </div>
+      <PlaceField value={place} onChange={setPlace} />
       <button
         className="btn btn-primary"
         onClick={() => {
@@ -396,7 +396,7 @@ function Option({ children, onClick, danger }: { children: React.ReactNode; onCl
 /** Moving the bookmark without the candle: for when you read away from the phone. */
 function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean) => void }) {
   const [position, setPosition] = useState(reading.position)
-  const [minutes, setMinutes] = useState('')
+  const [minutes, setMinutes] = useState(0)
   const percent = reading.unit === 'porcentaje'
   return (
     <div className="flex flex-col gap-6 pt-2">
@@ -407,23 +407,16 @@ function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean
         label={percent ? 'Porcentaje del libro' : 'Página'}
         suffix={percent ? '% del libro' : `de ${reading.total} páginas`}
       />
-      <div>
-        <label className="label" htmlFor="log-minutes">
-          ¿Cuánto rato, más o menos? <span className="text-[15px]">(minutos, si quieres)</span>
-        </label>
-        <input
-          id="log-minutes"
-          className="field"
-          inputMode="numeric"
-          value={minutes}
-          onChange={(event) => setMinutes(event.currentTarget.value.replace(/\D/g, '').slice(0, 3))}
-        />
+      <div className="flex flex-col gap-2">
+        <p className="quiet">¿Cuánto rato? <span className="text-[15px]">(si quieres; 0 para no apuntarlo)</span></p>
+        <MinutesField value={minutes} onChange={setMinutes} min={0} />
       </div>
       <button
         className="btn btn-primary"
         disabled={position === reading.position && !minutes}
         onClick={() => {
-          saveEvening({ reading, position, minutes: minutes ? Number(minutes) : null, place: null, startedAt: null })
+          saveEvening({ reading, position, minutes: minutes || null, place: null, startedAt: null })
+          if (position >= reading.total) finishReading(reading, reading.rating)
           onDone(position >= reading.total)
         }}
       >
@@ -441,7 +434,7 @@ interface FinishProps {
   onDone: () => void
 }
 
-/** The last page: the book goes to the shelf, and a letter, if you want, into its envelope. */
+/** Finishing is already saved; the sheet only adds an optional rating and letter. */
 function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
   const { db, me } = usePeople()
   const [rating, setRating] = useState<number | null>(reading.rating)
@@ -452,7 +445,7 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
   const theirOpen = theirs?.status === 'leyendo' || theirs?.status === 'pendiente'
   return (
     <div className="flex flex-col gap-6">
-      <p className="quiet">La última página. El libro pasa a la estantería con tu cinta.</p>
+      <p className="quiet">La última página. El libro ya está en la estantería con tu cinta.</p>
       <div>
         <p className="label">¿Cuánto te ha gustado? <span className="text-[15px]">(si quieres)</span></p>
         <Stars value={rating} onChange={setRating} />
@@ -464,7 +457,7 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
           </p>
           <div className="slip">
             <textarea
-              className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45"
+              className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-70"
               maxLength={4000}
               placeholder="Lo que te ha dejado este libro…"
               aria-label="Tu carta"
@@ -484,18 +477,18 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
       <button
         className="btn btn-primary"
         onClick={() => {
-          finishReading(reading, rating)
+          rateReading(reading, rating)
           if (letter.trim()) leaveSlip({ book, kind: 'carta', page: null, body: letter })
           onDone()
         }}
       >
-        Llevarlo a la estantería
+        Guardar
       </button>
     </div>
   )
 }
 
-function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
+function Edit({ book, reading, onDone }: { book: Book; reading?: Reading; onDone: () => void }) {
   const [title, setTitle] = useState(book.title)
   const [author, setAuthor] = useState(book.author)
   const [pages, setPages] = useState(book.pages ? String(book.pages) : '')
@@ -503,6 +496,9 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
     event.preventDefault()
     if (!title.trim()) return
     editBook(book, { title: title.trim(), author: author.trim(), pages: Number(pages) > 0 ? Number(pages) : null })
+    if (reading?.unit === 'paginas' && Number(pages) > 0 && Number(pages) !== reading.total) {
+      resizeReading(reading, 'paginas', Number(pages))
+    }
     onDone()
   }
   return (
@@ -518,6 +514,7 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
       <div>
         <label className="label" htmlFor="edit-pages">Páginas</label>
         <input id="edit-pages" className="field" inputMode="numeric" value={pages} onChange={(e) => setPages(e.currentTarget.value.replace(/\D/g, '').slice(0, 5))} />
+        {reading?.unit === 'paginas' && <p className="quiet mt-2 text-[15px]">También ajusta tu edición. Tu marcapáginas conserva el mismo punto del libro.</p>}
       </div>
       <button className="btn btn-primary mt-2" disabled={!title.trim()}>Guardar</button>
     </form>

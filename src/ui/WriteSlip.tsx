@@ -36,6 +36,7 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
   const total = mine?.total ?? book.pages ?? 0
   const number = Number(page)
   const placed = paper && !loose && page !== '' && number >= 0 && (!total || number <= total)
+  const invalidPage = paper && !editing && !loose && page !== '' && total > 0 && number > total
   const name = partner?.name ?? 'Tu pareja'
 
   let fate = ''
@@ -54,6 +55,7 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
   }
 
   const save = () => {
+    if (invalidPage) return
     if (editing) editSlip(editing, body)
     else leaveSlip({ book, kind, page: placed ? number : null, body })
     onDone()
@@ -74,7 +76,7 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
 
       <div className="slip">
         <textarea
-          className={`block min-h-[140px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45 ${kind === 'cita' ? 'text-[19px] italic' : 'hand'}`}
+          className={`block min-h-[140px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-70 ${kind === 'cita' ? 'text-[19px] italic' : 'hand'}`}
           autoFocus
           maxLength={4000}
           placeholder={HINTS[kind]}
@@ -93,6 +95,8 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
               inputMode="numeric"
               disabled={loose}
               aria-label={percent ? 'Porcentaje' : 'Página'}
+              aria-invalid={invalidPage}
+              aria-describedby={invalidPage ? 'slip-page-error' : undefined}
               value={page}
               onChange={(event) => setPage(event.currentTarget.value.replace(/\D/g, '').slice(0, 5))}
             />
@@ -103,10 +107,11 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
           </button>
         </div>
       )}
+      {invalidPage && <p id="slip-page-error" className="text-danger text-[15.5px]" role="status">{percent ? 'El porcentaje máximo es 100 %' : `Tu edición tiene ${total} páginas`}</p>}
 
-      {fate && <p className="quiet -mt-1 text-[15.5px]">{fate}</p>}
+      {fate && !invalidPage && <p className="quiet -mt-1 text-[15.5px]">{fate}</p>}
 
-      <button className="btn btn-primary" disabled={!body.trim()} onClick={save}>
+      <button className="btn btn-primary" disabled={!body.trim() || invalidPage} onClick={save}>
         {editing ? 'Guardar' : paper ? 'Dejarlo en el libro' : 'Meterlo en el sobre'}
       </button>
 

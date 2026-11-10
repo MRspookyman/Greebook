@@ -8,7 +8,7 @@ import {
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { waitingFor, slipPlace, type Waiting } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
-import { fmtSince, fmtToday, nightOf } from '@/lib/time'
+import { capital, fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
 import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
@@ -19,8 +19,6 @@ import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { toast } from '@/ui/toast'
 import { useHold } from '@/ui/useHold'
 import { PersonRow, Wax, type Person } from '@/ui/Who'
-
-const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 /** The whole app is this room: the sill with your two candles, the nightstand, and the shelf below. */
 export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' }) {
@@ -127,6 +125,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
       {section === 'velas' && (
       <>
+      <h1 className="sr-only">Velas</h1>
       {/* ── La repisa ── */}
       <section className="relative mt-1" aria-label="La repisa">
         <div className="flex items-end justify-center gap-9">
@@ -195,9 +194,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {/* ── La mesilla ── */}
       {section === 'mesilla' && (
       <section className="mt-4" aria-labelledby="mesilla">
-        <h2 id="mesilla" className="title mb-5">
+        <h1 id="mesilla" className="title mb-5">
           La mesilla
-        </h2>
+        </h1>
         {stand.length ? (
           <div className="flex flex-col gap-7">
             {(
@@ -255,16 +254,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {section === 'estanteria' && (
       <section className="mt-4" aria-labelledby="estanteria">
         <div className="mb-1 flex items-center justify-between">
-          <h2 id="estanteria" className="title">
+          <h1 id="estanteria" className="title">
             La estantería
-          </h2>
-          <Link to="/anadir" className="icon-btn -mr-2 bg-ink/10" aria-label="Añadir un libro">
-            <Plus />
-          </Link>
+          </h1>
         </div>
 
         {partner && (allPending.length > 0 || allYears.length > 0) && (
-          <div role="group" aria-label="De quién son las cintas. Toca para ver solo esos libros" className="mt-3 flex flex-wrap gap-2">
+          <div role="group" aria-label="De quién son las cintas. Toca para ver solo esos libros" className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1">
             {(
               [
                 ['todos', 'Todos', []],
@@ -273,7 +269,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 ['tu', partner.name, ['you']],
               ] as Array<[Whose, string, Person[]]>
             ).map(([value, label, wax]) => (
-              <button key={value} type="button" className="chip gap-2" aria-pressed={whose === value} onClick={() => setWhose(value)}>
+              <button key={value} type="button" className="chip shrink-0 gap-2 whitespace-nowrap" aria-pressed={whose === value} onClick={() => setWhose(value)}>
                 {wax.length > 0 && (
                   <span className="flex items-center -space-x-1">
                     {wax.map((who) => (
@@ -374,10 +370,11 @@ interface MyCandleProps {
 /** Your candle: hold a finger on it to light it; once lit, a tap takes you back to your evening. */
 function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps) {
   const hold = useHold(onLight)
+  const [hint, setHint] = useState(false)
   const release = () => {
     if (!hold.cancel()) return
     // Without a book there is nothing to light for: `onLight` says so.
-    if (ready) toast('Mantén el dedo un momento sobre la vela')
+    if (ready) setHint(true)
     else onLight()
   }
   return (
@@ -388,6 +385,7 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
       aria-label={lit ? 'Tu vela está encendida. Volver a tu velada' : 'Tu vela. Mantén pulsado para encenderla'}
       onPointerDown={(event) => {
         if (lit || event.button !== 0) return
+        setHint(false)
         event.currentTarget.setPointerCapture(event.pointerId)
         hold.start()
       }}
@@ -401,6 +399,7 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
       }}
     >
       <Candle color={me.color} lit={lit} wax={lit ? waxLeft(me.candle_lit_at, now) : 1} lean={lean} igniting={hold.progress} />
+      {hint && !lit && <span role="status" className="pointer-events-none absolute inset-x-[-34px] bottom-2 rounded-xl bg-surface px-3 py-2 text-center text-[15px] leading-snug text-ink shadow-sm">Mantén el dedo sobre la mecha hasta que prenda.</span>}
     </button>
   )
 }

@@ -241,7 +241,7 @@ button {
   color: var(--ink);
 }
 .field::placeholder {
-  color: color-mix(in oklab, var(--muted) 75%, transparent);
+  color: var(--muted);
 }
 .field:focus {
   outline: none;
@@ -258,7 +258,7 @@ input[type='search']::-webkit-search-cancel-button {
 }
 .chip {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   border-radius: 999px;
   border: 1.5px solid var(--rule);
@@ -312,47 +312,58 @@ input[type='search']::-webkit-search-cancel-button {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.flame {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: gb-flicker 2.7s ease-in-out infinite;
-}
+.flame,
 .flame-core {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: gb-flicker 1.9s ease-in-out infinite reverse;
+}
+.flame {
+  animation: gb-flicker 2.7s ease-in-out infinite;
+}
+.flame-core {
+  animation: gb-core 1.7s ease-in-out -0.6s infinite;
+}
+.flame-lean,
+.flame-wrap {
+  transform-origin: 0 0;
 }
 .flame-lean {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
   transition: transform 900ms var(--ease);
 }
 .flame-wrap {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: gb-catch 700ms var(--spring) both;
+  animation: gb-catch 600ms var(--ease) both;
 }
 .flame-wrap.tremble {
   animation: gb-tremble 900ms ease-in-out both;
 }
-.glow {
+.glow,
+.candle-flame-halo {
   transform-box: fill-box;
   transform-origin: center;
-  animation: gb-glow 3.6s ease-in-out infinite alternate;
+  animation: gb-glow 2.7s ease-in-out infinite;
+}
+.candle-reflection {
+  animation: gb-light 2.7s ease-in-out infinite;
 }
 .smoke {
+  opacity: 0;
   transform-box: fill-box;
   transform-origin: 50% 100%;
   animation: gb-smoke 2.2s ease-out both;
 }
 @keyframes gb-flicker {
-  0%, 100% { transform: scale(1, 1) rotate(-1.2deg); }
-  22% { transform: scale(0.96, 1.06) rotate(1.4deg); }
-  47% { transform: scale(1.03, 0.96) rotate(-0.6deg); }
-  71% { transform: scale(0.97, 1.04) rotate(1deg); }
+  0%, 100% { transform: scale(1, 1) skewX(-1deg); }
+  22% { transform: scale(0.94, 1.06) skewX(3deg); }
+  47% { transform: scale(1.04, 0.97) skewX(-2deg); }
+  71% { transform: scale(0.98, 1.03) skewX(1deg); }
+}
+@keyframes gb-core {
+  0%, 100% { transform: scale(1, 1); opacity: 0.94; }
+  38% { transform: scale(0.88, 1.06) skewX(2deg); opacity: 1; }
+  72% { transform: scale(1.05, 0.95) skewX(-3deg); opacity: 0.86; }
 }
 @keyframes gb-catch {
-  from { transform: scale(0.1); opacity: 0; }
+  from { transform: scale(0.72, 0.5); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 @keyframes gb-tremble {
@@ -363,13 +374,22 @@ input[type='search']::-webkit-search-cancel-button {
   75% { transform: scale(1.04, 0.96) rotate(3deg); }
 }
 @keyframes gb-glow {
-  from { opacity: 0.75; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1.05); }
+  0%, 100% { opacity: 0.86; transform: scale(1); }
+  22% { opacity: 1; transform: scale(1.035); }
+  47% { opacity: 0.78; transform: scale(0.97); }
+  71% { opacity: 0.94; transform: scale(1.02); }
+}
+@keyframes gb-light {
+  0%, 100% { opacity: 0.78; }
+  22% { opacity: 0.92; }
+  47% { opacity: 0.68; }
+  71% { opacity: 0.85; }
 }
 @keyframes gb-smoke {
-  0% { opacity: 0; transform: translateY(0) scaleX(0.6); }
-  15% { opacity: 0.55; }
-  100% { opacity: 0; transform: translateY(-46px) scaleX(1.7); }
+  0% { opacity: 0; transform: translate(0, 0) scaleX(0.7); }
+  12% { opacity: 0.65; }
+  45% { opacity: 0.4; transform: translate(3px, -12px) scaleX(1); }
+  100% { opacity: 0; transform: translate(-5px, -38px) scaleX(1.45); }
 }
 
 /* ── Movement ── */

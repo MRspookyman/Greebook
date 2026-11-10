@@ -34,6 +34,7 @@ export function Sheet({ open, onClose, title, label, night = false, children }: 
   const [mounted, setMounted] = useState(open)
   const [entered, setEntered] = useState(false)
   const [drag, setDrag] = useState<number | null>(null)
+  const [viewport, setViewport] = useState<{ bottom: number; height: number } | null>(null)
   const layer = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const start = useRef<{ y: number; t: number; pointer: number } | null>(null)
@@ -65,7 +66,7 @@ export function Sheet({ open, onClose, title, label, night = false, children }: 
     layers.push(element)
     document.body.style.overflow = 'hidden'
     syncLayers()
-    panel.current?.focus({ preventScroll: true })
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus({ preventScroll: true })
     const onKey = (event: KeyboardEvent) => {
       if (layers.at(-1) !== element) return
       if (event.key === 'Escape') {
@@ -97,6 +98,39 @@ export function Sheet({ open, onClose, title, label, night = false, children }: 
       syncLayers()
       if (!layers.length) document.body.style.overflow = overflow
       if (trigger?.isConnected) trigger.focus({ preventScroll: true })
+    }
+  }, [mounted])
+
+  useLayoutEffect(() => {
+    if (!mounted) return
+    const visual = window.visualViewport
+    const pending = { frame: 0 }
+    const reveal = () => {
+      cancelAnimationFrame(pending.frame)
+      pending.frame = requestAnimationFrame(() => {
+        const focused = document.activeElement
+        if (focused instanceof HTMLElement && panel.current?.contains(focused) && focused.matches('input, textarea, select, [contenteditable="true"]')) {
+          focused.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        }
+      })
+    }
+    const update = () => {
+      setViewport(visual ? {
+        bottom: Math.max(0, window.innerHeight - visual.height - visual.offsetTop),
+        height: visual.height,
+      } : null)
+      reveal()
+    }
+    update()
+    visual?.addEventListener('resize', update)
+    visual?.addEventListener('scroll', update)
+    panel.current?.addEventListener('focusin', reveal)
+    const element = panel.current
+    return () => {
+      cancelAnimationFrame(pending.frame)
+      visual?.removeEventListener('resize', update)
+      visual?.removeEventListener('scroll', update)
+      element?.removeEventListener('focusin', reveal)
     }
   }, [mounted])
 
@@ -141,6 +175,8 @@ export function Sheet({ open, onClose, title, label, night = false, children }: 
         tabIndex={-1}
         className="relative mx-auto flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-[30px] bg-surface text-ink shadow-[0_-18px_50px_-18px_rgb(0_0_0/0.5)] outline-none"
         style={{
+          bottom: viewport?.bottom ?? 0,
+          maxHeight: viewport ? `${viewport.height * 0.92}px` : '92dvh',
           transform: drag !== null && open ? `translateY(${drag}px)` : shown ? 'none' : 'translateY(104%)',
           transition: drag !== null && open ? 'none' : `transform ${shown ? 320 : EXIT_MS}ms var(--ease)`,
         }}

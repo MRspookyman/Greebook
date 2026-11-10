@@ -24,9 +24,10 @@ export function Nav() {
     >
       <span className="relative">
         {icon}
-        {badge && <span aria-label="Hay algo esperándote" className="absolute -top-0.5 -right-1.5 h-2.5 w-2.5 rounded-full bg-flame" />}
+        {badge && <span aria-hidden="true" className="absolute -top-0.5 -right-1.5 h-2.5 w-2.5 rounded-full bg-flame" />}
       </span>
       {label}
+      {badge && <span className="sr-only">, hay algo esperándote</span>}
     </NavLink>
   )
 

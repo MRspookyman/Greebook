@@ -89,3 +89,7 @@ A mano, desde el portátil: `npm run build && npx wrangler deploy`.
 - `npm run test:sql` · levanta un Postgres temporal y comprueba que una tercera cuenta no ve nada y que un
   papel doblado no suelta su texto. Necesita Postgres instalado en la máquina; no toca Supabase.
 - `npm run lint` · `npm run build`.
+
+**Datos de prueba** (solo en un proyecto de pruebas, nunca en el de verdad: borra todo lo que haya):
+`supabase/demo.sql` (ya lleva los emails de Laura y Javier). Pégalo en el SQL Editor y ejecútalo; después, en cada móvil,
+avatar → Salir y volver a entrar. La cabecera del archivo dice qué caso de la app prueba cada libro.

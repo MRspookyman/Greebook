@@ -45,11 +45,8 @@ export function NumberDial({ value, onChange, min = 0, max, suffix, label }: Pro
       onPointerLeave={stop}
       onPointerCancel={stop}
       onContextMenu={(event) => event.preventDefault()}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          onChange(clamp(value + step))
-        }
+      onClick={(event) => {
+        if (event.detail === 0) onChange(clamp(value + step))
       }}
     >
       {icon}
