@@ -8,6 +8,7 @@ import { BookPage } from '@/features/book/BookPage'
 import { StatsPage } from '@/features/stats/StatsPage'
 import { UsPage } from '@/features/us/UsPage'
 import { RachaPage } from '@/features/us/RachaPage'
+import { DiaryPage } from '@/features/diary/DiaryPage'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { WelcomePage } from '@/features/onboarding/WelcomePage'
 import { SessionPage } from '@/features/session/SessionPage'
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: 'stats', element: <StatsPage /> },
       { path: 'nosotros', element: <UsPage /> },
       { path: 'nosotros/racha', element: <RachaPage /> },
+      { path: 'nosotros/diario', element: <DiaryPage /> },
       { path: 'citas', element: <CitasPage /> },
       { path: 'perfil', element: <ProfilePage /> },
       { path: '*', element: <Navigate to="/" replace /> },

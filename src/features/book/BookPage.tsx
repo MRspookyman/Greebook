@@ -2,15 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
-import { differenceInCalendarDays } from 'date-fns'
 import { ArrowLeft, BookCheck, ChevronDown, MoreHorizontal, Pencil, Play, Plus } from 'lucide-react'
 import { useMe } from '@/features/auth/me'
 import { qk, useQuotes, useReadings, useSessions } from '@/lib/data'
 import { queryClient } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
 import type { Reading, ReadingWithBook, Session } from '@/lib/types'
-import { fmt, fromISODate, todayISO } from '@/lib/dates'
-import { atLastPage, formatDays, formatFinished, formatLabel, formatMinutes, formatUnitValue, percentOf, progressFraction } from '@/lib/units'
+import { fmt, todayISO } from '@/lib/dates'
+import { atLastPage, formatFinished, formatLabel, formatMinutes, formatUnitValue, percentOf, progressFraction } from '@/lib/units'
 import { timeOnly } from '@/lib/sessionRules'
 import { readingPace } from './readingPace'
 import { BottomSheet } from '@/components/BottomSheet'
@@ -27,6 +26,7 @@ import { offlineDb } from '@/lib/offline/db'
 import { ReadingEditor } from './ReadingEditor'
 import { SessionEditor } from './SessionEditor'
 import { BookTogether } from './BookTogether'
+import { BookKeepsake } from '@/features/diary/BookKeepsake'
 import { PartnerReadingBanner } from './PartnerReadingBanner'
 import { ReadingOptionsSheet } from './ReadingOptionsSheet'
 import { AbandonSheet } from './AbandonSheet'
@@ -321,19 +321,7 @@ function BookDetail({ reading }: { reading: ReadingWithBook }) {
         </div>
       </div>
       {reading.status === 'finished' ? (
-        // The finish date is already in the header; summarize how long it took.
-        (reading.started_on && reading.finished_on && reading.finished_precision === 'day') || minutes > 0 ? (
-          <section className="rule pt-4 text-sm text-muted" aria-label="Resumen de lectura">
-            {[
-              reading.started_on && reading.finished_on && reading.finished_precision === 'day'
-                ? `Leído en ${formatDays(differenceInCalendarDays(fromISODate(reading.finished_on), fromISODate(reading.started_on)) + 1)}`
-                : null,
-              minutes > 0 ? `${formatMinutes(minutes)} de lectura` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </section>
-        ) : null
+        <BookKeepsake reading={reading} />
       ) : (
         <section className="space-y-4" aria-label="Progreso de lectura">
           <div className="flex flex-wrap items-baseline justify-between gap-2">

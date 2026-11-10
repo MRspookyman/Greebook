@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookHeart, ChevronRight, Share2 } from 'lucide-react'
+import { BookHeart, Share2 } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { toast } from '@/components/toast'
 import { useMe } from '@/features/auth/me'
@@ -14,22 +14,12 @@ export function YearInBooks({ summary, names }: { summary: YearSummary; names: s
   const title = `Vuestro ${summary.year} en libros`
   return (
     <>
-      <button type="button" className="card flex min-h-[84px] w-full items-center gap-4 text-left" onClick={() => setOpen(true)}>
-        <span
-          className="grid h-[50px] w-[72px] flex-none place-items-center rounded-md bg-[color-mix(in_oklab,var(--rose)_18%,var(--surface))] text-rose"
-          aria-hidden
-        >
-          <BookHeart size={26} />
+      <button type="button" className="card pressable grid min-h-[104px] content-start justify-items-start gap-1.5 p-3.5 text-left" onClick={() => setOpen(true)}>
+        <BookHeart size={22} className="text-rose" aria-hidden />
+        <b className="text-[14.5px] leading-tight font-extrabold">Vuestro {summary.year}</b>
+        <span className="text-xs leading-snug text-muted">
+          {summary.books} {summary.books === 1 ? 'libro' : 'libros'} · {summary.bothDays} días juntos
         </span>
-        <span className="grid flex-1 gap-0.5">
-          <b className="font-extrabold">{title}</b>
-          <span className="text-[13.5px] text-muted">
-            {summary.partial ? 'De momento: ' : ''}
-            {summary.books} {summary.books === 1 ? 'libro' : 'libros'} y {summary.bothDays}{' '}
-            {summary.bothDays === 1 ? 'día' : 'días'} leyendo los dos
-          </span>
-        </span>
-        <ChevronRight size={20} aria-hidden />
       </button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={summary.partial ? `${title}, de momento` : title}>
         <article className="space-y-5 pb-2">

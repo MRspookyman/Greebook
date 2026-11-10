@@ -27,6 +27,7 @@ import { WeekStamps } from './WeekStamps'
 import { PartnerPace, ProgressLine } from '@/features/book/PaceEstimate'
 import { FinishSheet } from '@/features/session/FinishSheet'
 import { finishDay } from '@/features/session/finishDay'
+import { yearAgo } from '@/features/diary/diary'
 
 /** What waits for you in Nosotros, said plainly: a proposal to answer or a shared book without a start date. */
 function pendingLine(items: TogetherItemWithBook[], name: string): string {
@@ -97,6 +98,7 @@ export function TodayPage() {
         )[0]
       : undefined
   const name = partner?.display_name ?? 'tu pareja'
+  const memory = yearAgo([...(readings.data ?? []), ...(partnerReadings.data ?? [])], today, userId)
 
   const todayLine = !partner ? (
     mine.has(today) ? (
@@ -312,6 +314,23 @@ export function TodayPage() {
         </section>
       )}
 
+      {memory && (
+        <Link
+          to={`/libro/${memory.reading.id}`}
+          className="card pressable enter flex min-h-16 items-center gap-3.5"
+          style={{ '--i': 5 } as CSSProperties}
+        >
+          <Cover book={memory.reading.book} width={44} />
+          <span className="grid min-w-0 flex-1 gap-0.5">
+            <span className="eyebrow">{memory.years === 1 ? 'Hace un año' : `Hace ${memory.years} años`}</span>
+            <span className="text-sm">
+              {memory.reading.user_id === userId ? (memory.finishedThen ? 'Terminabas' : 'Leías') : `${name} ${memory.finishedThen ? 'terminaba' : 'leía'}`}{' '}
+              <b className="font-extrabold">«{memory.reading.book.title}»</b>
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
+        </Link>
+      )}
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
         <span>
           <b className="font-extrabold text-ink">

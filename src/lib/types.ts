@@ -81,6 +81,8 @@ export interface Session {
   started_at?: string | null
   /** Set when this session was read at the same time as the partner's (`read_together`). */
   together_id?: string | null
+  /** Where it was read (0020); optional, and absent in sessions saved before. */
+  place?: string | null
 }
 
 /** Private diary note/quote of one reading (only its author sees it). */

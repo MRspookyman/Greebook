@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { ChevronRight, Lamp, Mail } from 'lucide-react'
+import { Lamp, Mail, ScrollText } from 'lucide-react'
 import { BottomSheet } from '@/components/BottomSheet'
 import { Cover } from '@/components/Cover'
 import { Spine } from '@/components/Spine'
@@ -193,6 +193,26 @@ export function UsPage() {
         </section>
       )}
 
+      <nav className="enter grid grid-cols-3 gap-2" aria-label="Vuestra historia">
+        <Link to="/nosotros/diario" className="card pressable grid min-h-[104px] content-start justify-items-start gap-1.5 p-3.5">
+          <ScrollText size={22} className="text-plum" aria-hidden />
+          <b className="text-[14.5px] leading-tight font-extrabold">Vuestro diario</b>
+          <span className="text-xs leading-snug text-muted">Mes a mes, todo lo leído</span>
+        </Link>
+        {(summary.books > 0 || summary.bothDays > 0) && (
+          <YearInBooks summary={summary} names={`${first.display_name} y ${second.display_name}`} />
+        )}
+        <button
+          type="button"
+          className="card pressable grid min-h-[104px] content-start justify-items-start gap-1.5 p-3.5 text-left"
+          onClick={() => setLetterOpen(true)}
+        >
+          <Mail size={22} className="text-amber-ink" aria-hidden />
+          <b className="text-[14.5px] leading-tight font-extrabold">Carta de {monthName(previous)}</b>
+          <span className="text-xs leading-snug text-muted">Lo que vivisteis leyendo</span>
+        </button>
+      </nav>
+
       {shelfBooks.length > 0 && (
         <section className="space-y-3" aria-labelledby="estanteria">
           <h2 id="estanteria">Vuestra estantería de {year}</h2>
@@ -244,26 +264,6 @@ export function UsPage() {
         </section>
       )}
 
-      {(summary.books > 0 || summary.bothDays > 0) && (
-        <YearInBooks summary={summary} names={`${first.display_name} y ${second.display_name}`} />
-      )}
-      <button
-        type="button"
-        className="card flex min-h-[84px] w-full items-center gap-4 text-left"
-        onClick={() => setLetterOpen(true)}
-      >
-        <span
-          className="grid h-[50px] w-[72px] flex-none place-items-center rounded-md bg-[color-mix(in_oklab,var(--amber)_30%,var(--surface))] text-rose"
-          aria-hidden
-        >
-          <Mail size={26} />
-        </span>
-        <span className="grid flex-1 gap-0.5">
-          <b className="font-extrabold">Vuestra carta de {monthName(previous)}</b>
-          <span className="text-[13.5px] text-muted">Lo que vivisteis leyendo el mes pasado.</span>
-        </span>
-        <ChevronRight size={20} aria-hidden />
-      </button>
       <BottomSheet open={letterOpen} onClose={() => setLetterOpen(false)} title={`Carta de ${monthName(previous)}`}>
         <article
           className="grid gap-3 rounded-md px-5 py-6 font-[family-name:var(--font-book)] text-[16.5px] leading-relaxed"
