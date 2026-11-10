@@ -98,7 +98,6 @@ export function story(db: Db, a: string, b: string): Db {
   slip(b, shared, 'nota', 150, 600, 'Cuando llegues aquí, mírame. Sé la cara que vas a poner.', addDays(today, -3), false)
   slip(b, shared, 'cita', 198, 600, '«Andábamos sin buscarnos pero sabiendo que andábamos para encontrarnos.»', addDays(today, -2), false)
   slip(a, shared, 'cita', 93, 600, '«Toco tu boca, con un dedo toco el borde de tu boca.»', addDays(today, -6))
-  slip(a, shared, 'prediccion', null, 600, 'Yo creo que no se vuelven a ver. Y que da igual.', addDays(today, -11), false)
 
   const mine = uuid(51, 1)
   db.books[mine] = {

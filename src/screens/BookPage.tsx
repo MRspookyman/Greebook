@@ -441,7 +441,7 @@ interface FinishProps {
   onDone: () => void
 }
 
-/** The last page: the book goes to the shelf, and a letter, if you want, into its envelope. */
+/** The last page: the book goes to the shelf, and with it, if you want, a final note of what it was for you. */
 function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
   const { db, me } = usePeople()
   const [rating, setRating] = useState<number | null>(reading.rating)
@@ -457,27 +457,29 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
         <p className="label">¿Cuánto te ha gustado? <span className="text-[15px]">(si quieres)</span></p>
         <Stars value={rating} onChange={setRating} />
       </div>
-      {!hasLetter && partner && (
+      {!hasLetter && (
         <div>
           <p className="label">
-            Una carta para el sobre <span className="text-[15px]">(si quieres)</span>
+            Tu nota final <span className="text-[15px]">(si quieres)</span>
           </p>
           <div className="slip">
             <textarea
               className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45"
               maxLength={4000}
-              placeholder="Lo que te ha dejado este libro…"
-              aria-label="Tu carta"
+              placeholder="Lo que ha sido este libro para ti, cómo te has sentido leyéndolo…"
+              aria-label="Tu nota final"
               value={letter}
               onChange={(event) => setLetter(event.currentTarget.value)}
             />
           </div>
           <p className="quiet mt-2 text-[15px]">
+            {!partner ? 'Se queda guardada con el libro, para cuando vuelvas a él.' : null}
+            {partner && <>Se queda guardada con el libro, para cuando volváis a él.{' '}
             {theirOpen
               ? `${partner.name} la leerá cuando lo termine y haya escrito la suya.`
               : theirs?.status === 'terminado'
                 ? `${partner.name} la leerá cuando haya escrito la suya. Y tú, la suya.`
-                : `${partner.name} podrá leerla.`}
+                : `${partner.name} podrá leerla.`}</>}
           </p>
         </div>
       )}

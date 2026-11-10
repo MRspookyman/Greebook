@@ -36,7 +36,12 @@ export interface Envelope {
   empty: boolean
 }
 
-/** What a book's envelope holds: a prediction and a letter from each of you, at most. */
+/** My final note in a book (kind «carta»): what it was for me, kept with it. */
+export function finalNote(db: Db, bookId: string, me: string): Slip | undefined {
+  return Object.values(db.slips).find((s) => s.book_id === bookId && s.user_id === me && s.kind === 'carta' && !s.deleted_at)
+}
+
+/** What a book keeps at its end: a final note from each of you (and, from before, maybe a prediction). */
 export function envelopeOf(db: Db, bookId: string, me: string): Envelope {
   const inside = liveSlips(db)
     .filter((slip) => slip.book_id === bookId && !isPaper(slip))

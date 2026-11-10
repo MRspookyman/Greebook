@@ -70,7 +70,10 @@ export interface Session {
 
 export type SlipKind = 'cita' | 'nota' | 'prediccion' | 'carta'
 
-/** A slip of paper: between pages (cita, nota) or inside the envelope (prediccion, carta). */
+/**
+ * A slip of paper: between pages (cita, nota), or kept at the end of the book. «carta» is the final note:
+ * what the book was for you. «prediccion» is no longer written; the ones that exist are still shown.
+ */
 export interface Slip {
   id: string
   user_id: string

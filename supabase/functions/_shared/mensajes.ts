@@ -38,7 +38,7 @@ export function slipNotice({ name, book, bookId, kind, page, body, locked }: Sli
   const url = `/libro/${bookId}#${kind === 'carta' || kind === 'prediccion' ? 'sobre' : 'papeles'}`
   if (kind === 'carta' || kind === 'prediccion') {
     return {
-      title: `✉️ ${name} ha metido ${kind === 'carta' ? 'su carta' : 'una predicción'} en el sobre`,
+      title: kind === 'carta' ? `📝 ${name} ha escrito su nota final` : `📝 ${name} ha dejado una predicción`,
       body: locked ? `«${book}». Se abrirá a su tiempo.` : `«${book}». Ya puedes leerla.`,
       url,
       tag: `sobre:${bookId}`,
@@ -57,7 +57,7 @@ export function slipNotice({ name, book, bookId, kind, page, body, locked }: Sli
 /** «Laura ha encontrado tu papel». */
 export function foundNotice(name: string, book: string, bookId: string, envelope: boolean): Push {
   return {
-    title: envelope ? `✉️ ${name} ha abierto el sobre` : `📄 ${name} ha encontrado tu papel`,
+    title: envelope ? `📝 ${name} ha leído tu nota final` : `📄 ${name} ha encontrado tu papel`,
     body: `«${book}»`,
     url: `/libro/${bookId}#${envelope ? 'sobre' : 'papeles'}`,
     tag: `hallazgo:${bookId}`,
@@ -68,7 +68,7 @@ export function foundNotice(name: string, book: string, bookId: string, envelope
 export function finishedNotice(name: string, book: string, bookId: string, bothDone: boolean): Push {
   return {
     title: `📗 ${name} ha terminado «${book}»`,
-    body: bothDone ? 'Lo habéis cerrado los dos. Mirad el sobre.' : 'Ya está en vuestra estantería.',
+    body: bothDone ? 'Lo habéis cerrado los dos. Mirad vuestras notas finales.' : 'Ya está en vuestra estantería.',
     url: `/libro/${bookId}#sobre`,
     tag: `final:${bookId}`,
   }

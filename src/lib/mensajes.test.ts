@@ -26,7 +26,7 @@ describe('avisos', () => {
   it('lo del sobre no enseña nada, esté o no abierto', () => {
     for (const locked of [true, false]) {
       const push = slipNotice({ ...slip, kind: 'carta', locked })
-      expect(push.title).toBe('✉️ Javier ha metido su carta en el sobre')
+      expect(push.title).toBe('📝 Javier ha escrito su nota final')
       expect(push.url).toBe('/libro/b1#sobre')
       expect(JSON.stringify(push)).not.toContain('mírame')
     }
@@ -34,8 +34,8 @@ describe('avisos', () => {
 
   it('avisa del hallazgo y del final', () => {
     expect(foundNotice('Laura', 'Rayuela', 'b1', false).title).toBe('📄 Laura ha encontrado tu papel')
-    expect(foundNotice('Laura', 'Rayuela', 'b1', true).title).toBe('✉️ Laura ha abierto el sobre')
-    expect(finishedNotice('Laura', 'Rayuela', 'b1', true).body).toBe('Lo habéis cerrado los dos. Mirad el sobre.')
+    expect(foundNotice('Laura', 'Rayuela', 'b1', true).title).toBe('📝 Laura ha leído tu nota final')
+    expect(finishedNotice('Laura', 'Rayuela', 'b1', true).body).toBe('Lo habéis cerrado los dos. Mirad vuestras notas finales.')
     expect(finishedNotice('Laura', 'Rayuela', 'b1', false).body).toBe('Ya está en vuestra estantería.')
   })
 

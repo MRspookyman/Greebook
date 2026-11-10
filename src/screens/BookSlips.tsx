@@ -5,7 +5,7 @@ import { fmtPosition, type BookView } from '@/lib/model'
 import { envelopeOf, papersOf, slipPlace } from '@/lib/slips'
 import type { Slip } from '@/lib/types'
 import { usePeople } from '@/session'
-import { Envelope as EnvelopeIcon, Paper } from '@/ui/icons'
+import { Paper } from '@/ui/icons'
 import { Sheet } from '@/ui/Sheet'
 import { SlipPaper } from '@/ui/SlipPaper'
 import { Wax } from '@/ui/Who'
@@ -13,7 +13,11 @@ import { WriteSlip } from '@/ui/WriteSlip'
 
 type Writing = null | { what: 'papel' | 'prediccion' | 'carta'; editing?: Slip }
 
-/** «Entre páginas» and «El sobre»: what the two of you have left in this book for each other. */
+/**
+ * «Entre páginas» and «La nota final»: what the two of you have left in this book. The final note is what the
+ * book was for each of you, kept with it for the day you come back. (Predictions are no longer written; the old
+ * ones are still shown.)
+ */
 export function BookSlips({ view }: { view: BookView }) {
   const { db, me, partner } = usePeople()
   const { book, mine, theirs } = view
@@ -57,14 +61,13 @@ export function BookSlips({ view }: { view: BookView }) {
 
   const myOpen = mine?.status === 'leyendo' || mine?.status === 'pendiente'
   const theirOpen = theirs?.status === 'leyendo' || theirs?.status === 'pendiente'
-  const canPredict = !envelope.mine.prediccion && (myOpen || !mine)
   const canWrite = !envelope.mine.carta && mine?.status === 'terminado'
   const opened = (slip?: Slip) => !!slip && !slip.locked && slip.body != null && !!slip.seen_at
   let sealedLine = ''
   if (envelope.sealed) {
-    if (myOpen) sealedLine = theirOpen ? 'Se abre cuando los dos lo terminéis.' : 'Se abre cuando lo termines.'
+    if (myOpen) sealedLine = theirOpen ? `La de ${name} se abre cuando lo terminéis.` : `La de ${name} se abre cuando lo termines y escribas la tuya.`
     else if (envelope.theirs.carta?.locked && !envelope.mine.carta && mine?.status === 'terminado') {
-      sealedLine = `Escribe tu carta y se abre la de ${name}.`
+      sealedLine = `Escribe tu nota y se abre la de ${name}.`
     } else if (theirOpen) sealedLine = `Se abre cuando ${name} lo termine.`
   }
 
@@ -75,17 +78,19 @@ export function BookSlips({ view }: { view: BookView }) {
       )
     : []
   let status: string
-  if (envelope.empty) status = 'Aquí caben una predicción antes de saber cómo acaba y una carta al terminar.'
-  else if (envelope.toOpen.length) {
-    status = `Ya puedes abrirlo: ${name} te dejó ${envelope.toOpen.length === 1 ? 'algo' : 'dos cosas'}.`
-  } else if (sealedLine) status = sealedLine
-  else if (waitsForThem.length) {
+  if (envelope.toOpen.length) status = `Ya puedes leer lo que ${name} dejó escrito.`
+  else if (sealedLine) status = sealedLine
+  else if (envelope.empty || (!envelope.mine.carta && !envelope.theirs.carta)) {
+    status = canWrite
+      ? 'Lo que ha sido este libro para ti, o cómo te has sentido leyéndolo. Se queda guardado con él, para cuando vuelvas.'
+      : 'Al terminar el libro podéis dejar aquí lo que ha sido para cada uno. Se queda guardado para cuando volváis.'
+  } else if (waitsForThem.length) {
     status = theirOpen
-      ? `Cerrado para ${name} hasta que termine el libro.`
+      ? `Guardada. ${name} la leerá cuando termine el libro y escriba la suya.`
       : myOpen
-        ? 'Cerrado hasta que lo termines.'
-        : `${name} lo abrirá cuando escriba su carta.`
-  } else status = 'Abierto.'
+        ? 'Guardada.'
+        : `Guardada. ${name} la leerá cuando escriba la suya.`
+  } else status = 'Guardado con el libro, para cuando volváis a él.'
 
   return (
     <>
@@ -112,11 +117,11 @@ export function BookSlips({ view }: { view: BookView }) {
 
       <section id="sobre" className="mt-12 scroll-mt-6" aria-labelledby="sobre-title">
         <h2 id="sobre-title" className="eyebrow mb-3">
-          El sobre
+          La nota final
         </h2>
         <div className="rounded-[22px] border-[1.5px] border-rule p-4">
           <div className="flex items-start gap-3">
-            <EnvelopeIcon size={26} className="mt-0.5 flex-none text-flame-ink" />
+            <Paper size={26} className="mt-0.5 flex-none text-flame-ink" />
             <p className="text-[17px] leading-snug">
               {status}
             </p>
@@ -124,33 +129,28 @@ export function BookSlips({ view }: { view: BookView }) {
 
           {!envelope.empty && (
             <div className="mt-4 flex flex-col gap-3">
-              {envelope.mine.prediccion && paper(envelope.mine.prediccion, 'Tu predicción')}
+              {envelope.mine.prediccion && paper(envelope.mine.prediccion, 'Tu predicción, de antes de acabarlo')}
               {envelope.theirs.prediccion &&
                 (opened(envelope.theirs.prediccion)
                   ? paper(envelope.theirs.prediccion, `La predicción de ${name}`)
-                  : envelope.theirs.prediccion.locked && <Sealed>{name} ha metido una predicción.</Sealed>)}
-              {envelope.mine.carta && paper(envelope.mine.carta, 'Tu carta')}
+                  : envelope.theirs.prediccion.locked && <Sealed>{name} dejó una predicción.</Sealed>)}
+              {envelope.mine.carta && paper(envelope.mine.carta, 'Tu nota final')}
               {envelope.theirs.carta &&
                 (opened(envelope.theirs.carta)
-                  ? paper(envelope.theirs.carta, `La carta de ${name}`)
-                  : envelope.theirs.carta.locked && <Sealed>{name} ha dejado su carta.</Sealed>)}
+                  ? paper(envelope.theirs.carta, `La nota final de ${name}`)
+                  : envelope.theirs.carta.locked && <Sealed>{name} ha escrito su nota final.</Sealed>)}
             </div>
           )}
 
           <div className="mt-4 flex flex-col gap-2 empty:hidden">
             {envelope.toOpen.length > 0 && (
               <button className="btn btn-primary" onClick={() => envelope.toOpen.forEach((slip) => openSlip(slip))}>
-                Abrir el sobre
+                Leer lo de {name}
               </button>
             )}
             {canWrite && (
               <button className="btn btn-soft" onClick={() => setWriting({ what: 'carta' })}>
-                Escribir mi carta
-              </button>
-            )}
-            {canPredict && (
-              <button className="btn btn-soft" onClick={() => setWriting({ what: 'prediccion' })}>
-                Meter una predicción
+                Escribir mi nota final
               </button>
             )}
           </div>
@@ -162,11 +162,11 @@ export function BookSlips({ view }: { view: BookView }) {
         onClose={() => setWriting(null)}
         title={
           writing?.editing
-            ? 'Cambiar el papel'
+            ? writing.what === 'carta' ? 'Cambiar tu nota final' : 'Cambiar el papel'
             : writing?.what === 'prediccion'
-              ? '¿Cómo crees que acaba?'
+              ? 'Tu predicción'
               : writing?.what === 'carta'
-                ? 'Tu carta'
+                ? 'Tu nota final'
                 : 'Un papel entre páginas'
         }
       >

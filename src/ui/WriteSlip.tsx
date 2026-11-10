@@ -21,10 +21,10 @@ const HINTS = {
   cita: 'Cópiala tal cual…',
   nota: 'Lo que le dirías si estuviera al lado…',
   prediccion: 'Yo creo que…',
-  carta: 'Lo que te ha dejado este libro…',
+  carta: 'Lo que ha sido este libro para ti, cómo te has sentido leyéndolo…',
 }
 
-/** Writing by hand: a slip for a page, a prediction, or the letter that closes a book. */
+/** Writing by hand: a slip for a page, or the final note that closes a book. */
 export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }: Props) {
   const [kind, setKind] = useState<SlipKind>(editing?.kind ?? (what === 'papel' ? 'nota' : what))
   const [body, setBody] = useState(editing?.body ?? '')
@@ -41,13 +41,15 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
   let fate = ''
   if (!editing && partner) {
     const theirOpen = theirs && (theirs.status === 'leyendo' || theirs.status === 'pendiente')
-    if (what === 'prediccion') fate = 'Se queda en el sobre hasta que los dos cerréis el libro.'
+    if (what === 'prediccion') fate = 'Se queda guardada hasta que los dos cerréis el libro.'
     else if (what === 'carta') {
-      fate = theirOpen
-        ? `Se queda en el sobre hasta que ${name} lo termine y escriba la suya.`
-        : theirs?.status === 'terminado'
-          ? `${name} la leerá cuando haya escrito la suya.`
-          : `${name} podrá leerla.`
+      fate = `Se queda guardada con el libro, para cuando volváis a él. ${
+        theirOpen
+          ? `${name} la leerá cuando lo termine y escriba la suya.`
+          : theirs?.status === 'terminado'
+            ? `${name} la leerá cuando haya escrito la suya.`
+            : `${name} podrá leerla.`
+      }`
     } else if (placed && theirOpen && total && fractionOf(theirs.position, theirs.total) < fractionOf(number, total)) {
       fate = `${name} lo encontrará al llegar ahí.`
     } else fate = `${name} lo verá la próxima vez que entre.`
@@ -107,7 +109,7 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
       {fate && <p className="quiet -mt-1 text-[15.5px]">{fate}</p>}
 
       <button className="btn btn-primary" disabled={!body.trim()} onClick={save}>
-        {editing ? 'Guardar' : paper ? 'Dejarlo en el libro' : 'Meterlo en el sobre'}
+        {editing ? 'Guardar' : paper ? 'Dejarlo en el libro' : 'Guardarla con el libro'}
       </button>
 
       {editing &&
