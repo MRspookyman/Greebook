@@ -134,7 +134,8 @@ export function create(): Remote {
     channel(me, partner, on) {
       const topic = [me, partner].sort().join(':')
       const hear = (event: MessageEvent<{ topic: string; signal: Signal }>) => {
-        if (event.data.topic === topic) on(event.data.signal)
+        // localStorage reaches other tabs a moment after it is written; a real server has no such lag.
+        if (event.data.topic === topic) setTimeout(() => on(event.data.signal), 250)
       }
       wire?.addEventListener('message', hear)
       return {

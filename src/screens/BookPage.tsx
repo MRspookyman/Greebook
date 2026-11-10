@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  dropReading, editBook, finishReading, leaveVerdict, lightCandle, openBook, placeBookmark, removeBook,
   removeBookmark, removeSession, resizeReading, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
+import { searchBooks } from '@/lib/books/search'
 import { bookViews, fmtPosition, fmtProgress, isLit, live, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
 import type { Book, Profile, Reading, Session, Unit } from '@/lib/types'
@@ -111,12 +112,6 @@ export function BookPage() {
             Retomarlo
           </button>
         )}
-        {mine?.status === 'terminado' && (
-          <div>
-            <p className="label">¿Cuánto te gustó?</p>
-            <Stars value={mine.rating} onChange={(rating) => rateReading(mine, rating)} />
-          </div>
-        )}
         {!mine && (
           <button className="btn btn-primary" onClick={() => setOpen('place')}>
             {theirs ? 'Yo también quiero leerlo' : 'Ponerle mi marcapáginas'}
@@ -190,7 +185,7 @@ export function BookPage() {
 
       <Sheet open={open === 'more'} onClose={close} label="Más opciones">
         <div className="flex flex-col">
-          <Option onClick={() => setOpen('edit')}>Corregir título, autor o páginas</Option>
+          <Option onClick={() => setOpen('edit')}>Cambiar portada, título, autor o páginas</Option>
           {mine && mine.status !== 'terminado' && <Option onClick={() => setOpen('size')}>Cambiar cómo lo cuento (páginas o %)</Option>}
           {mine?.status === 'leyendo' && (
             <>
@@ -366,10 +361,10 @@ interface FinishProps {
   onDone: () => void
 }
 
-/** The last page: the book goes to the shelf, and a letter, if you want, into its envelope. */
+/** The last page: the book goes to the shelf, and what you thought of it, if you want, into its envelope. */
 function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
   const { db, me } = usePeople()
-  const [rating, setRating] = useState<number | null>(reading.rating)
+  const [rating, setRating] = useState<number | null>(null)
   const [letter, setLetter] = useState('')
   const hasLetter = Object.values(db.slips).some(
     (s) => s.book_id === book.id && s.user_id === me.id && s.kind === 'carta' && !s.deleted_at,
@@ -378,39 +373,38 @@ function Finish({ reading, book, theirs, partner, onDone }: FinishProps) {
   return (
     <div className="flex flex-col gap-6">
       <p className="quiet">La última página. El libro pasa a la estantería con tu cinta.</p>
-      <div>
-        <p className="label">¿Cuánto te ha gustado? <span className="text-[14px]">(si quieres)</span></p>
-        <Stars value={rating} onChange={setRating} />
-      </div>
-      {!hasLetter && partner && (
+      {!hasLetter && (
         <div>
           <p className="label">
-            Una carta para el sobre <span className="text-[14px]">(si quieres)</span>
+            Tu valoración, para el sobre <span className="text-[14px]">(si quieres)</span>
           </p>
+          <Stars value={rating} onChange={setRating} />
           <div className="slip">
             <textarea
               className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45"
               maxLength={4000}
-              placeholder="Lo que te ha dejado este libro…"
-              aria-label="Tu carta"
+              placeholder="Qué te ha parecido, con tus palabras…"
+              aria-label="Tu valoración"
               value={letter}
               onChange={(event) => setLetter(event.currentTarget.value)}
             />
           </div>
-          <p className="quiet mt-2 text-[15px]">
-            {theirOpen
-              ? `${partner.name} la leerá cuando lo termine y haya escrito la suya.`
-              : theirs?.status === 'terminado'
-                ? `${partner.name} la leerá cuando haya escrito la suya. Y tú, la suya.`
-                : `${partner.name} podrá leerla.`}
-          </p>
+          {partner && (
+            <p className="quiet mt-2 text-[15px]">
+              {theirOpen
+                ? `${partner.name} no la verá hasta que lo termine y haya puesto la suya.`
+                : theirs?.status === 'terminado'
+                  ? `${partner.name} la verá cuando haya puesto la suya. Y tú, la suya.`
+                  : `${partner.name} podrá verla.`}
+            </p>
+          )}
         </div>
       )}
       <button
         className="btn btn-primary"
         onClick={() => {
-          finishReading(reading, rating)
-          if (letter.trim()) leaveSlip({ book, kind: 'carta', page: null, body: letter })
+          finishReading(reading)
+          if (!hasLetter) leaveVerdict(book, rating, letter)
           onDone()
         }}
       >
@@ -424,10 +418,25 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
   const [title, setTitle] = useState(book.title)
   const [author, setAuthor] = useState(book.author)
   const [pages, setPages] = useState(book.pages ? String(book.pages) : '')
+  const [cover, setCover] = useState(book.cover_url ?? '')
+  /** Covers found for this title: undefined before looking, null while looking. */
+  const [found, setFound] = useState<string[] | null | undefined>(undefined)
+  const validCover = cover.trim() === '' || /^https:\/\/\S+$/.test(cover.trim())
+  const look = () => {
+    setFound(null)
+    searchBooks(`${title} ${author}`.trim(), new AbortController().signal)
+      .then((books) => setFound([...new Set(books.map((b) => b.cover_url).filter((url): url is string => !!url))].slice(0, 9)))
+      .catch(() => setFound([]))
+  }
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!title.trim()) return
-    editBook(book, { title: title.trim(), author: author.trim(), pages: Number(pages) > 0 ? Number(pages) : null })
+    if (!title.trim() || !validCover) return
+    editBook(book, {
+      title: title.trim(),
+      author: author.trim(),
+      pages: Number(pages) > 0 ? Number(pages) : null,
+      cover_url: cover.trim() || null,
+    })
     onDone()
   }
   return (
@@ -444,7 +453,55 @@ function Edit({ book, onDone }: { book: Book; onDone: () => void }) {
         <label className="label" htmlFor="edit-pages">Páginas</label>
         <input id="edit-pages" className="field" inputMode="numeric" value={pages} onChange={(e) => setPages(e.currentTarget.value.replace(/\D/g, '').slice(0, 5))} />
       </div>
-      <button className="btn btn-primary mt-2" disabled={!title.trim()}>Guardar</button>
+      <fieldset className="mt-1">
+        <legend className="label">Portada</legend>
+        <div className="flex items-start gap-4">
+          <Cover key={cover} book={{ ...book, title: title || book.title, author, cover_url: validCover && cover.trim() ? cover.trim() : null }} width={72} />
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+            <button type="button" className="chip" onClick={look}>
+              Buscar portadas
+            </button>
+            {cover.trim() !== '' && (
+              <button type="button" className="chip" onClick={() => setCover('')}>
+                Quitarla y usar la de tela
+              </button>
+            )}
+          </div>
+        </div>
+        {found === null && <p className="quiet mt-3 text-[15px]">Buscando…</p>}
+        {found?.length === 0 && <p className="quiet mt-3 text-[15px]">No he encontrado ninguna. Puedes pegar la dirección de una imagen.</p>}
+        {!!found?.length && (
+          <div className="mt-3 flex flex-wrap gap-3" role="radiogroup" aria-label="Portadas encontradas">
+            {found.map((url) => (
+              <button
+                key={url}
+                type="button"
+                role="radio"
+                aria-checked={cover === url}
+                aria-label="Usar esta portada"
+                className="rounded-[6px] transition-transform active:scale-95"
+                style={{ boxShadow: cover === url ? '0 0 0 3px var(--surface), 0 0 0 5px var(--ink)' : 'none' }}
+                onClick={() => setCover(url)}
+              >
+                <img src={url} alt="" width={58} height={87} loading="lazy" className="h-[87px] w-[58px] rounded-[3px] object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+        <label className="label mt-4" htmlFor="edit-cover">O pega la dirección de una imagen</label>
+        <input
+          id="edit-cover"
+          className="field"
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          placeholder="https://…"
+          value={cover}
+          onChange={(e) => setCover(e.currentTarget.value)}
+        />
+        {!validCover && <p className="mt-1 text-[15px] text-danger">Tiene que empezar por https://</p>}
+      </fieldset>
+      <button className="btn btn-primary mt-2" disabled={!title.trim() || !validCover}>Guardar</button>
     </form>
   )
 }

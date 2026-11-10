@@ -26,7 +26,7 @@ describe('avisos', () => {
   it('lo del sobre no enseña nada, esté o no abierto', () => {
     for (const locked of [true, false]) {
       const push = slipNotice({ ...slip, kind: 'carta', locked })
-      expect(push.title).toBe('✉️ Javier ha metido su carta en el sobre')
+      expect(push.title).toBe('✉️ Javier ha metido su valoración en el sobre')
       expect(push.url).toBe('/libro/b1#sobre')
       expect(JSON.stringify(push)).not.toContain('mírame')
     }

@@ -22,7 +22,8 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
 
 // Book covers, kept so the shelf looks the same without a connection.
 registerRoute(
-  ({ url }) => url.hostname === 'books.google.com' || url.hostname === 'covers.openlibrary.org',
+  // Any image from elsewhere is a cover: found by the search or pasted by hand.
+  ({ url, request }) => request.destination === 'image' && url.origin !== self.location.origin,
   new CacheFirst({
     cacheName: 'portadas',
     plugins: [

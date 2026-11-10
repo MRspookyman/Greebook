@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { editSlip, leaveSlip, removeSlip } from '@/lib/actions'
+import { editSlip, leaveSlip, leaveVerdict, removeSlip } from '@/lib/actions'
+import { formatVerdict, parseVerdict } from '@/lib/verdict'
+import { Stars } from './Stars'
 import { fractionOf } from '@/lib/lock'
 import type { Book, Profile, Reading, Slip, SlipKind } from '@/lib/types'
 
@@ -21,13 +23,15 @@ const HINTS = {
   cita: 'Cópiala tal cual…',
   nota: 'Lo que le dirías si estuviera al lado…',
   prediccion: 'Yo creo que…',
-  carta: 'Lo que te ha dejado este libro…',
+  carta: 'Qué te ha parecido, con tus palabras…',
 }
 
 /** Writing by hand: a slip for a page, a prediction, or the letter that closes a book. */
 export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }: Props) {
   const [kind, setKind] = useState<SlipKind>(editing?.kind ?? (what === 'papel' ? 'nota' : what))
-  const [body, setBody] = useState(editing?.body ?? '')
+  const verdict = kind === 'carta'
+  const [rating, setRating] = useState<number | null>(verdict ? parseVerdict(editing?.body).rating : null)
+  const [body, setBody] = useState(verdict ? parseVerdict(editing?.body).text : (editing?.body ?? ''))
   const [page, setPage] = useState(mine && mine.position > 0 ? String(mine.position) : '')
   const [loose, setLoose] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -44,17 +48,18 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
     if (what === 'prediccion') fate = 'Se queda en el sobre hasta que los dos cerréis el libro.'
     else if (what === 'carta') {
       fate = theirOpen
-        ? `Se queda en el sobre hasta que ${name} lo termine y escriba la suya.`
+        ? `Se queda en el sobre hasta que ${name} lo termine y ponga la suya.`
         : theirs?.status === 'terminado'
-          ? `${name} la leerá cuando haya escrito la suya.`
-          : `${name} podrá leerla.`
+          ? `${name} la verá cuando haya puesto la suya.`
+          : `${name} podrá verla.`
     } else if (placed && theirOpen && total && fractionOf(theirs.position, theirs.total) < fractionOf(number, total)) {
       fate = `${name} lo encontrará al llegar ahí.`
     } else fate = `${name} lo verá la próxima vez que entre.`
   }
 
   const save = () => {
-    if (editing) editSlip(editing, body)
+    if (editing) editSlip(editing, verdict ? formatVerdict(rating, body) : body)
+    else if (verdict) leaveVerdict(book, rating, body)
     else leaveSlip({ book, kind, page: placed ? number : null, body })
     onDone()
   }
@@ -72,10 +77,12 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
         </div>
       )}
 
+      {verdict && <Stars value={rating} onChange={setRating} />}
+
       <div className="slip">
         <textarea
           className={`block min-h-[140px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45 ${kind === 'cita' ? 'text-[19px] italic' : 'hand'}`}
-          autoFocus
+          autoFocus={!verdict}
           maxLength={4000}
           placeholder={HINTS[kind]}
           aria-label={kind === 'cita' ? 'La frase' : 'Tus palabras'}
@@ -106,7 +113,7 @@ export function WriteSlip({ book, mine, theirs, partner, what, editing, onDone }
 
       {fate && <p className="quiet -mt-1 text-[15.5px]">{fate}</p>}
 
-      <button className="btn btn-primary" disabled={!body.trim()} onClick={save}>
+      <button className="btn btn-primary" disabled={verdict ? !rating && !body.trim() : !body.trim()} onClick={save}>
         {editing ? 'Guardar' : paper ? 'Dejarlo en el libro' : 'Meterlo en el sobre'}
       </button>
 

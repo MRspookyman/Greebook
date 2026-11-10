@@ -38,8 +38,8 @@ export function slipNotice({ name, book, bookId, kind, page, body, locked }: Sli
   const url = `/libro/${bookId}#${kind === 'carta' || kind === 'prediccion' ? 'sobre' : 'papeles'}`
   if (kind === 'carta' || kind === 'prediccion') {
     return {
-      title: `✉️ ${name} ha metido ${kind === 'carta' ? 'su carta' : 'una predicción'} en el sobre`,
-      body: locked ? `«${book}». Se abrirá a su tiempo.` : `«${book}». Ya puedes leerla.`,
+      title: `✉️ ${name} ha metido su valoración en el sobre`,
+      body: locked ? `«${book}». Se abre cuando esté también la tuya.` : `«${book}». Ya puedes verla.`,
       url,
       tag: `sobre:${bookId}`,
     }

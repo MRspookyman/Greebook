@@ -28,7 +28,9 @@ const uuid = (n: number, kind: number) =>
 export function story(db: Db, a: string, b: string): Db {
   const now = new Date()
   const today = isoDate(now)
-  const at = (day: string, hour = 22) => new Date(`${day}T${String(hour).padStart(2, '0')}:10:00`).toISOString()
+  // Never later than now: a row stamped in the future would hide everything written after it from the next pull.
+  const at = (day: string, hour = 22) =>
+    new Date(Math.min(now.getTime() - 60_000, new Date(`${day}T${String(hour).padStart(2, '0')}:10:00`).getTime())).toISOString()
   let n = 0
   const session = (user: string, reading: string, day: string, from: number, to: number, place: string | null) => {
     const id = uuid(++n, 3)
@@ -60,7 +62,7 @@ export function story(db: Db, a: string, b: string): Db {
       const finished = addDays(end, tag === 'b' ? 3 : 0)
       db.readings[reading] = {
         id: reading, user_id: user, book_id: book, unit: 'paginas', total: pages, position: pages,
-        status: 'terminado', started_on: addDays(finished, -14), finished_on: finished, rating: 3 + ((i + tag.length) % 3),
+        status: 'terminado', started_on: addDays(finished, -14), finished_on: finished, rating: null,
         created_at: at(addDays(finished, -14)), updated_at: at(finished), deleted_at: null,
       }
       const nights = 5
@@ -72,8 +74,8 @@ export function story(db: Db, a: string, b: string): Db {
     if (who === 'ab') {
       slip(a, book, 'cita', Math.round(pages * 0.4), pages, 'Esta frase es para ti. La subrayé dos veces.', addDays(end, -8))
       slip(b, book, 'nota', Math.round(pages * 0.7), pages, 'Aquí tuve que parar un rato. Ya me dirás.', addDays(end, -5))
-      slip(a, book, 'carta', null, pages, 'Me alegro de haberlo leído contigo. Me quedo con el final.', end)
-      slip(b, book, 'carta', null, pages, 'No era lo que esperaba y por eso me ha gustado tanto.', addDays(end, 3))
+      slip(a, book, 'carta', null, pages, `★${3 + (i % 3)}\nMe alegro de haberlo leído contigo. Me quedo con el final.`, end)
+      slip(b, book, 'carta', null, pages, `★${3 + ((i + 1) % 3)}\nNo era lo que esperaba y por eso me ha gustado tanto.`, addDays(end, 3))
     }
   })
 
@@ -98,7 +100,6 @@ export function story(db: Db, a: string, b: string): Db {
   slip(b, shared, 'nota', 150, 600, 'Cuando llegues aquí, mírame. Sé la cara que vas a poner.', addDays(today, -3), false)
   slip(b, shared, 'cita', 198, 600, '«Andábamos sin buscarnos pero sabiendo que andábamos para encontrarnos.»', addDays(today, -2), false)
   slip(a, shared, 'cita', 93, 600, '«Toco tu boca, con un dedo toco el borde de tu boca.»', addDays(today, -6))
-  slip(a, shared, 'prediccion', null, 600, 'Yo creo que no se vuelven a ver. Y que da igual.', addDays(today, -11), false)
 
   const mine = uuid(51, 1)
   db.books[mine] = {

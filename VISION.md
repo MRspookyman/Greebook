@@ -92,9 +92,12 @@ dedicatorias y corazones.
 
 ### El sobre (terminar)
 
-Cada libro tiene un sobre. Dentro caben dos cosas: una **predicción** («yo creo que acaba así»), que se mete
-al principio, y una **carta**, que se escribe al cerrar el libro. El sobre se abre cuando los dos habéis
-terminado. Sustituye a la opinión a ciegas, las valoraciones comparadas y el recuerdo del libro.
+Cada libro tiene un sobre. Al cerrarlo, cada uno mete su **valoración**: estrellas y unas palabras. El sobre
+se abre cuando están las dos, así que ninguno ve la del otro antes de poner la suya. Sustituye a la opinión a
+ciegas, las valoraciones comparadas y el recuerdo del libro.
+
+*(En la primera versión el sobre guardaba también una predicción del final. Se quitó a petición vuestra: el
+sobre es la valoración final y nada más.)*
 
 Lo demás **recuerda solo**: la estantería crece, y la repisa os devuelve de vez en cuando un momento («hoy
 hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).

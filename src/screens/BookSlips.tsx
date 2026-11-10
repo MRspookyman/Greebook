@@ -56,14 +56,13 @@ export function BookSlips({ view }: { view: BookView }) {
 
   const myOpen = mine?.status === 'leyendo' || mine?.status === 'pendiente'
   const theirOpen = theirs?.status === 'leyendo' || theirs?.status === 'pendiente'
-  const canPredict = !envelope.mine.prediccion && (myOpen || !mine)
   const canWrite = !envelope.mine.carta && mine?.status === 'terminado'
   const opened = (slip?: Slip) => !!slip && !slip.locked && slip.body != null && !!slip.seen_at
   let sealedLine = ''
   if (envelope.sealed) {
     if (myOpen) sealedLine = theirOpen ? 'Se abre cuando los dos lo terminéis.' : 'Se abre cuando lo termines.'
     else if (envelope.theirs.carta?.locked && !envelope.mine.carta && mine?.status === 'terminado') {
-      sealedLine = `Escribe tu carta y se abre la de ${name}.`
+      sealedLine = `Pon tu valoración y se abre la de ${name}.`
     } else if (theirOpen) sealedLine = `Se abre cuando ${name} lo termine.`
   }
 
@@ -74,16 +73,20 @@ export function BookSlips({ view }: { view: BookView }) {
       )
     : []
   let status: string
-  if (envelope.empty) status = 'Aquí caben una predicción antes de saber cómo acaba y una carta al terminar.'
+  if (envelope.empty) {
+    status = partner
+      ? `Al terminar, cada uno mete aquí su valoración. Se abre cuando estén las dos: ninguno ve la del otro antes.`
+      : 'Al terminar, aquí va tu valoración del libro.'
+  }
   else if (envelope.toOpen.length) {
-    status = `Ya puedes abrirlo: ${name} te dejó ${envelope.toOpen.length === 1 ? 'algo' : 'dos cosas'}.`
+    status = `Ya puedes abrirlo: dentro está la valoración de ${name}.`
   } else if (sealedLine) status = sealedLine
   else if (waitsForThem.length) {
     status = theirOpen
       ? `Cerrado para ${name} hasta que termine el libro.`
       : myOpen
         ? 'Cerrado hasta que lo termines.'
-        : `${name} lo abrirá cuando escriba su carta.`
+        : `${name} lo abrirá cuando ponga su valoración.`
   } else status = 'Abierto.'
 
   return (
@@ -128,11 +131,11 @@ export function BookSlips({ view }: { view: BookView }) {
                 (opened(envelope.theirs.prediccion)
                   ? paper(envelope.theirs.prediccion, `La predicción de ${name}`)
                   : envelope.theirs.prediccion.locked && <Sealed>{name} ha metido una predicción.</Sealed>)}
-              {envelope.mine.carta && paper(envelope.mine.carta, 'Tu carta')}
+              {envelope.mine.carta && paper(envelope.mine.carta, 'Tu valoración')}
               {envelope.theirs.carta &&
                 (opened(envelope.theirs.carta)
-                  ? paper(envelope.theirs.carta, `La carta de ${name}`)
-                  : envelope.theirs.carta.locked && <Sealed>{name} ha dejado su carta.</Sealed>)}
+                  ? paper(envelope.theirs.carta, `La valoración de ${name}`)
+                  : envelope.theirs.carta.locked && <Sealed>{name} ya ha puesto su valoración.</Sealed>)}
             </div>
           )}
 
@@ -144,12 +147,7 @@ export function BookSlips({ view }: { view: BookView }) {
             )}
             {canWrite && (
               <button className="btn btn-soft" onClick={() => setWriting({ what: 'carta' })}>
-                Escribir mi carta
-              </button>
-            )}
-            {canPredict && (
-              <button className="btn btn-soft" onClick={() => setWriting({ what: 'prediccion' })}>
-                Meter una predicción
+                Poner mi valoración
               </button>
             )}
           </div>
@@ -161,12 +159,10 @@ export function BookSlips({ view }: { view: BookView }) {
         onClose={() => setWriting(null)}
         title={
           writing?.editing
-            ? 'Cambiar el papel'
-            : writing?.what === 'prediccion'
-              ? '¿Cómo crees que acaba?'
-              : writing?.what === 'carta'
-                ? 'Tu carta'
-                : 'Un papel entre páginas'
+            ? writing.what === 'carta' ? 'Cambiar tu valoración' : 'Cambiar el papel'
+            : writing?.what === 'carta'
+              ? 'Tu valoración'
+              : 'Un papel entre páginas'
         }
       >
         {writing && (

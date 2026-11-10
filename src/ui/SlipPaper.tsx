@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { fmtDay, isoDate } from '@/lib/time'
 import type { Slip } from '@/lib/types'
-import { Heart, Lock } from './icons'
+import { parseVerdict } from '@/lib/verdict'
+import { Heart, Lock, Star } from './icons'
 
 interface Props {
   slip: Slip
@@ -65,15 +66,16 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
     )
   }
 
+  const verdict = slip.kind === 'carta' ? parseVerdict(slip.body) : { rating: null, text: slip.body ?? '' }
   let footer: ReactNode
   if (mine) {
     footer = slip.seen_at ? (
       <>
         {slip.loved && <Heart size={15} filled className="mr-1.5 inline -translate-y-px text-[#b8354f]" />}
-        {other} {letter ? 'lo leyó' : 'lo encontró'} el {day(slip.seen_at)}
+        {other} {letter ? 'la vio' : 'lo encontró'} el {day(slip.seen_at)}
       </>
     ) : (
-      `${other} aún no lo ha ${letter ? 'leído' : 'encontrado'}`
+      letter ? `${other} aún no la ha visto` : `${other} aún no lo ha encontrado`
     )
   } else footer = `${author}, el ${day(slip.created_at)}`
 
@@ -85,9 +87,18 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
           {[label, place].filter(Boolean).join(' · ')}
         </p>
       )}
-      <p className={`whitespace-pre-wrap break-words ${slip.kind === 'cita' ? 'text-[19px] leading-[28px] italic' : 'hand leading-[28px]'}`}>
-        {slip.body}
-      </p>
+      {verdict.rating && (
+        <p className="mb-1 flex gap-0.5 text-[#b0791a]" role="img" aria-label={verdict.rating === 1 ? 'Una estrella' : `${verdict.rating} estrellas`}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <Star key={n} size={21} filled={n <= verdict.rating!} />
+          ))}
+        </p>
+      )}
+      {verdict.text && (
+        <p className={`whitespace-pre-wrap break-words ${slip.kind === 'cita' ? 'text-[19px] leading-[28px] italic' : 'hand leading-[28px]'}`}>
+          {verdict.text}
+        </p>
+      )}
       <div className="mt-2 flex min-h-8 items-center justify-between gap-3 text-[14px] opacity-70">
         <span>{footer}</span>
         {mine && onEdit && (
