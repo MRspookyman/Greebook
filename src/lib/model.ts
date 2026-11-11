@@ -195,3 +195,41 @@ export function knownPlaces(sessions: Session[], userId: string): string[] {
 export function unopened(slips: Slip[], me: string): Slip[] {
   return slips.filter((s) => s.user_id !== me && !s.deleted_at && !s.locked && s.body != null && !s.seen_at)
 }
+
+/** How the finished shelf is ordered: by the year they were read (the default), or all together by something. */
+export type ShelfOrder = 'fecha' | 'titulo' | 'autor' | 'puntuacion'
+
+/** The stars a book shows for that filter: theirs when looking at their books, otherwise mine, or theirs if I gave none. */
+export function ratingOf(view: BookView, whose: Whose = 'todos'): number | null {
+  if (whose === 'tu') return view.theirs?.rating ?? null
+  if (whose === 'yo') return view.mine?.rating ?? null
+  return view.mine?.rating ?? view.theirs?.rating ?? null
+}
+
+const plain = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim()
+
+/** Whether a book's title or author contains what was typed, ignoring accents and capitals. */
+export function matchesText(view: BookView, text: string): boolean {
+  const wanted = plain(text)
+  return !wanted || plain(`${view.book.title} ${view.book.author}`).includes(wanted)
+}
+
+/** `min` stars or more; 0 lets everything through and -1 keeps only the ones nobody has rated. */
+export function matchesStars(view: BookView, min: number, whose: Whose = 'todos'): boolean {
+  const stars = ratingOf(view, whose)
+  if (min === 0) return true
+  if (min < 0) return stars == null
+  return stars != null && stars >= min
+}
+
+/** Finished books all together, in the order asked for. Unrated books go last when ordering by stars. */
+export function sortViews(views: BookView[], order: ShelfOrder, whose: Whose = 'todos'): BookView[] {
+  const title = (a: BookView, b: BookView) => a.book.title.localeCompare(b.book.title, 'es', { sensitivity: 'base' })
+  const sorted = [...views]
+  if (order === 'titulo') return sorted.sort(title)
+  if (order === 'autor') {
+    return sorted.sort((a, b) => (a.book.author || '\uffff').localeCompare(b.book.author || '\uffff', 'es', { sensitivity: 'base' }) || title(a, b))
+  }
+  if (order === 'puntuacion') return sorted.sort((a, b) => (ratingOf(b, whose) ?? 0) - (ratingOf(a, whose) ?? 0) || title(a, b))
+  return sorted.sort((a, b) => (shelvedOn(b) ?? '').localeCompare(shelvedOn(a) ?? ''))
+}

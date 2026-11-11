@@ -2,8 +2,8 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
-  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, live, nightstand, pile, progressOf, shelves, standGroups,
-  waxLeft, type BookView, type Whose,
+  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, matchesStars, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
+  waxLeft, type BookView, type ShelfOrder, type Whose,
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { markNoticed, useNoticed } from '@/lib/noticed'
@@ -15,7 +15,7 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Covers, Flame, Plus, Spines } from '@/ui/icons'
+import { Covers, Flame, Plus, Spines, Search } from '@/ui/icons'
 import { setShelfView, useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { Sheet } from '@/ui/Sheet'
@@ -88,13 +88,19 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   }))
   const allPending = pile(views)
   const allYears = shelves(views)
-  const pending = allPending.filter((view) => heldBy(view, whose, 'pendiente'))
-  const years = allYears
-    .map(({ year, books }) => ({ year, books: books.filter((view) => heldBy(view, whose, 'terminado')) }))
-    .filter(({ books }) => books.length > 0)
+  const [text, setText] = useState('')
+  const [order, setOrder] = useState<ShelfOrder>('fecha')
+  const [minStars, setMinStars] = useState(0)
+  const searching = text.trim() !== '' || minStars !== 0
+  // Stars only exist on finished books: asking for them leaves the pile and the dropped ones out.
+  const pending = minStars !== 0 ? [] : allPending.filter((view) => heldBy(view, whose, 'pendiente') && matchesText(view, text))
+  const finished = (view: BookView) => heldBy(view, whose, 'terminado') && matchesText(view, text) && matchesStars(view, minStars, whose)
+  const years = allYears.map(({ year, books }) => ({ year, books: books.filter(finished) })).filter(({ books }) => books.length > 0)
+  /** Ordered by anything but the year, the finished books stand all together. */
+  const together = order === 'fecha' ? null : sortViews(years.flatMap(({ books }) => books), order, whose)
   const myNext = pending.find((view) => isNext(view.mine))
   const theirNext = pending.find((view) => isNext(view.theirs))
-  const left = dropped(views)
+  const left = minStars !== 0 ? [] : dropped(views).filter((view) => matchesText(view, text))
   /** Moves the candle to another open book: at once if it is burning, for next time if it isn't. */
   const moveCandle = (view: BookView) => {
     if (!view.mine) return
@@ -109,6 +115,11 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const item = (wanted: (status?: string) => boolean) => (view: BookView): ShelfItem => ({
     book: view.book,
     ribbons: ribbons(view, wanted),
+    // The stars each one gave it, mine first; looking at one person's books, only theirs.
+    ratings: [
+      ...(view.mine?.rating && whose !== 'tu' ? [{ color: 'var(--me)', stars: view.mine.rating }] : []),
+      ...(view.theirs?.rating && whose !== 'yo' ? [{ color: 'var(--you)', stars: view.theirs.rating }] : []),
+    ],
   })
   const open = (book: Book) => navigate(`/libro/${book.id}`)
   const shelfView = useShelfView()
@@ -219,7 +230,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {myBooks.length > 1 ? (
         <div className="mt-8">
           <p className="eyebrow mb-2 text-center">Tu vela es para</p>
-          <div role="radiogroup" aria-label="Para qué libro es tu vela" className="-mx-5 flex justify-center-safe gap-2 overflow-x-auto px-5 pb-1">
+          <div role="radiogroup" aria-label="Para qué libro es tu vela" className="flex flex-wrap justify-center gap-2">
             {myBooks.map((view) => (
               <button
                 key={view.book.id}
@@ -227,7 +238,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 role="radio"
                 aria-checked={view === chosen}
                 aria-pressed={view === chosen}
-                className="chip max-w-[15em] flex-none gap-2"
+                className="chip max-w-full gap-2"
                 onClick={() => view !== chosen && moveCandle(view)}
               >
                 {view === chosen && <Flame size={16} className="flex-none" />}
@@ -340,7 +351,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         </div>
 
         {partner && (allPending.length > 0 || allYears.length > 0) && (
-          <div role="group" aria-label="De quién son las cintas. Toca para ver solo esos libros" className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1">
+          <div role="group" aria-label="De quién son las cintas. Toca para ver solo esos libros" className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1">
             {(
               [
                 ['todos', 'Todos', []],
@@ -360,6 +371,36 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 {label}
               </button>
             ))}
+          </div>
+        )}
+
+        {(allPending.length > 0 || allYears.length > 0) && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <label className="relative basis-full">
+              <span className="sr-only">Buscar por título o autor</span>
+              <Search className="quiet absolute top-1/2 left-3.5 -translate-y-1/2" size={18} />
+              <input
+                className="field !min-h-11 !py-1.5 !pl-10 text-[16px]"
+                type="search"
+                enterKeyHint="search"
+                placeholder="Título o autor"
+                value={text}
+                onChange={(event) => setText(event.currentTarget.value)}
+              />
+            </label>
+            <select aria-label="Ordenar los leídos" className="field !min-h-11 !w-auto min-w-0 flex-1 !py-1.5 text-[16px]" value={order} onChange={(event) => setOrder(event.currentTarget.value as ShelfOrder)}>
+              <option value="fecha">Por año</option>
+              <option value="titulo">Por título</option>
+              <option value="autor">Por autor</option>
+              <option value="puntuacion">Por puntuación</option>
+            </select>
+            <select aria-label="Filtrar por puntuación" className="field !min-h-11 !w-auto min-w-0 flex-1 !py-1.5 text-[16px]" value={minStars} onChange={(event) => setMinStars(Number(event.currentTarget.value))}>
+              <option value={0}>Cualquier nota</option>
+              <option value={5}>5★</option>
+              <option value={4}>4★ o más</option>
+              <option value={3}>3★ o más</option>
+              <option value={-1}>Sin puntuar</option>
+            </select>
           </div>
         )}
 
@@ -386,7 +427,19 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         )}
 
-        {years.map(({ year, books }) => (
+        {together && together.length > 0 && (
+          <div className="mt-8">
+            <p className="flex items-baseline gap-3">
+              <span className="text-[26px]">Leídos</span>
+              <span className="quiet text-[15px]">
+                {together.length === 1 ? 'un libro' : `${together.length} libros`} · {order === 'titulo' ? 'por título' : order === 'autor' ? 'por autor' : 'de más a menos estrellas'}
+              </span>
+            </p>
+            <Shelf items={together.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
+          </div>
+        )}
+
+        {!together && years.map(({ year, books }) => (
           <div key={year} className="mt-8">
             <p className="flex items-baseline gap-3">
               <span className="text-[26px]">{year}</span>
@@ -399,9 +452,11 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         ))}
 
-        {!years.length && !pending.length && (
+        {!years.length && !pending.length && !left.length && (
           <p className="quiet mt-5">
-            {allYears.length || allPending.length
+            {searching
+              ? 'No hay ningún libro que encaje con eso.'
+              : allYears.length || allPending.length
               ? 'Todavía no hay ningún libro así en la estantería.'
               : 'Aquí irán quedando los lomos de lo que leáis. Cada uno con su cinta.'}
           </p>
@@ -410,12 +465,18 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         {left.length > 0 && (
           <div className="mt-10">
             <p className="eyebrow">{left.length === 1 ? 'Dejado a medias' : 'Dejados a medias'}</p>
-            <div className="mt-3 flex flex-col-reverse items-center gap-[2px] px-3">
-              {left.map((view, i) => (
-                <Lying key={view.book.id} book={view.book} onClick={() => open(view.book)} style={{ marginLeft: ((i % 3) - 1) * 16 }} />
-              ))}
-            </div>
-            <Plank />
+            {shelfView === 'portadas' ? (
+              <Shelf items={left.map((view) => ({ book: view.book, ribbons: [] }))} onOpen={take} view="portadas" />
+            ) : (
+              <>
+                <div className="mt-3 flex flex-col-reverse items-center gap-[2px] px-3">
+                  {left.map((view, i) => (
+                    <Lying key={view.book.id} book={view.book} onClick={() => take(view.book)} style={{ marginLeft: ((i % 3) - 1) * 16 }} />
+                  ))}
+                </div>
+                <Plank />
+              </>
+            )}
           </div>
         )}
       </section>
@@ -443,6 +504,12 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 </p>
               )}
             </div>
+            {(peek.mine?.rating || peek.theirs?.rating) && (
+              <p className="flex items-center gap-4 text-[16px]">
+                {peek.mine?.rating ? <span className="flex items-center gap-1.5"><Wax who="me" /> {peek.mine.rating}★</span> : null}
+                {peek.theirs?.rating ? <span className="flex items-center gap-1.5"><Wax who="you" /> {peek.theirs.rating}★</span> : null}
+              </p>
+            )}
             <button className="btn btn-primary w-full" onClick={() => open(peek.book)}>
               Abrir el libro
             </button>

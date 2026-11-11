@@ -432,6 +432,14 @@ input[type='search']::-webkit-search-cancel-button {
   transform: scale(0.975);
 }
 
+/* A row that scrolls sideways without drawing its bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .pt-safe {
   padding-top: env(safe-area-inset-top);
 }

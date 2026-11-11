@@ -7,6 +7,8 @@ export interface ShelfItem {
   book: Book
   /** Wax colours of who has read it. */
   ribbons: string[]
+  /** The stars each of you gave it, mine first. */
+  ratings?: Array<{ color: string; stars: number }>
 }
 
 export function Plank() {
@@ -63,7 +65,7 @@ export function Shelf({ items, onOpen, view = 'lomos' }: ShelfProps) {
                   key={item.book.id}
                   type="button"
                   onClick={() => onOpen(item.book)}
-                  aria-label={`${item.book.title}${item.book.author ? `, de ${item.book.author}` : ''}`}
+                  aria-label={`${item.book.title}${item.book.author ? `, de ${item.book.author}` : ''}${item.ratings?.length ? `, ${item.ratings[0].stars} de 5 estrellas` : ''}`}
                   className="relative flex-none origin-bottom transition-transform duration-200 ease-out hover:-translate-y-1.5 active:-translate-y-2"
                 >
                   {item.ribbons.map((color, i) => (
@@ -80,6 +82,16 @@ export function Shelf({ items, onOpen, view = 'lomos' }: ShelfProps) {
                     />
                   ))}
                   <Cover book={item.book} width={size} />
+                  {item.ratings && item.ratings.length > 0 && (
+                    <span aria-hidden className="absolute right-1.5 bottom-1.5 flex flex-col items-end gap-1">
+                      {item.ratings.map(({ color, stars }) => (
+                        <span key={color} className="flex items-center gap-1 rounded-full bg-black/65 py-[3px] pr-1.5 pl-1 text-[12.5px] leading-none font-semibold text-white">
+                          <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+                          {stars}★
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -105,6 +117,7 @@ export function Shelf({ items, onOpen, view = 'lomos' }: ShelfProps) {
                   key={item.book.id}
                   book={item.book}
                   ribbons={item.ribbons}
+                  stars={item.ratings?.[0]?.stars}
                   onClick={() => onOpen(item.book)}
                   style={
                     leans && i === row.length - 1

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, nightstand, pile, shelves, standGroups, tally, waxLeft,
+  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesStars, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, waxLeft,
 } from './model'
 import { stepMinutes } from './time'
 import { emptyDb, type Book, type Db, type Reading, type Session } from './types'
@@ -182,5 +182,41 @@ describe('los minutos de una velada', () => {
     expect(stepMinutes(1, 1)).toBe(5)
     expect(stepMinutes(5, -1, 0)).toBe(0)
     expect(stepMinutes(598, 1)).toBe(600)
+  })
+})
+
+describe('buscar y ordenar la estantería', () => {
+  const done = (rating: number | null) => ({ status: 'terminado' as const, finished_on: '2026-03-01', rating })
+  const views = bookViews(
+    db(
+      [book('a', { title: 'Patria', author: 'Fernando Aramburu' }), book('bb', { title: 'El camino', author: 'Miguel Delibes' }), book('ccc', { title: 'Árbol', author: '' })],
+      [reading('1', 'me', 'a', done(3)), reading('2', 'you', 'a', done(5)), reading('3', 'you', 'bb', done(4)), reading('4', 'me', 'ccc', done(null))],
+    ),
+    'me',
+  )
+  const ids = (list: typeof views) => list.map((v) => v.book.id)
+
+  it('las estrellas que se enseñan son las mías, o las del otro si yo no puse', () => {
+    expect(views.map((v) => ratingOf(v))).toEqual([3, 4, null])
+    expect(ratingOf(views[0], 'tu')).toBe(5)
+    expect(ratingOf(views[1], 'yo')).toBeNull()
+  })
+
+  it('busca por título o autor sin importar acentos ni mayúsculas', () => {
+    expect(ids(views.filter((v) => matchesText(v, 'arbol')))).toEqual(['ccc'])
+    expect(ids(views.filter((v) => matchesText(v, 'DELIBES')))).toEqual(['bb'])
+    expect(views.filter((v) => matchesText(v, '  '))).toHaveLength(3)
+  })
+
+  it('filtra por estrellas, y aparta los que nadie ha puntuado', () => {
+    expect(ids(views.filter((v) => matchesStars(v, 4)))).toEqual(['bb'])
+    expect(ids(views.filter((v) => matchesStars(v, -1)))).toEqual(['ccc'])
+    expect(views.filter((v) => matchesStars(v, 0))).toHaveLength(3)
+  })
+
+  it('ordena por título, autor o puntuación', () => {
+    expect(ids(sortViews(views, 'titulo'))).toEqual(['ccc', 'bb', 'a'])
+    expect(ids(sortViews(views, 'autor'))).toEqual(['a', 'bb', 'ccc'])
+    expect(ids(sortViews(views, 'puntuacion'))).toEqual(['bb', 'a', 'ccc'])
   })
 })

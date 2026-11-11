@@ -13,18 +13,20 @@ interface SpineProps {
   book: Book
   /** Wax colours of who has read it: a ribbon each. */
   ribbons?: string[]
+  /** The stars it was given, stamped at the foot of the spine. */
+  stars?: number | null
   onClick?: () => void
   style?: CSSProperties
 }
 
 /** A book seen from the shelf: cloth, stamped title, and a ribbon for each of you who read it. */
-export function Spine({ book, ribbons = [], onClick, style }: SpineProps) {
+export function Spine({ book, ribbons = [], stars, onClick, style }: SpineProps) {
   const spine = spineOf(book)
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`${book.title}${book.author ? `, de ${book.author}` : ''}`}
+      aria-label={`${book.title}${book.author ? `, de ${book.author}` : ''}${stars ? `, ${stars} de 5 estrellas` : ''}`}
       className="group relative flex-none origin-bottom rounded-t-[3px] rounded-b-[1px] transition-transform duration-200 ease-out hover:-translate-y-1.5 active:-translate-y-2"
       style={{
         width: spine.width,
@@ -56,7 +58,7 @@ export function Spine({ book, ribbons = [], onClick, style }: SpineProps) {
       />
       <span
         aria-hidden
-        className="absolute inset-x-0 top-6 bottom-6 flex items-center justify-center overflow-hidden"
+        className={`absolute inset-x-0 top-6 ${stars ? 'bottom-[30px]' : 'bottom-6'} flex items-center justify-center overflow-hidden`}
         style={{ writingMode: 'vertical-rl' }}
       >
         <span
@@ -72,6 +74,11 @@ export function Spine({ book, ribbons = [], onClick, style }: SpineProps) {
           {book.title}
         </span>
       </span>
+      {stars ? (
+        <span aria-hidden className="absolute inset-x-0 bottom-[5px] text-center text-[11px] leading-none font-semibold">
+          {stars}★
+        </span>
+      ) : null}
     </button>
   )
 }
