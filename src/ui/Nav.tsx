@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
+import { useNoticed } from '@/lib/noticed'
 import { waitingFor } from '@/lib/slips'
 import { usePeople } from '@/session'
 import { BookOpen, Flame, Plus, Spines } from './icons'
@@ -8,7 +9,8 @@ import { BookOpen, Flame, Plus, Spines } from './icons'
 export function Nav() {
   const { db, me } = usePeople()
   const { pathname } = useLocation()
-  const waiting = useMemo(() => waitingFor(db, me.id).length, [db, me.id])
+  const noticed = useNoticed(me.id)
+  const waiting = useMemo(() => waitingFor(db, me.id).filter((thing) => !noticed.has(thing.slip.id)).length, [db, me.id, noticed])
   // The evening is the candle and nothing else.
   if (pathname === '/velada') return null
 

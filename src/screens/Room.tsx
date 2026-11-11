@@ -6,6 +6,7 @@ import {
   waxLeft, type BookView, type Whose,
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
+import { markNoticed, useNoticed } from '@/lib/noticed'
 import { waitingFor } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { capital, fmtSince, fmtToday, nightOf } from '@/lib/time'
@@ -71,7 +72,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
     () => memoryFor(views, nightOf(new Date(now)), new Set(sessions.map((s) => s.reading_id))),
     [views, sessions, now],
   )
-  const waiting = useMemo(() => waitingFor(db, me.id), [db, me.id])
+  const noticed = useNoticed(me.id)
+  // Notes of theirs I can read and whose notice I haven't tapped yet. Tapped once, it is not said again.
+  const waiting = useMemo(() => waitingFor(db, me.id).filter((thing) => !noticed.has(thing.slip.id)), [db, me.id, noticed])
   const [whose, setWhose] = useState<Whose>('todos')
   const groups = standGroups(stand)
   const myBooks = [...groups.both, ...groups.mine]
@@ -79,7 +82,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   // One line per book with notes of theirs I can read now. What they say is read inside the book.
   const notices = [...new Set(waiting.map((thing) => thing.book))].map((book) => ({
     book,
-    count: waiting.filter((thing) => thing.book === book).length,
+    slips: waiting.filter((thing) => thing.book === book).map((thing) => thing.slip.id),
   }))
   const allPending = pile(views)
   const allYears = shelves(views)
@@ -171,8 +174,8 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {/* ── Notas por leer: solo el aviso; se leen dentro del libro ── */}
       {notices.length > 0 && partner && (
         <section className="mt-8 flex flex-col gap-2" aria-label="Notas por leer">
-          {notices.map(({ book, count }, i) => (
-            <Link key={book.id} to={`/libro/${book.id}#papeles`} className="card pressable rise flex items-center gap-3 px-4 py-3" style={{ '--i': i + 2 } as CSSProperties}>
+          {notices.map(({ book, slips: { length: count }, slips }, i) => (
+            <Link key={book.id} to={`/libro/${book.id}#papeles`} onClick={() => markNoticed(me.id, slips)} className="card pressable rise flex items-center gap-3 px-4 py-3" style={{ '--i': i + 2 } as CSSProperties}>
               <Wax who="you" size={13} />
               <span className="min-w-0 flex-1 text-[16.5px] leading-snug">
                 {partner.name} te ha dejado {count === 1 ? 'una nota' : `${count} notas`} en <em>{book.title}</em>
