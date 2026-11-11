@@ -120,7 +120,7 @@ export function Settings() {
 
       <section className="mt-10 border-t border-rule pt-6">
         <h2 className="title">Lo vuestro es vuestro</h2>
-        <p className="quiet mt-2 text-[16px]">Un Excel con todo lo que hay en este móvil, en tres hojas: libros, veladas y notas.</p>
+        <p className="quiet mt-2 text-[16px]">Un Excel con tus lecturas, una hoja por año: cada libro con sus estrellas, cuándo lo empezaste y lo terminaste, y lo que te pareció.</p>
         <button className="btn btn-line mt-4" onClick={exportAll}>
           Descargar el Excel
         </button>

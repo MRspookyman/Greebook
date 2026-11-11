@@ -38,30 +38,38 @@ describe('el Excel', () => {
     expect(view.getUint16(bytes.length - 12, true)).toBe(2)
   })
 
-  it('la copia lleva libros, veladas y notas; una nota aún oculta va sin su texto', () => {
+  it('la copia va por años: cada libro terminado con sus estrellas, sus fechas y lo que me pareció', () => {
     const stamp = '2026-11-01T10:00:00Z'
+    const book = (id: string, title: string, year: number | null) => ({ id, title, author: 'Alguien', cover_url: null, pages: 300, year, isbn: null, added_by: 'me', created_at: stamp, updated_at: stamp, deleted_at: null })
+    const reading = (id: string, user_id: string, book_id: string, extra: object) => ({
+      id, user_id, book_id, unit: 'paginas' as const, total: 300, position: 300, status: 'terminado' as const, started_on: null, finished_on: null, rating: null,
+      created_at: stamp, updated_at: stamp, deleted_at: null, ...extra,
+    })
+    const note = (id: string, user_id: string, book_id: string, at: number | null, body: string) => ({
+      id, user_id, book_id, kind: 'nota' as const, page: null, at, body, seen_at: null, loved: false, created_at: stamp + id, updated_at: stamp, deleted_at: null,
+    })
     const db: Db = {
       ...emptyDb(),
-      profiles: {
-        me: { id: 'me', name: 'Laura', color: 'miel', partner_id: 'you', timezone: '', welcomed_at: null, candle_lit_at: null, candle_reading_id: null, updated_at: stamp },
-        you: { id: 'you', name: 'Javier', color: 'salvia', partner_id: 'me', timezone: '', welcomed_at: null, candle_lit_at: null, candle_reading_id: null, updated_at: stamp },
-      },
-      books: { b: { id: 'b', title: 'Rayuela', author: 'Julio Cortázar', cover_url: null, pages: 600, year: 1963, isbn: null, added_by: 'you', created_at: stamp, updated_at: stamp, deleted_at: null } },
+      books: { a: book('a', 'Rayuela', 1963), b: book('b', 'Nada', 1945), c: book('c', 'Patria', 2016), d: book('d', 'Solo suyo', null) },
       readings: {
-        r: { id: 'r', user_id: 'me', book_id: 'b', unit: 'paginas', total: 600, position: 142, status: 'leyendo', started_on: '2026-11-01', finished_on: null, rating: null, created_at: stamp, updated_at: stamp, deleted_at: null },
-      },
-      sessions: {
-        s: { id: 's', reading_id: 'r', user_id: 'me', day: '2026-11-02', started_at: stamp, minutes: 34, from_pos: 100, to_pos: 142, place: 'en el tren', created_at: stamp, updated_at: stamp, deleted_at: null },
+        1: reading('1', 'me', 'a', { started_on: '2026-10-01', finished_on: '2026-11-02', rating: 5 }),
+        2: reading('2', 'me', 'b', { finished_on: '2025-03-09', rating: 3 }),
+        3: reading('3', 'me', 'c', { status: 'leyendo', position: 120, started_on: '2026-11-05' }),
+        4: reading('4', 'you', 'd', { finished_on: '2026-01-01', rating: 4 }),
+        5: reading('5', 'you', 'a', { finished_on: '2026-02-01', rating: 1 }),
       },
       slips: {
-        n: { id: 'n', user_id: 'you', book_id: 'b', kind: 'nota', page: 150, at: 0.25, body: null, seen_at: null, loved: false, hidden: true, locked: true, created_at: stamp, updated_at: stamp, deleted_at: null },
+        n1: note('n1', 'me', 'a', null, 'Un libro raro y precioso.'),
+        n2: note('n2', 'me', 'a', 0.5, 'Esto es de una página, no un resumen.'),
+        n3: note('n3', 'you', 'a', null, 'Lo que escribió el otro.'),
       },
     }
-    const [books, evenings, notes] = exportSheets(db, 'me')
-    expect(books.header).toContain('Javier: estado')
-    expect(books.rows[0].slice(0, 8)).toEqual(['Rayuela', 'Julio Cortázar', 600, 1963, null, 'Javier', 'Leyendo', 'p. 142 de 600'])
-    expect(evenings.rows[0]).toEqual([{ day: '2026-11-02' }, 'Tú', 'Rayuela', 100, 142, '42 páginas', 34, 'en el tren'])
-    expect(notes.rows[0].slice(0, 5)).toEqual(['Rayuela', 'Javier', 'p. 150', '(oculta hasta que llegues a su página)', 'Oculta hasta llegar'])
-    expect(xlsx([books, evenings, notes]).length).toBeGreaterThan(1000)
+    const sheets = exportSheets(db, 'me')
+    expect(sheets.map((s) => s.name)).toEqual(['2026', '2025', 'Sin terminar'])
+    expect(sheets[0].header).toEqual(['Título', 'Autor', 'Año del libro', 'Estrellas', 'Empezado', 'Terminado', 'Lo que me pareció'])
+    expect(sheets[0].rows).toEqual([['Rayuela', 'Alguien', 1963, 5, { day: '2026-10-01' }, { day: '2026-11-02' }, 'Un libro raro y precioso.']])
+    expect(sheets[1].rows).toEqual([['Nada', 'Alguien', 1945, 3, null, { day: '2025-03-09' }, '']])
+    expect(sheets[2].rows).toEqual([['Patria', 'Alguien', 2016, 'Leyendo', { day: '2026-11-05' }, 'p. 120 de 300', '']])
+    expect(xlsx(sheets).length).toBeGreaterThan(1000)
   })
 })

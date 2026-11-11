@@ -1,5 +1,4 @@
 import { bookViews, live } from './model'
-import { slipPlace } from './slips'
 import type { Db, Reading, Status } from './types'
 import type { Sheet } from './xlsx'
 
@@ -14,79 +13,53 @@ const where = (reading: Reading) => (reading.unit === 'porcentaje' ? `${reading.
 const day = (iso?: string | null) => (iso ? { day: iso } : null)
 
 /**
- * Everything on this phone as the sheets of a workbook: the books with where each of you is, the evenings and
- * the notes. A note of theirs that is still hidden from me has no text here either.
+ * My reading as a workbook that reads like a diary: one sheet per year, and in it each book I finished that
+ * year with its stars, when I started and finished it, and what I wrote about it as a whole. Books not
+ * finished yet go on a last sheet.
  */
 export function exportSheets(db: Db, me: string): Sheet[] {
-  const names = (id: string) => (id === me ? 'Tú' : (db.profiles[id]?.name ?? 'Tu pareja'))
-  const partner = db.profiles[me]?.partner_id ?? null
-  const other = partner ? names(partner) : null
-  const views = bookViews(db, me).sort((a, b) => a.book.title.localeCompare(b.book.title, 'es', { sensitivity: 'base' }))
+  const views = bookViews(db, me).filter((view) => view.mine)
+  // What I wrote about each book as a whole (not about a page): the closing note, or several.
+  const summary = (bookId: string) =>
+    live(db.slips)
+      .filter((slip) => slip.book_id === bookId && slip.user_id === me && slip.at == null && slip.body)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((slip) => slip.body!.trim())
+      .join('\n\n')
 
-  const mark = (reading?: Reading) => [
-    reading ? STATUS[reading.status] : null,
-    reading ? where(reading) : null,
-    day(reading?.started_on),
-    day(reading?.status === 'terminado' ? reading.finished_on : null),
-    reading?.rating ?? null,
-  ]
-  const markHeader = (who: string) => [`${who}: estado`, `${who}: por dónde`, `${who}: empezado`, `${who}: terminado`, `${who}: estrellas`]
-
-  const books: Sheet = {
-    name: 'Libros',
-    header: ['Título', 'Autor', 'Páginas', 'Año', 'ISBN', 'Lo añadió', ...markHeader('Tú'), ...(other ? markHeader(other) : [])],
-    rows: views.map(({ book, mine, theirs }) => [
-      book.title, book.author, book.pages, book.year, book.isbn, names(book.added_by), ...mark(mine), ...(other ? mark(theirs) : []),
-    ]),
-    widths: [34, 24, 9, 7, 16, 12, 16, 16, 12, 12, 10, 16, 16, 12, 12, 10],
+  const byYear = new Map<string, typeof views>()
+  for (const view of views) {
+    if (view.mine!.status !== 'terminado') continue
+    const year = view.mine!.finished_on?.slice(0, 4) ?? 'Sin fecha'
+    byYear.set(year, [...(byYear.get(year) ?? []), view])
   }
+  const years: Sheet[] = [...byYear.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([year, books]) => ({
+      name: year,
+      header: ['Título', 'Autor', 'Año del libro', 'Estrellas', 'Empezado', 'Terminado', 'Lo que me pareció'],
+      rows: books
+        .sort((a, b) => (a.mine!.finished_on ?? '').localeCompare(b.mine!.finished_on ?? '') || a.book.title.localeCompare(b.book.title, 'es'))
+        .map(({ book, mine }) => [book.title, book.author, book.year, mine!.rating, day(mine!.started_on), day(mine!.finished_on), summary(book.id)]),
+      widths: [36, 26, 13, 10, 12, 12, 80],
+    }))
 
-  const sessions = live(db.sessions)
-    .map((session) => ({ session, reading: db.readings[session.reading_id] }))
-    .filter(({ reading }) => reading && !reading.deleted_at && db.books[reading.book_id] && !db.books[reading.book_id].deleted_at)
-    .sort((a, b) => b.session.day.localeCompare(a.session.day) || (b.session.started_at ?? '').localeCompare(a.session.started_at ?? ''))
-  const evenings: Sheet = {
-    name: 'Veladas',
-    header: ['Noche', 'Quién', 'Libro', 'Desde', 'Hasta', 'Leído', 'Minutos', 'Dónde'],
-    rows: sessions.map(({ session, reading }) => [
-      day(session.day),
-      names(session.user_id),
-      db.books[reading.book_id].title,
-      session.from_pos,
-      session.to_pos,
-      `${Math.max(0, session.to_pos - session.from_pos)} ${reading.unit === 'porcentaje' ? '%' : 'páginas'}`,
-      session.minutes,
-      session.place,
-    ]),
-    widths: [12, 12, 34, 8, 8, 14, 9, 18],
-  }
-
-  const slips = live(db.slips)
-    .filter((slip) => db.books[slip.book_id] && !db.books[slip.book_id].deleted_at)
-    .sort(
-      (a, b) =>
-        db.books[a.book_id].title.localeCompare(db.books[b.book_id].title, 'es', { sensitivity: 'base' }) ||
-        (a.at ?? -1) - (b.at ?? -1) ||
-        a.created_at.localeCompare(b.created_at),
-    )
-  const notes: Sheet = {
-    name: 'Notas',
-    header: ['Libro', 'Quién', 'Página', 'Nota', 'Cómo se ve', 'Escrita', 'Leída por el otro', 'Le llegó'],
-    rows: slips.map((slip) => {
-      const author = slip.user_id === me ? views.find((v) => v.book.id === slip.book_id)?.mine : views.find((v) => v.book.id === slip.book_id)?.theirs
-      return [
-        db.books[slip.book_id].title,
-        names(slip.user_id),
-        slip.at == null ? 'El libro entero' : slip.page != null ? `p. ${slip.page}` : slipPlace(slip, author),
-        slip.body ?? '(oculta hasta que llegues a su página)',
-        slip.hidden && slip.at != null ? 'Oculta hasta llegar' : 'A la vista',
-        day(slip.created_at),
-        day(slip.seen_at),
-        slip.loved ? 'Sí' : null,
+  const open = views
+    .filter((view) => view.mine!.status !== 'terminado')
+    .sort((a, b) => a.mine!.status.localeCompare(b.mine!.status) || a.book.title.localeCompare(b.book.title, 'es'))
+  const pending: Sheet[] = open.length
+    ? [
+        {
+          name: 'Sin terminar',
+          header: ['Título', 'Autor', 'Año del libro', 'Estado', 'Empezado', 'Por dónde voy', 'Lo que me va pareciendo'],
+          rows: open.map(({ book, mine }) => [
+            book.title, book.author, book.year, STATUS[mine!.status], day(mine!.started_on), mine!.status === 'pendiente' ? null : where(mine!), summary(book.id),
+          ]),
+          widths: [36, 26, 13, 16, 12, 16, 80],
+        },
       ]
-    }),
-    widths: [34, 12, 16, 70, 18, 12, 16, 9],
-  }
+    : []
 
-  return [books, evenings, notes]
+  const sheets = [...years, ...pending]
+  return sheets.length ? sheets : [{ name: 'Libros', header: ['Título', 'Autor', 'Año del libro', 'Estrellas', 'Empezado', 'Terminado', 'Lo que me pareció'], rows: [] }]
 }
