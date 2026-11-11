@@ -90,13 +90,15 @@ lee el mismo libro, el papel queda doblado hasta que llegue a esa página; enton
 del libro*. Tú ves cuándo lo encontró. Una sola cosa (el papel) sustituye a citas, notas, huellas, respuestas,
 dedicatorias y corazones.
 
-### Una sola forma de escribir
+### Notas y valoración
 
-Dentro de un libro solo se escribe una cosa: **la nota entre páginas**. Puede ser una frase copiada, lo que te ha
-hecho sentir una página, algo para el otro o para ti, o lo que ha sido el libro entero. Va en su página (o en el
-libro entero), y quien la escribe elige cómo se ve: **a la vista** de los dos desde el principio, u **oculta**
-hasta que el otro llegue a esa página (entonces la encuentra). Ya no hay sobre, ni predicción, ni carta: lo que
-se escribió antes se sigue viendo como notas.
+Dentro de un libro se escriben dos cosas, cada una en su sitio:
+
+- **Notas entre páginas.** Una frase, lo que te ha hecho sentir una página, algo para el otro o para ti. Cada
+  nota va en su página y se dibuja sobre la línea del libro, junto a los dos marcapáginas. Quien la escribe
+  elige si queda **a la vista** o **oculta** hasta que el otro llegue a esa página (entonces la encuentra).
+- **Lo que os pareció.** La valoración del libro entero: las estrellas y unas palabras de cada uno, al
+  cerrarlo. Va aparte de las notas y la veis siempre los dos.
 
 Lo demás **recuerda solo**: la estantería crece, y la repisa os devuelve de vez en cuando un momento («hoy
 hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).

@@ -21,7 +21,7 @@ import { toast } from '@/ui/toast'
 import { PersonRow, Wax } from '@/ui/Who'
 import { PlaceField } from '@/ui/PlaceField'
 import { useBack } from '@/ui/useBack'
-import { BookSlips } from './BookSlips'
+import { BookReviews, BookSlips } from './BookSlips'
 
 type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove' | 'status'
 
@@ -127,12 +127,6 @@ export function BookPage() {
             Retomarlo
           </button>
         )}
-        {mine?.status === 'terminado' && (
-          <div>
-            <p className="label">¿Cuánto te gustó?</p>
-            <Stars value={mine.rating} onChange={(rating) => rateReading(mine, rating)} />
-          </div>
-        )}
         {!mine && (
           <button className="btn btn-primary" onClick={() => setOpen('place')}>
             {theirs ? 'Yo también quiero leerlo' : 'Ponerle mi marcapáginas'}
@@ -140,6 +134,7 @@ export function BookPage() {
         )}
       </section>
 
+      <BookReviews view={view} />
       <BookSlips view={view} />
 
       {/* Evenings */}
@@ -442,19 +437,19 @@ function Finish({ reading, book, partner, onDone }: { reading: Reading; book: Bo
         <Stars value={rating} onChange={setRating} />
       </div>
       <div>
-        <p className="label">¿Quieres dejar una nota final? <span className="text-[15px]">(si quieres)</span></p>
+        <p className="label">¿Qué te ha parecido? <span className="text-[15px]">(si quieres)</span></p>
         <div className="slip">
           <textarea
             className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-70"
             maxLength={4000}
             placeholder="Un resumen, lo que ha sido para ti, cómo te ha dejado…"
-            aria-label="Tu nota final"
+            aria-label="Tu valoración"
             value={note}
             onChange={(event) => setNote(event.currentTarget.value)}
           />
         </div>
         <p className="quiet mt-2 text-[15px]">
-          Se guarda con las notas del libro, sobre el libro entero{partner ? `, y ${partner} también la verá` : ''}.
+          Es tu valoración del libro: va aparte de las notas{partner ? `, y ${partner} también la verá` : ''}.
         </p>
       </div>
       <button

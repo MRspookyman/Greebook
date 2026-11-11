@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { positionFor } from './lock'
-import { papersOf, slipPlace, waitingFor } from './slips'
+import { papersOf, reviewsOf, slipPlace, waitingFor } from './slips'
 import { emptyDb, type Book, type Db, type Reading, type Slip } from './types'
 
 const book: Book = {
@@ -42,27 +42,33 @@ describe('dónde está un papel', () => {
   })
 })
 
-describe('entre páginas', () => {
-  it('van en orden de lectura, con los que no tienen página delante', () => {
-    const a = slip('me', 'nota', { at: 0.5 })
-    const b = slip('you', 'cita', { at: 0.2 })
-    const c = slip('me', 'nota')
-    const d = slip('you', 'carta')
-    const e = slip('me', 'cita', { at: 0.1, deleted_at: 'x' })
-    // Old letters are notes about the whole book now.
-    expect(papersOf(db([], [a, b, c, d, e]), 'b').map((s) => s.id)).toEqual([c.id, d.id, b.id, a.id])
+describe('entre páginas y lo que os pareció', () => {
+  const a = slip('me', 'nota', { at: 0.5 })
+  const b = slip('you', 'cita', { at: 0.2 })
+  const c = slip('me', 'nota')
+  const d = slip('you', 'carta')
+  const e = slip('me', 'cita', { at: 0.1, deleted_at: 'x' })
+  const f = slip('you', 'nota')
+  const data = db([], [a, b, c, d, e, f])
+
+  it('las notas con página van en orden de lectura', () => {
+    expect(papersOf(data, 'b').map((s) => s.id)).toEqual([b.id, a.id])
+  })
+  it('lo escrito sobre el libro entero es la valoración de cada uno; las cartas antiguas ya no se enseñan', () => {
+    expect(reviewsOf(data, 'b').map((s) => s.id)).toEqual([c.id, f.id])
   })
 })
 
 describe('lo que te espera', () => {
-  it('cada nota suya que no has abierto, sea del tipo que sea y vayas por donde vayas', () => {
+  it('cada nota suya de una página que no has abierto; las valoraciones y lo antiguo no se anuncian', () => {
     const ahead = slip('you', 'nota', { at: 0.9 })
+    const review = slip('you', 'nota')
     const old = slip('you', 'carta')
-    const seen = slip('you', 'nota', { seen_at: 'x' })
-    const own = slip('me', 'nota')
-    const result = waitingFor(db([reading('me', { position: 10 })], [ahead, old, seen, own]), 'me')
-    expect(result.map((w) => w.slip.id).sort()).toEqual([ahead.id, old.id].sort())
-    expect(result.every((w) => w.kind === 'papel' && !w.opening)).toBe(true)
+    const seen = slip('you', 'nota', { at: 0.3, seen_at: 'x' })
+    const own = slip('me', 'nota', { at: 0.3 })
+    const result = waitingFor(db([reading('me', { position: 10 })], [ahead, review, old, seen, own]), 'me')
+    expect(result.map((w) => w.slip.id)).toEqual([ahead.id])
+    expect(result[0].opening).toBe(false)
   })
   it('una nota oculta no espera hasta que tu marcapáginas la alcanza, aunque no haya red', () => {
     const hidden = slip('you', 'nota', { at: 0.25, hidden: true, locked: true, body: null })

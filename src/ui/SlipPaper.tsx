@@ -26,12 +26,12 @@ interface Props {
 
 const day = (iso: string) => fmtDay(isoDate(new Date(iso)))
 
-/** A slip of paper: folded while you can't read it, unfolded with a tap, and marked with whose it is. */
+/** A note: closed while you can't read it, opened with a tap, and marked with whose it is. */
 export function SlipPaper({ slip, mine, author, other, color, place, opening, label, onOpen, onLove, onEdit }: Props) {
   const [justOpened, setJustOpened] = useState(false)
   const folded = !mine && (slip.locked || slip.body == null)
   const unopened = !mine && !folded && !slip.seen_at
-  const tab = <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] rounded-l-[3px]" style={{ background: color }} />
+  const tab = <span aria-hidden className="absolute inset-y-0 left-0 w-[6px]" style={{ background: color }} />
 
   const seal = (
     <span aria-hidden className="inline-block h-[11px] w-[11px] flex-none rounded-full" style={{ background: color, boxShadow: '0 0 0 1px rgb(0 0 0 / 0.18)' }} />
@@ -39,7 +39,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, opening, la
 
   if (folded) {
     return (
-      <div className="slip slip-folded flex items-center gap-3 !py-3 opacity-90">
+      <div className="note note-closed flex items-center gap-3">
         {tab}
         <Lock size={18} className="flex-none opacity-50" />
         <p className="text-[16px] leading-snug">
@@ -57,7 +57,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, opening, la
     return (
       <button
         type="button"
-        className="slip slip-folded pressable block w-full text-left"
+        className="note pressable block w-full text-left"
         onClick={() => {
           setJustOpened(true)
           onOpen?.()
@@ -68,7 +68,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, opening, la
           {seal}
           <span className="opacity-70">{author}</span>
         </span>
-        <span className="hand block">{author} ha dejado una nota{place ? ` en la ${place}` : ''}</span>
+        <span className="block text-[17.5px] leading-snug">{author} ha dejado una nota{place ? ` en la ${place}` : ''}</span>
         <span className="mt-1 block text-[15px] opacity-70">Toca para leerla</span>
       </button>
     )
@@ -87,13 +87,13 @@ export function SlipPaper({ slip, mine, author, other, color, place, opening, la
   } else footer = `${author}, el ${day(slip.created_at)}`
 
   return (
-    <div className={`slip ${justOpened ? 'unfold' : ''}`}>
+    <div className={`note ${justOpened ? 'fade' : ''}`}>
       {tab}
       <p className="mb-1 flex items-center gap-2 text-[12.5px] font-semibold tracking-[0.14em] uppercase">
         {seal}
         <span className="opacity-70">{[label ?? author, place].filter(Boolean).join(' · ')}</span>
       </p>
-      <p className={`whitespace-pre-wrap break-words ${slip.kind === 'cita' ? 'text-[19px] leading-[28px] italic' : 'hand leading-[28px]'}`}>
+      <p className={`whitespace-pre-wrap break-words ${slip.kind === 'cita' ? 'italic' : ''} text-[17.5px] leading-[1.45]`}>
         {slip.body}
       </p>
       <div className="mt-2 flex min-h-8 items-center justify-between gap-3 text-[15px] opacity-75">

@@ -305,6 +305,21 @@ input[type='search']::-webkit-search-cancel-button {
   );
 }
 
+/* ── A note between pages: a plain card with its author's wax on the edge ── */
+.note {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 13px 16px 11px 20px;
+}
+.note-closed {
+  border-style: dashed;
+  background: transparent;
+}
+
 /* ── The candle ── */
 .candle {
   overflow: visible;

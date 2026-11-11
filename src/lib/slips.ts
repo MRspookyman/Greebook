@@ -1,7 +1,11 @@
 import { isLocked, positionFor } from './lock'
 import type { Book, Db, Reading, Slip } from './types'
 
-const liveSlips = (db: Db) => Object.values(db.slips).filter((slip) => !slip.deleted_at)
+/**
+ * What is written in a book now: notes. The letters and predictions of the first versions are no longer
+ * shown anywhere (they stay in the database, untouched).
+ */
+const liveSlips = (db: Db) => Object.values(db.slips).filter((slip) => !slip.deleted_at && (slip.kind === 'nota' || slip.kind === 'cita'))
 
 /** Where a slip sits, said in the reader's own terms: «p. 150», «36 %». Empty when it has no page. */
 export function slipPlace(slip: Pick<Slip, 'at' | 'page'>, reader: Pick<Reading, 'unit' | 'total'> | undefined): string {
@@ -11,14 +15,21 @@ export function slipPlace(slip: Pick<Slip, 'at' | 'page'>, reader: Pick<Reading,
   return reader.unit === 'porcentaje' ? `${position} %` : `p. ${position}`
 }
 
-/**
- * The notes of a book in reading order; those about the whole book (no page) come first, then by when they
- * were written. Every kind is a note now, the old letters and predictions included.
- */
+/** The notes between the pages of a book, in reading order. Each belongs to a page. */
 export function papersOf(db: Db, bookId: string): Slip[] {
   return liveSlips(db)
-    .filter((slip) => slip.book_id === bookId)
-    .sort((a, b) => (a.at ?? -1) - (b.at ?? -1) || a.created_at.localeCompare(b.created_at))
+    .filter((slip) => slip.book_id === bookId && slip.at != null)
+    .sort((a, b) => a.at! - b.at! || a.created_at.localeCompare(b.created_at))
+}
+
+/**
+ * The reviews of a book: what each of you wrote about it as a whole. They are notes without a page, kept
+ * apart from the ones between pages, and always open to both.
+ */
+export function reviewsOf(db: Db, bookId: string): Slip[] {
+  return liveSlips(db)
+    .filter((slip) => slip.book_id === bookId && slip.at == null)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
 }
 
 /** A note of theirs I can read and haven't opened. `opening` while this phone still waits for its text. */
@@ -39,7 +50,8 @@ export function waitingFor(db: Db, me: string): Waiting[] {
   const out: Waiting[] = []
   for (const slip of liveSlips(db).sort((a, b) => b.created_at.localeCompare(a.created_at))) {
     const book = db.books[slip.book_id]
-    if (slip.user_id === me || !book || book.deleted_at || slip.seen_at) continue
+    // Only notes between pages are handed over; a review is simply there, in its own place.
+    if (slip.user_id === me || !book || book.deleted_at || slip.seen_at || slip.at == null) continue
     if (!slip.locked && slip.body != null) out.push({ kind: 'papel', book, slip, opening: false })
     // Hidden as far as this phone knows, but by my own bookmark I can read it: it opens at the next sync.
     else if (!isLocked(slip, me, markOf(db, me, slip.book_id))) out.push({ kind: 'papel', book, slip, opening: true })

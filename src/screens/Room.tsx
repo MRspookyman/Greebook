@@ -7,7 +7,7 @@ import {
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { markNoticed, useNoticed } from '@/lib/noticed'
-import { waitingFor } from '@/lib/slips'
+import { reviewsOf, waitingFor } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { capital, fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
@@ -126,6 +126,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const shelfView = useShelfView()
   /** The book pulled halfway out of the shelf to look at its cover. */
   const [peek, setPeek] = useState<BookView | null>(null)
+  const peekReview = peek ? reviewsOf(db, peek.book.id).findLast((slip) => slip.user_id === me.id)?.body : null
   /** The book whose state is being changed. */
   const [statusFor, setStatusFor] = useState<BookView | null>(null)
   // By their spines you first pull a book out to see its cover; facing out, you already see it.
@@ -556,6 +557,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 {peek.theirs?.rating ? <span className="flex items-center gap-1.5"><Wax who="you" /> {peek.theirs.rating}★</span> : null}
               </p>
             )}
+            {peekReview && <p className="line-clamp-4 text-left text-[16.5px] leading-snug italic">«{peekReview}»</p>}
             <div className="flex w-full flex-col gap-1">
               <button className="btn btn-primary w-full" onClick={() => open(peek.book)}>
                 Abrir el libro

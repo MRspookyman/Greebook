@@ -22,7 +22,7 @@ export function exportSheets(db: Db, me: string): Sheet[] {
   // What I wrote about each book as a whole (not about a page): the closing note, or several.
   const summary = (bookId: string) =>
     live(db.slips)
-      .filter((slip) => slip.book_id === bookId && slip.user_id === me && slip.at == null && slip.body)
+      .filter((slip) => slip.book_id === bookId && slip.user_id === me && slip.at == null && slip.body && (slip.kind === 'nota' || slip.kind === 'cita'))
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
       .map((slip) => slip.body!.trim())
       .join('\n\n')
