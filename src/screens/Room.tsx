@@ -1,5 +1,5 @@
-import { useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useNavigationType } from 'react-router'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
   bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, live, nightstand, pile, progressOf, shelves, standGroups,
@@ -27,15 +27,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const status = useSyncStatus()
   const now = useNow()
   const navigate = useNavigate()
-  const { key } = useLocation()
-  const arrival = useNavigationType()
-
-  // The room is one page you can scroll from the sill down to the shelf; the menu's shortcuts land on a corner
-  // of it. Going back is left alone: the app returns you to where you were.
-  useLayoutEffect(() => {
-    if (section === 'velas' || (arrival === 'POP' && key !== 'default')) return
-    document.getElementById(`rincon-${section}`)?.scrollIntoView({ block: 'start' })
-  }, [section, key, arrival])
 
   const views = useMemo(() => bookViews(db, me.id), [db, me.id])
   const sessions = useMemo(() => live(db.sessions), [db.sessions])
@@ -138,7 +129,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         <p className="eyebrow">{capital(fmtToday(new Date(now)))}</p>
       </header>
 
-      <h1 className="sr-only">La habitación</h1>
+      {section === 'velas' && (
+      <>
+      <h1 className="sr-only">Velas</h1>
       {/* ── La repisa ── */}
       <section className="relative mt-1" aria-label="La repisa">
         <div className="flex items-end justify-center gap-9">
@@ -230,11 +223,15 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         )
       )}
 
+      </>
+      )}
+
       {/* ── La mesilla ── */}
-      <section id="rincon-mesilla" className="mt-14 scroll-mt-5" aria-labelledby="mesilla">
-        <h2 id="mesilla" className="title mb-5">
+      {section === 'mesilla' && (
+      <section className="mt-4" aria-labelledby="mesilla">
+        <h1 id="mesilla" className="title mb-5">
           La mesilla
-        </h2>
+        </h1>
         {stand.length ? (
           <div className="flex flex-col gap-7">
             {(
@@ -286,13 +283,15 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         )}
       </section>
+      )}
 
       {/* ── La estantería ── */}
-      <section id="rincon-estanteria" className="mt-14 scroll-mt-5" aria-labelledby="estanteria">
+      {section === 'estanteria' && (
+      <section className="mt-4" aria-labelledby="estanteria">
         <div className="mb-1 flex items-center justify-between">
-          <h2 id="estanteria" className="title">
+          <h1 id="estanteria" className="title">
             La estantería
-          </h2>
+          </h1>
         </div>
 
         {partner && (allPending.length > 0 || allYears.length > 0) && (
@@ -375,6 +374,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         )}
       </section>
+      )}
 
       {(remote.ensayo || status.pending > 0 || status.offline) && (
         <p className="quiet mt-12 text-center text-[15px]">
