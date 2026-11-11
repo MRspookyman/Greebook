@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { exportSheets } from '@/lib/export'
+import { xlsx } from '@/lib/xlsx'
 import { useBack } from '@/ui/useBack'
 import { updateMe } from '@/lib/actions'
 import { disablePush, enablePush, pushState, type PushState } from '@/lib/push'
@@ -37,10 +39,11 @@ export function Settings() {
     unconfigured: 'Los avisos aún no están configurados en este despliegue.',
   }
   const exportAll = () => {
-    const blob = new Blob([JSON.stringify(getDb(), null, 2)], { type: 'application/json' })
+    const bytes = xlsx(exportSheets(getDb(), me.id))
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `greenbook-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `greenbook-${new Date().toISOString().slice(0, 10)}.xlsx`
     link.click()
     setTimeout(() => URL.revokeObjectURL(link.href), 1000)
   }
@@ -117,9 +120,9 @@ export function Settings() {
 
       <section className="mt-10 border-t border-rule pt-6">
         <h2 className="title">Lo vuestro es vuestro</h2>
-        <p className="quiet mt-2 text-[16px]">Una copia de todo lo que hay en este móvil: libros, veladas y papeles.</p>
+        <p className="quiet mt-2 text-[16px]">Un Excel con todo lo que hay en este móvil, en tres hojas: libros, veladas y notas.</p>
         <button className="btn btn-line mt-4" onClick={exportAll}>
-          Guardar una copia
+          Descargar el Excel
         </button>
       </section>
 
