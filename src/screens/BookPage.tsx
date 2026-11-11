@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, markNext, editSession, finishReading, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  dropReading, editBook, markNext, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
   removeBookmark, removeSession, resizeReading, restoreBook, restoreBookmark, restoreSession, saveEvening, shelveForLater,
 } from '@/lib/actions'
 import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
@@ -188,6 +188,8 @@ export function BookPage() {
         {open === 'finish' && mine && (
           <Finish
             reading={mine}
+            book={book}
+            partner={partner?.name ?? null}
             onDone={() => {
               close()
               toast('Ya está en la estantería')
@@ -423,9 +425,10 @@ function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean
   )
 }
 
-/** Finishing is already saved; the sheet only adds an optional rating. */
-function Finish({ reading, onDone }: { reading: Reading; onDone: () => void }) {
+/** Finishing is already saved; the sheet asks for two optional things: a rating and a closing note. */
+function Finish({ reading, book, partner, onDone }: { reading: Reading; book: Book; partner: string | null; onDone: () => void }) {
   const [rating, setRating] = useState<number | null>(reading.rating)
+  const [note, setNote] = useState('')
   return (
     <div className="flex flex-col gap-6">
       <p className="quiet">La última página. El libro ya está en la estantería con tu cinta.</p>
@@ -433,11 +436,27 @@ function Finish({ reading, onDone }: { reading: Reading; onDone: () => void }) {
         <p className="label">¿Cuánto te ha gustado? <span className="text-[15px]">(si quieres)</span></p>
         <Stars value={rating} onChange={setRating} />
       </div>
-      <p className="quiet text-[15.5px]">Si quieres dejar escrito lo que ha sido para ti, hazlo con una nota entre sus páginas.</p>
+      <div>
+        <p className="label">¿Quieres dejar una nota final? <span className="text-[15px]">(si quieres)</span></p>
+        <div className="slip">
+          <textarea
+            className="hand block min-h-[112px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-70"
+            maxLength={4000}
+            placeholder="Un resumen, lo que ha sido para ti, cómo te ha dejado…"
+            aria-label="Tu nota final"
+            value={note}
+            onChange={(event) => setNote(event.currentTarget.value)}
+          />
+        </div>
+        <p className="quiet mt-2 text-[15px]">
+          Se guarda con las notas del libro, sobre el libro entero{partner ? `, y ${partner} también la verá` : ''}.
+        </p>
+      </div>
       <button
         className="btn btn-primary"
         onClick={() => {
           rateReading(reading, rating)
+          if (note.trim()) leaveSlip({ book, kind: 'nota', page: null, body: note })
           onDone()
         }}
       >
