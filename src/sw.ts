@@ -59,8 +59,10 @@ self.addEventListener('push', (event) => {
 
 // Tapping a notice brings the open app forward at the right place, or opens it.
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-  const url = new URL((event.notification.data?.url as string | undefined) ?? '/', self.registration.scope)
+  // The candle's notice stays while the candle burns: the app takes it away when it goes out.
+  if (!event.notification.data?.ongoing) event.notification.close()
+  const path = event.action === 'apagar' ? '/velada?apagar=1' : ((event.notification.data?.url as string | undefined) ?? '/')
+  const url = new URL(path, self.registration.scope)
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

@@ -38,7 +38,8 @@ export function Evening() {
   const navigate = useNavigate()
   const back = useBack()
   const wink = useWink(partner?.name)
-  const [asking, setAsking] = useState(false)
+  // «Apagar la vela» on the phone's notice lands here with the question already open.
+  const [asking, setAsking] = useState(() => new URLSearchParams(window.location.search).has('apagar'))
   const [writing, setWriting] = useState(false)
   const [farewell, setFarewell] = useState<Farewell | null>(null)
   /** The goodbye has been said and there are notes to hand over before leaving. */

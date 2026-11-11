@@ -5,6 +5,7 @@ import {
   removeBookmark, removeSession, resizeReading, restoreBook, restoreBookmark, restoreSession, saveEvening,
 } from '@/lib/actions'
 import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
+import { askForCandleNotice } from '@/lib/ongoing'
 import { fmtDay, fmtMinutes } from '@/lib/time'
 import type { Book, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
@@ -62,6 +63,7 @@ export function BookPage() {
   const light = () => {
     if (!mine) return
     navigator.vibrate?.(18)
+    askForCandleNotice()
     lightCandle(mine)
     navigate('/velada')
   }

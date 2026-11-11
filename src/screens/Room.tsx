@@ -7,6 +7,7 @@ import {
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { markNoticed, useNoticed } from '@/lib/noticed'
+import { askForCandleNotice } from '@/lib/ongoing'
 import { reviewsOf, waitingFor } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { capital, fmtSince, fmtToday, nightOf } from '@/lib/time'
@@ -55,6 +56,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       return
     }
     navigator.vibrate?.(18)
+    askForCandleNotice()
     lightCandle(chosen.mine)
     navigate('/velada')
   }

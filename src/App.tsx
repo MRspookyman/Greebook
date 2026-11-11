@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType 
 import { loadRemote, type Remote } from '@/lib/sync/remote'
 import { closeStore, openStore, sync, useDb, useSyncStatus } from '@/lib/sync/store'
 import { SessionContext } from './session'
+import { isLit } from '@/lib/model'
+import { clearCandleNotice, showCandleNotice } from '@/lib/ongoing'
 import { disablePush, reclaimPush } from '@/lib/push'
 import { toast } from '@/ui/toast'
 import { Toaster } from '@/ui/Toaster'
@@ -163,6 +165,16 @@ function Gate({ userId }: { userId: string }) {
     root.style.setProperty('--me', `var(--${me?.color ?? 'miel'})`)
     root.style.setProperty('--you', `var(--${partner?.color ?? 'salvia'})`)
   }, [me?.color, partner?.color])
+
+  // While my candle burns, the phone carries a notice that counts the time, like a timer's.
+  const litAt = me?.candle_lit_at ?? null
+  const candleBook = me?.candle_reading_id ? db.books[db.readings[me.candle_reading_id]?.book_id ?? '']?.title : undefined
+  useEffect(() => {
+    if (litAt && isLit({ candle_lit_at: litAt }, Date.now())) void showCandleNotice(litAt, candleBook ?? null)
+    else void clearCandleNotice()
+  }, [litAt, candleBook])
+  // Nothing of yours stays on the lock screen of a phone you have signed out of.
+  useEffect(() => () => void clearCandleNotice(), [])
 
   if (!me) {
     return (
