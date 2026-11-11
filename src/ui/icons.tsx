@@ -61,3 +61,4 @@ export const Spines = (p: P) => (
 export const Covers = (p: P) => (
   <Icon {...p}><path d="M4.5 5.5h6v9h-6zM13.5 5.5h6v9h-6zM3 18.5h18" /></Icon>
 )
+export const Chevron = (p: P) => <Icon {...p}><path d="m6 9.5 6 6 6-6" /></Icon>

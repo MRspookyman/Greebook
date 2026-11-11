@@ -18,6 +18,7 @@ import { Candle } from '@/ui/Candle'
 import { Covers, Flame, Plus, Spines, Search, More } from '@/ui/icons'
 import { setShelfView, useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
+import { Fold } from '@/ui/Fold'
 import { Sheet } from '@/ui/Sheet'
 import { StatusSheet } from '@/ui/StatusSheet'
 import { toast } from '@/ui/toast'
@@ -270,7 +271,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           La mesilla
         </h1>
         {stand.length ? (
-          <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-4">
             {(
               [
                 ['both', 'Los dos', groups.both],
@@ -281,32 +282,43 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
               ([kind, label, list]) =>
                 list.length > 0 && (
                   <div key={kind} role="group" aria-label={kind === 'both' ? 'Lo leéis los dos' : kind === 'mine' ? 'Lo lees tú' : `Lo lee ${label}`}>
-                    {partner && (
-                      <p className="mb-2.5 flex items-center gap-2 text-[17px]">
-                        <span className="flex items-center -space-x-1">
-                          {kind !== 'mine' && <Wax who="you" size={13} />}
-                          {kind !== 'theirs' && <Wax who="me" size={13} />}
-                        </span>
-                        <span className="font-medium">{label}</span>
-                        <span className="quiet text-[15px]">
-                          {kind === 'both' ? '· lo leéis a la vez' : list.length > 1 ? `· ${list.length} libros` : ''}
-                        </span>
-                      </p>
-                    )}
-                    <div className="flex flex-col gap-3">
-                      {list.map((view, i) => (
-                        <OpenBook
-                          key={view.book.id}
-                          view={view}
-                          partner={partner}
-                          kind={kind}
-                          candle={view === chosen}
-                          onMoveCandle={() => (view === chosen ? toast('Tu vela ya es para este libro') : moveCandle(view))}
-                          onStatus={() => setStatusFor(view)}
-                          i={i}
-                        />
-                      ))}
-                    </div>
+                    {(() => {
+                      const cards = (
+                        <div className="flex flex-col gap-3">
+                          {list.map((view, i) => (
+                            <OpenBook
+                              key={view.book.id}
+                              view={view}
+                              partner={partner}
+                              kind={kind}
+                              candle={view === chosen}
+                              onMoveCandle={() => (view === chosen ? toast('Tu vela ya es para este libro') : moveCandle(view))}
+                              onStatus={() => setStatusFor(view)}
+                              i={i}
+                            />
+                          ))}
+                        </div>
+                      )
+                      // Alone there is one group and nothing to tell apart: no heading, nothing to fold.
+                      if (!partner) return cards
+                      return (
+                        <Fold
+                          id={`mesilla:${kind}`}
+                          header={
+                            <span className="flex items-center gap-2 text-[17px]">
+                              <span className="flex items-center -space-x-1">
+                                {kind !== 'mine' && <Wax who="you" size={13} />}
+                                {kind !== 'theirs' && <Wax who="me" size={13} />}
+                              </span>
+                              <span className="font-medium">{label}</span>
+                              <span className="quiet text-[15px]">· {list.length === 1 ? 'un libro' : `${list.length} libros`}</span>
+                            </span>
+                          }
+                        >
+                          <div className="pt-1.5">{cards}</div>
+                        </Fold>
+                      )
+                    })()}
                   </div>
                 ),
             )}
@@ -408,8 +420,17 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         )}
 
         {pending.length > 0 && (
-          <div className="mt-6">
-            <p className="eyebrow">Por leer</p>
+          <Fold
+            id="estanteria:porleer"
+            open={searching}
+            className="mt-5"
+            header={
+              <span className="flex items-baseline gap-3">
+                <span className="eyebrow">Por leer</span>
+                <span className="quiet text-[15px]">{pending.length === 1 ? 'un libro' : `${pending.length} libros`}</span>
+              </span>
+            }
+          >
             {myNext && (
               <p className="quiet mt-1.5 flex items-center gap-2 text-[15.5px]">
                 <Wax who="me" />
@@ -427,32 +448,45 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
               </p>
             )}
             <Shelf items={pending.map(item((s) => s === 'pendiente'))} onOpen={take} view={shelfView} />
-          </div>
+          </Fold>
         )}
 
         {together && together.length > 0 && (
-          <div className="mt-8">
-            <p className="flex items-baseline gap-3">
-              <span className="text-[26px]">Leídos</span>
-              <span className="quiet text-[15px]">
-                {together.length === 1 ? 'un libro' : `${together.length} libros`} · {order === 'titulo' ? 'por título' : order === 'autor' ? 'por autor' : 'de más a menos estrellas'}
+          <Fold
+            id="estanteria:leidos"
+            open={searching}
+            className="mt-6"
+            header={
+              <span className="flex items-baseline gap-3">
+                <span className="text-[26px]">Leídos</span>
+                <span className="quiet text-[15px]">
+                  {together.length === 1 ? 'un libro' : `${together.length} libros`} · {order === 'titulo' ? 'por título' : order === 'autor' ? 'por autor' : 'de más a menos estrellas'}
+                </span>
               </span>
-            </p>
+            }
+          >
             <Shelf items={together.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
-          </div>
+          </Fold>
         )}
 
         {!together && years.map(({ year, books }) => (
-          <div key={year} className="mt-8">
-            <p className="flex items-baseline gap-3">
-              <span className="text-[26px]">{year}</span>
-              <span className="quiet text-[15px]">
-                {books.length === 1 ? 'un libro' : `${books.length} libros`}
-                {whose === 'todos' && nightsIn(year) > 0 && ` · ${nightsIn(year) === 1 ? 'una noche' : `${nightsIn(year)} noches`}`}
+          <Fold
+            key={year}
+            id={`estanteria:${year}`}
+            open={searching}
+            className="mt-6"
+            header={
+              <span className="flex items-baseline gap-3">
+                <span className="text-[26px]">{year}</span>
+                <span className="quiet text-[15px]">
+                  {books.length === 1 ? 'un libro' : `${books.length} libros`}
+                  {whose === 'todos' && nightsIn(year) > 0 && ` · ${nightsIn(year) === 1 ? 'una noche' : `${nightsIn(year)} noches`}`}
+                </span>
               </span>
-            </p>
+            }
+          >
             <Shelf items={books.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
-          </div>
+          </Fold>
         ))}
 
         {!years.length && !pending.length && !left.length && (
@@ -466,8 +500,17 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         )}
 
         {left.length > 0 && (
-          <div className="mt-10">
-            <p className="eyebrow">{left.length === 1 ? 'Dejado a medias' : 'Dejados a medias'}</p>
+          <Fold
+            id="estanteria:dejados"
+            open={searching}
+            className="mt-8"
+            header={
+              <span className="flex items-baseline gap-3">
+                <span className="eyebrow">{left.length === 1 ? 'Dejado a medias' : 'Dejados a medias'}</span>
+                <span className="quiet text-[15px]">{left.length === 1 ? 'un libro' : `${left.length} libros`}</span>
+              </span>
+            }
+          >
             {shelfView === 'portadas' ? (
               <Shelf items={left.map((view) => ({ book: view.book, ribbons: [] }))} onOpen={take} view="portadas" />
             ) : (
@@ -480,7 +523,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 <Plank />
               </>
             )}
-          </div>
+          </Fold>
         )}
       </section>
       )}
