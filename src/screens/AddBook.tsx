@@ -6,6 +6,7 @@ import { getMe } from '@/lib/sync/store'
 import type { Book } from '@/lib/types'
 import { usePeople } from '@/session'
 import { Cover } from '@/ui/Book'
+import { CoverPhoto } from '@/ui/CoverPhoto'
 import { Back, Search } from '@/ui/icons'
 import { PlacementForm } from '@/ui/Placement'
 import { Sheet } from '@/ui/Sheet'
@@ -155,9 +156,10 @@ export function AddBook() {
 function ByHand({ title: initial, onDone }: { title: string; onDone: (book: NewBook) => void }) {
   const [title, setTitle] = useState(initial)
   const [author, setAuthor] = useState('')
+  const [cover, setCover] = useState<string | null>(null)
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (title.trim()) onDone({ title: title.trim(), author: author.trim(), cover_url: null, pages: null, year: null, isbn: null })
+    if (title.trim()) onDone({ title: title.trim(), author: author.trim(), cover_url: cover, pages: null, year: null, isbn: null })
   }
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
@@ -173,6 +175,7 @@ function ByHand({ title: initial, onDone }: { title: string; onDone: (book: NewB
         </label>
         <input id="hand-author" className="field" maxLength={300} value={author} onChange={(e) => setAuthor(e.currentTarget.value)} />
       </div>
+      <CoverPhoto book={{ id: title || 'libro', title: title || 'Título', author, pages: null }} value={cover} onChange={setCover} />
       <button className="btn btn-primary mt-2" disabled={!title.trim()}>
         Seguir
       </button>

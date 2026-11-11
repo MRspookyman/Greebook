@@ -58,3 +58,6 @@ export const BookOpen = (p: P) => (
 export const Spines = (p: P) => (
   <Icon {...p}><path d="M5 5h3.5v13H5zM8.5 7.5H12V18H8.5zM13.6 6.300l3.300-.9 3.100 11.7-3.300.9zM3.5 20h17" /></Icon>
 )
+export const Covers = (p: P) => (
+  <Icon {...p}><path d="M4.5 5.5h6v9h-6zM13.5 5.5h6v9h-6zM3 18.5h18" /></Icon>
+)

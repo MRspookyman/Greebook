@@ -9,6 +9,7 @@ import { fmtDay, fmtMinutes } from '@/lib/time'
 import type { Book, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
 import { Cover } from '@/ui/Book'
+import { CoverPhoto } from '@/ui/CoverPhoto'
 import { Back, Close, Flame, More } from '@/ui/icons'
 import { NumberDial } from '@/ui/NumberDial'
 import { PlacementForm } from '@/ui/Placement'
@@ -76,7 +77,14 @@ export function BookPage() {
       </div>
 
       <header className="mt-3 flex gap-5">
-        <Cover book={book} width={104} />
+        {book.cover_url ? (
+          <Cover book={book} width={104} />
+        ) : (
+          <button type="button" className="pressable relative flex-none self-start" aria-label="Poner una foto de portada" onClick={() => setOpen('edit')}>
+            <Cover book={book} width={104} />
+            <span className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-black/55 px-2 py-1 text-center text-[12.5px] leading-tight text-white">Poner portada</span>
+          </button>
+        )}
         <div className="min-w-0 flex-1 self-end">
           <h1 className="text-[28px] leading-[1.08]">{book.title}</h1>
           {book.author && <p className="quiet mt-1.5 text-[18px] italic">{book.author}</p>}
@@ -213,7 +221,7 @@ export function BookPage() {
 
       <Sheet open={open === 'more'} onClose={close} label="Más opciones">
         <div className="flex flex-col">
-          <Option onClick={() => setOpen('edit')}>Corregir título, autor o páginas</Option>
+          <Option onClick={() => setOpen('edit')}>Corregir título, autor, páginas o portada</Option>
           {mine && mine.status !== 'terminado' && <Option onClick={() => setOpen('size')}>Cambiar cómo lo cuento (páginas o %)</Option>}
           {mine?.status === 'leyendo' && (
             <>
@@ -470,10 +478,11 @@ function Edit({ book, reading, onDone }: { book: Book; reading?: Reading; onDone
   const [title, setTitle] = useState(book.title)
   const [author, setAuthor] = useState(book.author)
   const [pages, setPages] = useState(book.pages ? String(book.pages) : '')
+  const [cover, setCover] = useState(book.cover_url)
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (!title.trim()) return
-    editBook(book, { title: title.trim(), author: author.trim(), pages: Number(pages) > 0 ? Number(pages) : null })
+    editBook(book, { title: title.trim(), author: author.trim(), pages: Number(pages) > 0 ? Number(pages) : null, cover_url: cover })
     if (reading?.unit === 'paginas' && Number(pages) > 0 && Number(pages) !== reading.total) {
       resizeReading(reading, 'paginas', Number(pages))
     }
@@ -481,6 +490,7 @@ function Edit({ book, reading, onDone }: { book: Book; reading?: Reading; onDone
   }
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
+      <CoverPhoto book={{ ...book, title: title || book.title, author }} value={cover} onChange={setCover} />
       <div>
         <label className="label" htmlFor="edit-title">Título</label>
         <input id="edit-title" className="field" required maxLength={300} value={title} onChange={(e) => setTitle(e.currentTarget.value)} />

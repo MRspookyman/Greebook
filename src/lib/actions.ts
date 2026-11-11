@@ -1,5 +1,6 @@
 import { fractionOf } from './lock'
 import { isLit } from './model'
+import { isCover } from './photo'
 import { enqueue, getDb, getMe, keep, patch, save } from './sync/store'
 import { isoDate, minutesBetween, nightOf } from './time'
 import type { Book, Color, Reading, Session, Slip, SlipKind, Status, Unit } from './types'
@@ -151,7 +152,7 @@ export function addBook(candidate: NewBook): Book {
     id: uid(),
     title: candidate.title.trim().slice(0, 300),
     author: candidate.author.trim().slice(0, 300),
-    cover_url: candidate.cover_url?.startsWith('https://') ? candidate.cover_url : null,
+    cover_url: isCover(candidate.cover_url) ? candidate.cover_url : null,
     pages: candidate.pages,
     year: candidate.year,
     isbn: candidate.isbn,

@@ -15,8 +15,10 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Flame, Plus } from '@/ui/icons'
+import { Covers, Flame, Plus, Spines } from '@/ui/icons'
+import { setShelfView, useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
+import { Sheet } from '@/ui/Sheet'
 import { toast } from '@/ui/toast'
 import { useHold } from '@/ui/useHold'
 import { PersonRow, Wax, type Person } from '@/ui/Who'
@@ -109,6 +111,25 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
     ribbons: ribbons(view, wanted),
   })
   const open = (book: Book) => navigate(`/libro/${book.id}`)
+  const shelfView = useShelfView()
+  /** The book pulled halfway out of the shelf to look at its cover. */
+  const [peek, setPeek] = useState<BookView | null>(null)
+  // By their spines you first pull a book out to see its cover; facing out, you already see it.
+  const take = (book: Book) => {
+    const view = views.find((v) => v.book.id === book.id)
+    if (shelfView === 'lomos' && view) setPeek(view)
+    else open(book)
+  }
+  const said = (reading: BookView['mine'], second: boolean) =>
+    !reading
+      ? null
+      : reading.status === 'terminado'
+        ? second ? 'lo has leído' : 'lo ha leído'
+        : reading.status === 'leyendo'
+          ? `${second ? 'vas' : 'va'} por la ${fmtPosition(reading)}`
+          : reading.status === 'pendiente'
+            ? `${second ? 'lo tienes' : 'lo tiene'} por leer`
+            : `${second ? 'lo dejaste' : 'lo dejó'} a medias`
   const nightsIn = (year: number) => new Set(sessions.filter((s) => s.day.startsWith(String(year))).map((s) => s.day)).size
   const empty = !stand.length && !allPending.length && !allYears.length
 
@@ -291,10 +312,31 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {/* ── La estantería ── */}
       {section === 'estanteria' && (
       <section className="mt-4" aria-labelledby="estanteria">
-        <div className="mb-1 flex items-center justify-between">
+        <div className="mb-1 flex items-center justify-between gap-3">
           <h1 id="estanteria" className="title">
             La estantería
           </h1>
+          {(allPending.length > 0 || allYears.length > 0) && (
+            <div role="group" aria-label="Cómo ver la estantería" className="flex rounded-full border-[1.5px] border-rule p-[3px]">
+              {(
+                [
+                  ['lomos', 'Ver los lomos', <Spines key="l" size={20} />],
+                  ['portadas', 'Ver las portadas', <Covers key="p" size={20} />],
+                ] as const
+              ).map(([value, label, icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={shelfView === value}
+                  className={`grid h-10 w-12 place-items-center rounded-full transition-colors ${shelfView === value ? 'bg-ink text-bg' : 'text-muted'}`}
+                  onClick={() => setShelfView(value)}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {partner && (allPending.length > 0 || allYears.length > 0) && (
@@ -340,7 +382,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 </span>
               </p>
             )}
-            <Shelf items={pending.map(item((s) => s === 'pendiente'))} onOpen={open} />
+            <Shelf items={pending.map(item((s) => s === 'pendiente'))} onOpen={take} view={shelfView} />
           </div>
         )}
 
@@ -353,7 +395,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 {whose === 'todos' && nightsIn(year) > 0 && ` · ${nightsIn(year) === 1 ? 'una noche' : `${nightsIn(year)} noches`}`}
               </span>
             </p>
-            <Shelf items={books.map(item((s) => s === 'terminado'))} onOpen={open} />
+            <Shelf items={books.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
           </div>
         ))}
 
@@ -378,6 +420,35 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         )}
       </section>
       )}
+
+      <Sheet open={!!peek} onClose={() => setPeek(null)} label={peek?.book.title}>
+        {peek && (
+          <div className="flex flex-col items-center gap-5 pb-1 text-center">
+            <div className="rise">
+              <Cover book={peek.book} width={168} />
+            </div>
+            <div>
+              <h2 className="text-[25px] leading-tight">{peek.book.title}</h2>
+              {peek.book.author && <p className="quiet mt-1 text-[17px] italic">{peek.book.author}</p>}
+            </div>
+            <div className="flex flex-col items-center gap-1 text-[16px]">
+              {peek.mine && (
+                <p className="flex items-center gap-2">
+                  <Wax who="me" /> <span><span className="font-medium">Tú</span> <span className="quiet">{said(peek.mine, true)}</span></span>
+                </p>
+              )}
+              {peek.theirs && partner && (
+                <p className="flex items-center gap-2">
+                  <Wax who="you" /> <span><span className="font-medium">{partner.name}</span> <span className="quiet">{said(peek.theirs, false)}</span></span>
+                </p>
+              )}
+            </div>
+            <button className="btn btn-primary w-full" onClick={() => open(peek.book)}>
+              Abrir el libro
+            </button>
+          </div>
+        )}
+      </Sheet>
 
       {(remote.ensayo || status.pending > 0 || status.offline) && (
         <p className="quiet mt-12 text-center text-[15px]">
