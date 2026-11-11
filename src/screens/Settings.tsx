@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useBack } from '@/ui/useBack'
 import { updateMe } from '@/lib/actions'
 import { disablePush, enablePush, pushState, type PushState } from '@/lib/push'
 import { getDb, useSyncStatus } from '@/lib/sync/store'
@@ -13,10 +13,13 @@ export function Settings() {
   const { me, partner } = usePeople()
   const { remote, signOut } = useSession()
   const status = useSyncStatus()
-  const navigate = useNavigate()
+  const back = useBack()
   const [name, setName] = useState(me.name)
   const [leaving, setLeaving] = useState(false)
   const [push, setPush] = useState<PushState | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState('')
   useEffect(() => {
     let alive = true
     void pushState(remote).then((state) => alive && setPush(state)).catch(() => {})
@@ -44,7 +47,7 @@ export function Settings() {
 
   return (
     <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-28" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
-      <button className="icon-btn -ml-2" aria-label="Volver a la habitación" onClick={() => navigate(-1)}>
+      <button className="icon-btn -ml-2" aria-label="Volver" onClick={back}>
         <Back />
       </button>
       <div className="mt-2 flex items-end gap-3">
@@ -65,7 +68,11 @@ export function Settings() {
             value={name}
             maxLength={40}
             onChange={(event) => setName(event.currentTarget.value)}
-            onBlur={() => name.trim() && name.trim() !== me.name && updateMe({ name: name.trim() })}
+            onBlur={() => {
+              const trimmed = name.trim()
+              setName(trimmed || me.name)
+              if (trimmed && trimmed !== me.name) updateMe({ name: trimmed })
+            }}
           />
         </div>
         <div>
@@ -86,15 +93,25 @@ export function Settings() {
           {(push === 'on' || push === 'off') && (
             <button
               className={`btn mt-4 ${push === 'on' ? 'btn-line' : 'btn-primary'}`}
-              onClick={() =>
+              disabled={pushBusy}
+              aria-busy={pushBusy}
+              onClick={() => {
+                if (pushBusy) return
+                setPushBusy(true)
+                setPushError('')
                 void (push === 'on' ? disablePush(remote) : enablePush(remote))
-                  .then(setPush)
-                  .catch(() => setPush('off'))
-              }
+                  .then((next) => {
+                    setPush(next)
+                    if (push === 'off' && next === 'off') setPushError('No se han activado los avisos. Puedes volver a intentarlo.')
+                  })
+                  .catch(() => setPushError('No he podido cambiar los avisos. Revisa la conexión y prueba otra vez.'))
+                  .finally(() => setPushBusy(false))
+              }}
             >
-              {push === 'on' ? 'Dejar de avisarme aquí' : 'Avisarme en este móvil'}
+              {pushBusy ? 'Un momento…' : push === 'on' ? 'Dejar de avisarme aquí' : 'Avisarme en este móvil'}
             </button>
           )}
+          {pushError && <p role="status" className="quiet mt-3 text-[16px]">{pushError}</p>}
         </section>
       )}
 
@@ -122,11 +139,20 @@ export function Settings() {
                 : 'Al salir, este móvil olvida lo vuestro. Volverá al entrar.'}
             </p>
             <div className="flex gap-3">
-              <button className="btn btn-soft" onClick={() => setLeaving(false)}>
+              <button className="btn btn-soft" disabled={signingOut} onClick={() => setLeaving(false)}>
                 Me quedo
               </button>
-              <button className="btn btn-line btn-danger" onClick={() => void signOut()}>
-                Salir
+              <button
+                className="btn btn-line btn-danger"
+                disabled={signingOut}
+                aria-busy={signingOut}
+                onClick={() => {
+                  if (signingOut) return
+                  setSigningOut(true)
+                  void signOut().finally(() => setSigningOut(false))
+                }}
+              >
+                {signingOut ? 'Saliendo…' : 'Salir'}
               </button>
             </div>
           </div>

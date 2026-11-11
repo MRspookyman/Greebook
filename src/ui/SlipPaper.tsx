@@ -15,8 +15,6 @@ interface Props {
   color: string
   /** Where it sits, in my terms: «p. 150». */
   place?: string
-  /** Shown instead of the text while it is folded. */
-  foldedLine?: string
   /** Shown above the text: «Tu predicción». */
   label?: string
   onOpen?: () => void
@@ -27,7 +25,7 @@ interface Props {
 const day = (iso: string) => fmtDay(isoDate(new Date(iso)))
 
 /** A slip of paper: folded while you can't read it, unfolded with a tap, and marked with whose it is. */
-export function SlipPaper({ slip, mine, author, other, color, place, foldedLine, label, onOpen, onLove, onEdit }: Props) {
+export function SlipPaper({ slip, mine, author, other, color, place, label, onOpen, onLove, onEdit }: Props) {
   const [justOpened, setJustOpened] = useState(false)
   const folded = !mine && (slip.locked || slip.body == null)
   const unopened = !mine && !folded && !slip.seen_at
@@ -47,7 +45,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, foldedLine,
             {seal}
             {[place, `de ${author}`].filter(Boolean).join(' · ')}
           </span>
-          <span className="block opacity-70">{foldedLine ?? 'La encontrarás al llegar.'}</span>
+          <span className="block opacity-70">La encontrarás al llegar.</span>
         </p>
       </div>
     )

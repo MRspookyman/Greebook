@@ -5,8 +5,6 @@ import type { Status, Unit } from '@/lib/types'
 interface Props {
   /** Pages the book says it has, if known. */
   pages: number | null
-  /** What to offer first. */
-  initial?: Status
   /** Label of the confirm button. */
   action?: string
   onDone: (placement: Placement) => void
@@ -19,9 +17,9 @@ const CHOICES: Array<{ status: Status; title: string; detail: string }> = [
 ]
 
 /** Where a book goes when it enters the room, and how you count it: pages or Kindle's %. */
-export function PlacementForm({ pages, initial = 'leyendo', action = 'Añadir', onDone }: Props) {
+export function PlacementForm({ pages, action = 'Añadir', onDone }: Props) {
   const [thisYear] = useState(() => new Date().getFullYear())
-  const [status, setStatus] = useState<Status>(initial)
+  const [status, setStatus] = useState<Status>('leyendo')
   const [unit, setUnit] = useState<Unit>('paginas')
   const [total, setTotal] = useState(pages ? String(pages) : '')
   const [year, setYear] = useState(String(thisYear))

@@ -2,6 +2,8 @@ import { isLocked } from '../lock'
 import { emptyDb, type Db, type Profile, type Reading, type Row, type Slip, type Table } from '../types'
 import { RemoteError, type Remote, type Signal } from './remote'
 import { story } from './demoStory'
+import { del } from 'idb-keyval'
+import { storageKey } from './store'
 
 /**
  * «Modo ensayo»: a pretend server inside this browser, for trying the app without Supabase.
@@ -71,7 +73,11 @@ export function create(): Remote {
     /** Any password works; the «email» only has to say which of the two you are. */
     async signIn(email) {
       const id = /javier/i.test(email) ? JAVIER : LAURA
-      if (/historia/i.test(email)) write(story(fresh(), LAURA, JAVIER))
+      if (/historia/i.test(email)) {
+        write(story(fresh(), LAURA, JAVIER))
+        // A new story replaces the server: copies kept from the previous one would look newer and win.
+        await Promise.all([LAURA, JAVIER].map((user) => del(storageKey(user)).catch(() => {})))
+      }
       sessionStorage.setItem(WHO, id)
       listeners.forEach((listener) => listener(id))
     },

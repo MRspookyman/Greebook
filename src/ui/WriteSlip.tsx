@@ -25,6 +25,7 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
   const total = mine?.total ?? book.pages ?? 0
   const number = Number(page)
   const placed = !loose && page !== '' && number >= 0 && (!total || number <= total)
+  const invalidPage = !editing && !loose && page !== '' && total > 0 && number > total
   const [hidden, setHidden] = useState(!!editing?.hidden)
   // Hiding only makes sense with someone to hide it from and a page to wait for.
   const canHide = !!partner && (editing ? editing.at != null : placed)
@@ -36,6 +37,7 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
       : `${name} puede leerla desde ya, vaya por donde vaya.`
 
   const save = () => {
+    if (invalidPage) return
     if (editing) editSlip(editing, body, hidden && canHide)
     else leaveSlip({ book, kind: 'nota', page: placed ? number : null, body, hidden: hidden && canHide })
     onDone()
@@ -45,7 +47,7 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
     <div className="flex flex-col gap-5">
       <div className="slip">
         <textarea
-          className={`block min-h-[140px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-45 ${editing?.kind === 'cita' ? 'text-[19px] italic' : 'hand'}`}
+          className={`block min-h-[140px] w-full resize-none bg-transparent leading-[28px] outline-none placeholder:opacity-70 ${editing?.kind === 'cita' ? 'text-[19px] italic' : 'hand'}`}
           autoFocus
           maxLength={4000}
           placeholder="Lo que quieras: una frase del libro, lo que te ha hecho sentir esta página, algo para ti o para quien lo lea contigo…"
@@ -64,6 +66,8 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
               inputMode="numeric"
               disabled={loose}
               aria-label={percent ? 'Porcentaje' : 'Página'}
+              aria-invalid={invalidPage}
+              aria-describedby={invalidPage ? 'slip-page-error' : undefined}
               value={page}
               onChange={(event) => setPage(event.currentTarget.value.replace(/\D/g, '').slice(0, 5))}
             />
@@ -94,9 +98,15 @@ export function WriteSlip({ book, mine, partner, editing, onDone }: Props) {
         </div>
       )}
 
-      <p className="quiet -mt-1 text-[15.5px]">{fate}</p>
+      {invalidPage ? (
+        <p id="slip-page-error" className="text-danger text-[15.5px]" role="status">
+          {percent ? 'El porcentaje máximo es 100 %' : `Tu edición tiene ${total} páginas`}
+        </p>
+      ) : (
+        <p className="quiet -mt-1 text-[15.5px]">{fate}</p>
+      )}
 
-      <button className="btn btn-primary" disabled={!body.trim()} onClick={save}>
+      <button className="btn btn-primary" disabled={!body.trim() || invalidPage} onClick={save}>
         {editing ? 'Guardar' : 'Dejarla en el libro'}
       </button>
 

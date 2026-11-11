@@ -1,8 +1,14 @@
 import { useSyncExternalStore } from 'react'
+import { useLocation } from 'react-router'
 import { dismiss, getItems, listeners } from './toast'
 
 /** Where the brief lines from `toast()` are shown. */
 export function Toaster() {
+  const { pathname } = useLocation()
+  return <ToastList atTop={pathname === '/velada'} />
+}
+
+function ToastList({ atTop = false }: { atTop?: boolean }) {
   const list = useSyncExternalStore(
     (listener) => {
       listeners.add(listener)
@@ -13,7 +19,7 @@ export function Toaster() {
   return (
     <div
       className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-4"
-      style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
+      style={atTop ? { top: 'calc(12px + env(safe-area-inset-top))' } : { bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
       aria-live="polite"
     >
       {list.map((item) => (

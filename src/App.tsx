@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router'
 import { loadRemote, type Remote } from '@/lib/sync/remote'
-import { closeStore, getDb, openStore, sync, useDb, useSyncStatus } from '@/lib/sync/store'
+import { closeStore, openStore, sync, useDb, useSyncStatus } from '@/lib/sync/store'
 import { SessionContext } from './session'
 import { disablePush, reclaimPush } from '@/lib/push'
 import { toast } from '@/ui/toast'
@@ -19,12 +20,68 @@ function Blank() {
   return <div className="min-h-dvh bg-bg" aria-busy="true" />
 }
 
+/** Where each screen of the history was scrolled to, so «atrás» returns to the same place. */
+const scrolled = new Map<string, number>()
+
+/** A new screen opens at its top; going back returns where you were. Links to a #section scroll themselves. */
+function ScrollToTop() {
+  const { key, hash } = useLocation()
+  const type = useNavigationType()
+  useLayoutEffect(() => {
+    history.scrollRestoration = 'manual'
+    let frame = 0
+    if (type === 'POP') {
+      // Some screens (the shelf) measure themselves first and grow a frame or two later.
+      const target = scrolled.get(key) ?? 0
+      let tries = 0
+      const restore = () => {
+        window.scrollTo(0, target)
+        if (window.scrollY < target - 1 && ++tries < 30) frame = requestAnimationFrame(restore)
+      }
+      restore()
+    } else if (!hash) window.scrollTo(0, 0)
+    // Kept while scrolling: by the time the next screen renders, this one is already gone.
+    const remember = () => void scrolled.set(key, window.scrollY)
+    window.addEventListener('scroll', remember, { passive: true })
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', remember)
+    }
+  }, [key, hash, type])
+  return null
+}
+/** Browser chrome follows the room, including the always-dark reading screen. */
+function BrowserAppearance() {
+  const { pathname } = useLocation()
+  const db = useDb()
+  const bookId = pathname.startsWith('/libro/') ? pathname.split('/')[2] : undefined
+  const title = bookId ? db.books[bookId]?.title ?? 'Libro' : ({
+    '/': 'Velas', '/mesilla': 'Mesilla', '/estanteria': 'Estantería',
+    '/velada': 'Velada', '/anadir': 'Añadir un libro', '/ajustes': 'Tu vela',
+  } as Record<string, string>)[pathname]
+  useLayoutEffect(() => {
+    document.title = title ? `Greenbook · ${title}` : 'Greenbook'
+    const update = () => {
+      const surface = pathname === '/velada' ? document.querySelector('.night') : document.documentElement
+      const color = getComputedStyle(surface ?? document.documentElement).getPropertyValue('--bg').trim()
+      document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', color)
+    }
+    update()
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)')
+    scheme.addEventListener('change', update)
+    return () => scheme.removeEventListener('change', update)
+  }, [pathname, title])
+  return null
+}
+
+
 export default function App() {
   const [remote, setRemote] = useState<Remote | null>(null)
   /** undefined while we don't know yet; null when signed out. */
   const [userId, setUserId] = useState<string | null | undefined>(undefined)
   /** Whose local copy is loaded and ready to show. */
   const [readyFor, setReadyFor] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState(false)
   const ready = !!userId && readyFor === userId
 
   useEffect(() => {
@@ -58,15 +115,26 @@ export default function App() {
   }, [remote, userId])
 
   const signOut = useCallback(async () => {
-    // Nothing of yours stays on a phone you have left.
+    // Keep the room hidden before its local profile disappears.
     if (remote) await disablePush(remote)
+    flushSync(() => setLeaving(true))
     closeStore({ wipe: true })
-    await remote?.signOut()
-  }, [remote])
+    try {
+      await remote?.signOut()
+      setUserId(null)
+      setReadyFor(null)
+    } catch {
+      if (remote && userId) await openStore(remote, userId, toast)
+      toast('No he podido cerrar la sesión. Prueba otra vez.')
+    } finally {
+      setLeaving(false)
+    }
+  }, [remote, userId])
 
   return (
-    <>
-      {!remote || userId === undefined ? (
+    <BrowserRouter>
+      <BrowserAppearance />
+      {leaving || !remote || userId === undefined ? (
         <Blank />
       ) : !userId ? (
         <Login remote={remote} />
@@ -78,7 +146,7 @@ export default function App() {
         </SessionContext.Provider>
       )}
       <Toaster />
-    </>
+    </BrowserRouter>
   )
 }
 
@@ -86,6 +154,7 @@ export default function App() {
 function Gate({ userId }: { userId: string }) {
   const db = useDb()
   const status = useSyncStatus()
+  const [retrying, setRetrying] = useState(false)
   const me = db.profiles[userId]
   const partner = me?.partner_id ? db.profiles[me.partner_id] : undefined
 
@@ -102,17 +171,26 @@ function Gate({ userId }: { userId: string }) {
         <p className="quiet">
           {status.offline
             ? 'Parece que no hay conexión. La primera vez hace falta para traer lo vuestro.'
-            : 'Tu cuenta existe, pero falta emparejarla (supabase/seed.sql).'}
+            : 'Tu cuenta aún no está emparejada con la de tu pareja.'}
         </p>
-        <button className="btn btn-primary self-start" onClick={() => void sync().then(() => getDb())}>
-          Probar otra vez
+        <button
+          className="btn btn-primary self-start"
+          disabled={retrying}
+          aria-busy={retrying}
+          onClick={() => {
+            setRetrying(true)
+            void sync().finally(() => setRetrying(false))
+          }}
+        >
+          {retrying ? 'Buscando tu sitio…' : 'Probar otra vez'}
         </button>
       </main>
     )
   }
   if (!me.welcomed_at) return <Welcome />
   return (
-    <BrowserRouter>
+    <>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Room section="velas" />} />
         <Route path="/mesilla" element={<Room section="mesilla" />} />
@@ -124,6 +202,6 @@ function Gate({ userId }: { userId: string }) {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Nav />
-    </BrowserRouter>
+    </>
   )
 }

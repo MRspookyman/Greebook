@@ -2,6 +2,8 @@
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
+export const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
 export function isoDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }

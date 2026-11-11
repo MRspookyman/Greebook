@@ -9,6 +9,8 @@ import { Cover } from '@/ui/Book'
 import { Back, Search } from '@/ui/icons'
 import { PlacementForm } from '@/ui/Placement'
 import { Sheet } from '@/ui/Sheet'
+import { useBack } from '@/ui/useBack'
+import { toast } from '@/ui/toast'
 
 /** A found book dressed as one, to draw its cover before it exists. */
 const preview = (found: NewBook & { key?: string }): Book => ({
@@ -19,6 +21,7 @@ const preview = (found: NewBook & { key?: string }): Book => ({
 export function AddBook() {
   const { db, partner } = usePeople()
   const navigate = useNavigate()
+  const back = useBack()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Found[] | null>(null)
   const [state, setState] = useState<'idle' | 'searching' | 'failed'>('idle')
@@ -46,6 +49,18 @@ export function AddBook() {
     }
   }, [query])
 
+  const pick = (book: NewBook) => {
+    const existing = findBook(book)
+    if (existing && Object.values(db.readings).some((reading) =>
+      reading.book_id === existing.id && reading.user_id === getMe() && !reading.deleted_at,
+    )) {
+      toast('Ya lo tienes en tu lado.')
+      navigate(`/libro/${existing.id}`, { replace: true })
+      return
+    }
+    setPicked(book)
+  }
+
   const place = (placement: Placement) => {
     if (!picked) return
     const book = addBook(picked)
@@ -59,7 +74,7 @@ export function AddBook() {
 
   return (
     <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-28" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
-      <button className="icon-btn -ml-2" aria-label="Volver" onClick={() => navigate(-1)}>
+      <button className="icon-btn -ml-2" aria-label="Volver" onClick={back}>
         <Back />
       </button>
       <h1 className="display mt-2">¿Qué libro traes?</h1>
@@ -90,7 +105,7 @@ export function AddBook() {
             <button
               type="button"
               className="pressable flex w-full items-center gap-4 border-b border-rule py-3 text-left"
-              onClick={() => setPicked(found)}
+              onClick={() => pick(found)}
             >
               <Cover book={preview(found)} width={46} />
               <span className="min-w-0 flex-1">
@@ -115,7 +130,7 @@ export function AddBook() {
             title={query.trim()}
             onDone={(book) => {
               setByHand(false)
-              setPicked(book)
+              pick(book)
             }}
           />
         )}

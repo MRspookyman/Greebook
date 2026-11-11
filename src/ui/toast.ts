@@ -2,6 +2,7 @@ export interface Item {
   id: number
   message: string
   action?: { label: string; run: () => void }
+  sticky: boolean
 }
 
 let items: Item[] = []
@@ -20,7 +21,8 @@ export function dismiss(id: number) {
  */
 export function toast(message: string, action?: Item['action'], sticky = false) {
   const id = nextId++
-  items = [...items.slice(-2), { id, message, action }]
+  const transient = items.filter((item) => !item.sticky).slice(sticky ? -3 : -2)
+  items = [...items.filter((item) => item.sticky || transient.includes(item)), { id, message, action, sticky }]
   emit()
   if (!sticky) setTimeout(() => dismiss(id), action ? 6500 : 4200)
 }

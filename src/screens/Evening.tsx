@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { burnedMinutes, saveEvening, snuffCandle } from '@/lib/actions'
-import { fmtProgress, isLit, knownPlaces, live, waxLeft } from '@/lib/model'
-import { fmtMinutes, fmtSince, greeting } from '@/lib/time'
+import { burnedMinutes, finishReading, saveEvening, snuffCandle } from '@/lib/actions'
+import { fmtProgress, isLit, waxLeft } from '@/lib/model'
+import { capital, fmtMinutes, fmtSince, greeting } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow, useWink } from '@/session'
 import { Candle } from '@/ui/Candle'
@@ -11,8 +11,8 @@ import { MinutesField } from '@/ui/Minutes'
 import { NumberDial } from '@/ui/NumberDial'
 import { Sheet } from '@/ui/Sheet'
 import { WriteSlip } from '@/ui/WriteSlip'
-
-const PLACES = ['en la cama', 'en el sofá', 'en el tren']
+import { PlaceField } from '@/ui/PlaceField'
+import { useBack } from '@/ui/useBack'
 
 interface Farewell {
   /** «Buenas noches» or «Hasta luego», decided when the candle goes out. */
@@ -22,6 +22,7 @@ interface Farewell {
   minutes: number | null
   unit: Reading['unit']
   finished: boolean
+  saved: boolean
 }
 
 /** «La velada»: your candle is burning. The only things to do are read, and blow it out when you stop. */
@@ -29,6 +30,7 @@ export function Evening() {
   const { db, me, partner } = usePeople()
   const now = useNow(10_000)
   const navigate = useNavigate()
+  const back = useBack()
   const wink = useWink(partner?.name)
   const [asking, setAsking] = useState(false)
   const [writing, setWriting] = useState(false)
@@ -42,17 +44,17 @@ export function Evening() {
   if (farewell) {
     const amount = farewell.unit === 'porcentaje' ? `${farewell.pages} %` : farewell.pages === 1 ? 'una página' : `${farewell.pages} páginas`
     return (
-      <main className="night fixed inset-0 flex flex-col items-center justify-center px-8 text-center">
+      <main className="night fixed inset-0 flex flex-col items-center justify-center-safe overflow-y-auto overscroll-contain px-8 py-6 text-center">
         <Candle color={me.color} lit={false} wax={0.7} size={150} smoke />
         <h1 className="display fade mt-2">{farewell.goodbye}</h1>
         <p className="quiet fade mt-3 text-[19px]">
           {[farewell.pages > 0 && amount, farewell.minutes && fmtMinutes(farewell.minutes)].filter(Boolean).join(' · ') ||
-            'Velada guardada'}
+            (farewell.saved ? 'Velada guardada' : 'Vela apagada')}
         </p>
       </main>
     )
   }
-  if (!me.candle_lit_at || !reading || !book) return <Navigate to="/" replace />
+  if (!me.candle_lit_at || !reading || reading.deleted_at || !book || book.deleted_at) return <Navigate to="/" replace />
 
   const leave = (result: Farewell) => {
     setAsking(false)
@@ -64,7 +66,7 @@ export function Evening() {
   }
 
   return (
-    <main className="night fixed inset-0 flex flex-col overflow-hidden">
+    <main className="night fixed inset-0 flex flex-col overflow-x-clip overflow-y-auto overscroll-contain">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -74,7 +76,7 @@ export function Evening() {
         }}
       />
       <header className="relative flex items-center px-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
-        <button className="icon-btn" aria-label="Volver a la habitación; la vela sigue encendida" onClick={() => navigate('/')}>
+        <button className="icon-btn" aria-label="Volver; la vela sigue encendida" onClick={back}>
           <Back />
         </button>
       </header>
@@ -104,7 +106,7 @@ export function Evening() {
         )}
       </div>
 
-      <footer className="relative flex flex-col gap-1 px-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>
+      <footer className="relative mx-auto flex w-full max-w-md flex-col gap-1 px-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>
         <button className="btn btn-primary" onClick={() => setAsking(true)}>
           {burning ? 'Apagar la vela' : 'Guardar la velada'}
         </button>
@@ -131,29 +133,23 @@ export function Evening() {
   )
 }
 
-const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
-
 /** Blowing the candle out asks one thing: where the bookmark goes. The rest is already filled in. */
 function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; onDone: (farewell: Farewell) => void }) {
-  const { db, me } = usePeople()
   const [position, setPosition] = useState(reading.position)
   const [minutes, setMinutes] = useState(() => burnedMinutes(litAt, Date.now()))
   const [place, setPlace] = useState<string | null>(null)
-  const [other, setOther] = useState(false)
-  const places = useMemo(
-    () => [...new Set([...knownPlaces(live(db.sessions), me.id), ...PLACES])].slice(0, 5),
-    [db.sessions, me.id],
-  )
   const percent = reading.unit === 'porcentaje'
 
   const save = () => {
     saveEvening({ reading, position, minutes, place, startedAt: litAt })
+    if (position >= reading.total) finishReading(reading, reading.rating)
     onDone({
       bookId: reading.book_id,
       pages: Math.max(0, position - reading.position),
       minutes,
       unit: reading.unit,
       finished: position >= reading.total,
+      saved: true,
     })
   }
 
@@ -172,47 +168,7 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
         <MinutesField value={minutes} onChange={setMinutes} />
       </div>
 
-      <div>
-        <p className="quiet mb-2">¿Dónde? <span className="text-[15px]">(si quieres)</span></p>
-        <div className="flex flex-wrap gap-2">
-          {places.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className="chip"
-              aria-pressed={place === name && !other}
-              onClick={() => {
-                setOther(false)
-                setPlace(place === name ? null : name)
-              }}
-            >
-              {name}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={other}
-            onClick={() => {
-              setOther(!other)
-              setPlace(null)
-            }}
-          >
-            otro sitio
-          </button>
-        </div>
-        {other && (
-          <input
-            className="field mt-3"
-            autoFocus
-            maxLength={40}
-            placeholder="en el parque, en casa de…"
-            aria-label="Otro sitio"
-            value={place ?? ''}
-            onChange={(event) => setPlace(event.currentTarget.value)}
-          />
-        )}
-      </div>
+      <PlaceField value={place} onChange={setPlace} />
 
       <div className="flex flex-col gap-1">
         <button className="btn btn-primary" onClick={save}>
@@ -222,7 +178,7 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
           className="btn btn-text self-center"
           onClick={() => {
             snuffCandle()
-            onDone({ bookId: reading.book_id, pages: 0, minutes: null, unit: reading.unit, finished: false })
+            onDone({ bookId: reading.book_id, pages: 0, minutes: null, unit: reading.unit, finished: false, saved: false })
           }}
         >
           Al final no he leído
