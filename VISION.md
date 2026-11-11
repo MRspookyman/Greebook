@@ -105,8 +105,8 @@ hace un año terminabais *Patria*»; «lleváis 37 noches leyendo los dos»).
 
 ## 3. Principios de diseño
 
-1. **Un sitio, no un panel.** Una habitación con tres rincones (las velas, la mesilla, la estantería) y un
-   menú abajo para ir de uno a otro sin tener que bajar con el dedo. Cada rincón cabe casi entero en la pantalla.
+1. **Un sitio, no un panel.** Una habitación que se recorre con el dedo de arriba abajo (las velas, la mesilla,
+   la estantería) y un menú abajo con atajos a cada rincón, para no tener que bajar si no quieres.
 2. **Gestos, no formularios.** Encender, apagar, dejar una nota entre páginas. Cada gesto tiene como
    mucho una pregunta detrás.
 3. **Tres cosas memorables.** La vela y la nota entre páginas. Todo lo que no sirva a una de las

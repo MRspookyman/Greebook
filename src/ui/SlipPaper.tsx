@@ -15,6 +15,8 @@ interface Props {
   color: string
   /** Where it sits, in my terms: «p. 150». */
   place?: string
+  /** I have reached its page and this phone is still waiting for its text. */
+  opening?: boolean
   /** Shown above the text: «Tu predicción». */
   label?: string
   onOpen?: () => void
@@ -25,7 +27,7 @@ interface Props {
 const day = (iso: string) => fmtDay(isoDate(new Date(iso)))
 
 /** A slip of paper: folded while you can't read it, unfolded with a tap, and marked with whose it is. */
-export function SlipPaper({ slip, mine, author, other, color, place, label, onOpen, onLove, onEdit }: Props) {
+export function SlipPaper({ slip, mine, author, other, color, place, opening, label, onOpen, onLove, onEdit }: Props) {
   const [justOpened, setJustOpened] = useState(false)
   const folded = !mine && (slip.locked || slip.body == null)
   const unopened = !mine && !folded && !slip.seen_at
@@ -45,7 +47,7 @@ export function SlipPaper({ slip, mine, author, other, color, place, label, onOp
             {seal}
             {[place, `de ${author}`].filter(Boolean).join(' · ')}
           </span>
-          <span className="block opacity-70">La encontrarás al llegar.</span>
+          <span className="block opacity-70">{opening ? 'Abriéndose… Si no hay conexión, la tendrás en el libro.' : 'La encontrarás al llegar.'}</span>
         </p>
       </div>
     )

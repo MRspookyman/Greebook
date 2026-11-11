@@ -1,12 +1,12 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useLayoutEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate, useNavigationType } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
   bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, live, nightstand, pile, progressOf, shelves, standGroups,
   waxLeft, type BookView, type Whose,
 } from '@/lib/model'
 import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
-import { waitingFor, slipPlace, type Waiting } from '@/lib/slips'
+import { waitingFor } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
 import { capital, fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
@@ -27,6 +27,15 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const status = useSyncStatus()
   const now = useNow()
   const navigate = useNavigate()
+  const { key } = useLocation()
+  const arrival = useNavigationType()
+
+  // The room is one page you can scroll from the sill down to the shelf; the menu's shortcuts land on a corner
+  // of it. Going back is left alone: the app returns you to where you were.
+  useLayoutEffect(() => {
+    if (section === 'velas' || (arrival === 'POP' && key !== 'default')) return
+    document.getElementById(`rincon-${section}`)?.scrollIntoView({ block: 'start' })
+  }, [section, key, arrival])
 
   const views = useMemo(() => bookViews(db, me.id), [db, me.id])
   const sessions = useMemo(() => live(db.sessions), [db.sessions])
@@ -74,7 +83,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const waiting = useMemo(() => waitingFor(db, me.id), [db, me.id])
   const [whose, setWhose] = useState<Whose>('todos')
   const groups = standGroups(stand)
-  const myOpen = groups.both.length + groups.mine.length
+  const myBooks = [...groups.both, ...groups.mine]
+  const myOpen = myBooks.length
+  // One line per book with notes of theirs I can read now. What they say is read inside the book.
+  const notices = [...new Set(waiting.map((thing) => thing.book))].map((book) => ({
+    book,
+    count: waiting.filter((thing) => thing.book === book).length,
+  }))
   const allPending = pile(views)
   const allYears = shelves(views)
   const pending = allPending.filter((view) => heldBy(view, whose, 'pendiente'))
@@ -123,9 +138,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         <p className="eyebrow">{capital(fmtToday(new Date(now)))}</p>
       </header>
 
-      {section === 'velas' && (
-      <>
-      <h1 className="sr-only">Velas</h1>
+      <h1 className="sr-only">La habitación</h1>
       {/* ── La repisa ── */}
       <section className="relative mt-1" aria-label="La repisa">
         <div className="flex items-end justify-center gap-9">
@@ -162,12 +175,17 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         {mineLit && theirsLit && partner && <p className="quiet mt-2 text-center text-[15px]">Toca su vela para mandarle un guiño.</p>}
       </section>
 
-      {/* ── Lo que te espera ── */}
-      {waiting.length > 0 && partner && (
-        <section className="mt-9 flex flex-col gap-3" aria-label="Te espera">
-          {waiting.map((thing, i) => (
-            <WaitingCard key={thing.slip.id} thing={thing} name={partner.name} i={i}
-              mine={views.find((v) => v.book.id === thing.book.id)?.mine} />
+      {/* ── Notas por leer: solo el aviso; se leen dentro del libro ── */}
+      {notices.length > 0 && partner && (
+        <section className="mt-8 flex flex-col gap-2" aria-label="Notas por leer">
+          {notices.map(({ book, count }, i) => (
+            <Link key={book.id} to={`/libro/${book.id}#papeles`} className="card pressable rise flex items-center gap-3 px-4 py-3" style={{ '--i': i + 2 } as CSSProperties}>
+              <Wax who="you" size={13} />
+              <span className="min-w-0 flex-1 text-[16.5px] leading-snug">
+                {partner.name} te ha dejado {count === 1 ? 'una nota' : `${count} notas`} en <em>{book.title}</em>
+              </span>
+              <span className="quiet flex-none text-[15px] underline decoration-rule underline-offset-4">Leer</span>
+            </Link>
           ))}
         </section>
       )}
@@ -180,23 +198,43 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         </Link>
       )}
 
-      {chosen?.mine && (
-        <Link to="/mesilla" className="quiet mt-9 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
-          <Flame size={17} className="flex-none text-flame-ink" />
-          <span className="min-w-0 truncate">
-            Tu vela es para <em className="text-ink">{chosen.book.title}</em> · {fmtPosition(chosen.mine)}
-          </span>
-        </Link>
-      )}
-      </>
+      {/* ── Para qué libro es la vela ── */}
+      {myBooks.length > 1 ? (
+        <div className="mt-8">
+          <p className="eyebrow mb-2 text-center">Tu vela es para</p>
+          <div role="radiogroup" aria-label="Para qué libro es tu vela" className="-mx-5 flex justify-center-safe gap-2 overflow-x-auto px-5 pb-1">
+            {myBooks.map((view) => (
+              <button
+                key={view.book.id}
+                type="button"
+                role="radio"
+                aria-checked={view === chosen}
+                aria-pressed={view === chosen}
+                className="chip max-w-[15em] flex-none gap-2"
+                onClick={() => view !== chosen && moveCandle(view)}
+              >
+                {view === chosen && <Flame size={16} className="flex-none" />}
+                <span className="truncate">{view.book.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        chosen?.mine && (
+          <Link to={`/libro/${chosen.book.id}`} className="quiet mt-8 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
+            <Flame size={17} className="flex-none text-flame-ink" />
+            <span className="min-w-0 truncate">
+              Tu vela es para <em className="text-ink">{chosen.book.title}</em> · {fmtPosition(chosen.mine)}
+            </span>
+          </Link>
+        )
       )}
 
       {/* ── La mesilla ── */}
-      {section === 'mesilla' && (
-      <section className="mt-4" aria-labelledby="mesilla">
-        <h1 id="mesilla" className="title mb-5">
+      <section id="rincon-mesilla" className="mt-14 scroll-mt-5" aria-labelledby="mesilla">
+        <h2 id="mesilla" className="title mb-5">
           La mesilla
-        </h1>
+        </h2>
         {stand.length ? (
           <div className="flex flex-col gap-7">
             {(
@@ -248,15 +286,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         )}
       </section>
-      )}
 
       {/* ── La estantería ── */}
-      {section === 'estanteria' && (
-      <section className="mt-4" aria-labelledby="estanteria">
+      <section id="rincon-estanteria" className="mt-14 scroll-mt-5" aria-labelledby="estanteria">
         <div className="mb-1 flex items-center justify-between">
-          <h1 id="estanteria" className="title">
+          <h2 id="estanteria" className="title">
             La estantería
-          </h1>
+          </h2>
         </div>
 
         {partner && (allPending.length > 0 || allYears.length > 0) && (
@@ -339,7 +375,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         )}
       </section>
-      )}
 
       {(remote.ensayo || status.pending > 0 || status.offline) && (
         <p className="quiet mt-12 text-center text-[15px]">
@@ -401,22 +436,6 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
       <Candle color={me.color} lit={lit} wax={lit ? waxLeft(me.candle_lit_at, now) : 1} lean={lean} igniting={hold.progress} />
       {hint && !lit && <span role="status" className="pointer-events-none absolute inset-x-[-34px] bottom-2 rounded-xl bg-surface px-3 py-2 text-center text-[15px] leading-snug text-ink shadow-sm">Mantén el dedo sobre la mecha hasta que prenda.</span>}
     </button>
-  )
-}
-
-/** A note of theirs you haven't read yet. */
-function WaitingCard({ thing, name, i, mine }: { thing: Waiting; name: string; i: number; mine?: BookView['mine'] }) {
-  const place = slipPlace(thing.slip, mine)
-  return (
-    <Link to={`/libro/${thing.book.id}#papeles`} className="slip slip-folded drop pressable block" style={{ '--i': i, rotate: i % 2 ? '0.6deg' : '-0.8deg' } as CSSProperties}>
-      <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] rounded-l-[3px]" style={{ background: 'var(--you)' }} />
-      <span className="hand block">{name} ha dejado una nota</span>
-      <span className="mt-1 block text-[15px] opacity-70">
-        {place && `${place} · `}
-        <em>{thing.book.title}</em>
-        {thing.opening ? ' · se abrirá en cuanto haya conexión' : ''}
-      </span>
-    </Link>
   )
 }
 

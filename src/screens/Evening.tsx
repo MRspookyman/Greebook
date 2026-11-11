@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { burnedMinutes, finishReading, saveEvening, snuffCandle } from '@/lib/actions'
-import { fmtProgress, isLit, waxLeft } from '@/lib/model'
+import { burnedMinutes, finishReading, openSlip, saveEvening, snuffCandle } from '@/lib/actions'
+import { fractionOf } from '@/lib/lock'
+import { slipPlace } from '@/lib/slips'
+import { sync } from '@/lib/sync/store'
+import { fmtProgress, isLit, live, waxLeft } from '@/lib/model'
 import { capital, fmtMinutes, fmtSince, greeting } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow, useWink } from '@/session'
@@ -10,6 +13,7 @@ import { Back, Paper } from '@/ui/icons'
 import { MinutesField } from '@/ui/Minutes'
 import { NumberDial } from '@/ui/NumberDial'
 import { Sheet } from '@/ui/Sheet'
+import { SlipPaper } from '@/ui/SlipPaper'
 import { WriteSlip } from '@/ui/WriteSlip'
 import { PlaceField } from '@/ui/PlaceField'
 import { useBack } from '@/ui/useBack'
@@ -22,6 +26,8 @@ interface Farewell {
   minutes: number | null
   unit: Reading['unit']
   finished: boolean
+  /** Hidden notes of theirs that this evening's pages have just uncovered. */
+  found?: string[]
   saved: boolean
 }
 
@@ -35,12 +41,50 @@ export function Evening() {
   const [asking, setAsking] = useState(false)
   const [writing, setWriting] = useState(false)
   const [farewell, setFarewell] = useState<Farewell | null>(null)
+  /** The goodbye has been said and there are notes to hand over before leaving. */
+  const [handing, setHanding] = useState(false)
 
   const reading = me.candle_reading_id ? db.readings[me.candle_reading_id] : undefined
   const book = reading ? db.books[reading.book_id] : undefined
   const burning = isLit(me, now)
   const theirsLit = isLit(partner, now)
 
+  if (farewell && handing && partner) {
+    const leaveNow = () => navigate(farewell.finished ? `/libro/${farewell.bookId}?cerrar=1` : `/libro/${farewell.bookId}#papeles`, { replace: true })
+    const notes = (farewell.found ?? []).map((id) => db.slips[id]).filter((slip) => slip && !slip.deleted_at)
+    const mine = live(db.readings).find((r) => r.book_id === farewell.bookId && r.user_id === me.id)
+    return (
+      <main role="alertdialog" aria-labelledby="found-title" className="night fixed inset-0 overflow-y-auto overscroll-contain px-6" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 40px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 28px)' }}>
+        <div className="mx-auto flex max-w-xl flex-col gap-5">
+          <div className="text-center">
+            <p className="eyebrow">Entre las páginas que has leído</p>
+            <h1 id="found-title" className="display fade mt-2">
+              {notes.length === 1 ? `Había una nota de ${partner.name}` : `Había ${notes.length} notas de ${partner.name}`}
+            </h1>
+          </div>
+          {notes.map((slip) => (
+            <div key={slip.id} className="drop">
+              <SlipPaper
+                slip={slip}
+                mine={false}
+                author={partner.name}
+                other={partner.name}
+                color="var(--you)"
+                place={slipPlace(slip, mine)}
+                opening
+                onOpen={() => openSlip(slip)}
+                onLove={(loved) => openSlip(slip, loved)}
+              />
+            </div>
+          ))}
+          <p className="quiet text-center text-[15.5px]">Se quedan en el libro, cada una en su página.</p>
+          <button className="btn btn-primary" autoFocus onClick={leaveNow}>
+            Seguir
+          </button>
+        </div>
+      </main>
+    )
+  }
   if (farewell) {
     const amount = farewell.unit === 'porcentaje' ? `${farewell.pages} %` : farewell.pages === 1 ? 'una página' : `${farewell.pages} páginas`
     return (
@@ -60,7 +104,7 @@ export function Evening() {
     setAsking(false)
     setFarewell({ ...result, goodbye: greeting(new Date()) === 'Buenas noches' ? 'Buenas noches' : 'Hasta luego' })
     setTimeout(
-      () => navigate(result.finished ? `/libro/${result.bookId}?cerrar=1` : '/', { replace: true }),
+      () => (result.found?.length ? setHanding(true) : navigate(result.finished ? `/libro/${result.bookId}?cerrar=1` : '/', { replace: true })),
       1900,
     )
   }
@@ -135,12 +179,20 @@ export function Evening() {
 
 /** Blowing the candle out asks one thing: where the bookmark goes. The rest is already filled in. */
 function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; onDone: (farewell: Farewell) => void }) {
+  const { db, me } = usePeople()
   const [position, setPosition] = useState(reading.position)
   const [minutes, setMinutes] = useState(() => burnedMinutes(litAt, Date.now()))
   const [place, setPlace] = useState<string | null>(null)
   const percent = reading.unit === 'porcentaje'
 
   const save = () => {
+    // Hidden notes of theirs between where I was and where I am now: they are handed over on the way out.
+    const from = fractionOf(reading.position, reading.total)
+    const to = position >= reading.total ? 1 : fractionOf(position, reading.total)
+    const found = live(db.slips)
+      .filter((s) => s.book_id === reading.book_id && s.user_id !== me.id && s.hidden && s.at != null && !s.seen_at && s.at > from && s.at <= to)
+      .sort((a, b) => a.at! - b.at!)
+      .map((s) => s.id)
     saveEvening({ reading, position, minutes, place, startedAt: litAt })
     if (position >= reading.total) finishReading(reading, reading.rating)
     onDone({
@@ -150,7 +202,10 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
       unit: reading.unit,
       finished: position >= reading.total,
       saved: true,
+      found,
     })
+    // The server is the one that hands their text over: ask now, not at the next tick.
+    if (found.length) void sync()
   }
 
   return (

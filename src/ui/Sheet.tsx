@@ -16,6 +16,8 @@ interface Props {
 const EXIT_MS = 180
 const layers: HTMLElement[] = []
 const wasInert = new Map<HTMLElement, boolean>()
+/** What the page's own overflow was before the first sheet locked it. */
+let pageOverflow = ''
 
 /** Only the top sheet is interactive; everything else on the page goes inert. */
 function syncLayers() {
@@ -62,7 +64,9 @@ export function Sheet({ open, onClose, title, label, night = false, children }: 
     const element = layer.current
     if (!mounted || !element) return
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const overflow = document.body.style.overflow
+    // Remembered once, by the first sheet: one that opens while another is still sliding away would otherwise
+    // remember «hidden» and leave the page unable to scroll for good.
+    if (!layers.length) pageOverflow = document.body.style.overflow
     layers.push(element)
     document.body.style.overflow = 'hidden'
     syncLayers()
@@ -96,7 +100,7 @@ export function Sheet({ open, onClose, title, label, night = false, children }: 
       document.removeEventListener('keydown', onKey)
       layers.splice(layers.indexOf(element), 1)
       syncLayers()
-      if (!layers.length) document.body.style.overflow = overflow
+      if (!layers.length) document.body.style.overflow = pageOverflow
       if (trigger?.isConnected) trigger.focus({ preventScroll: true })
     }
   }, [mounted])

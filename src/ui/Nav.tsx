@@ -1,26 +1,54 @@
-import { useMemo, type ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router'
 import { waitingFor } from '@/lib/slips'
 import { usePeople } from '@/session'
 import { BookOpen, Flame, Plus, Spines } from './icons'
 
+const CORNERS: Array<[string, string?]> = [['/'], ['/mesilla', 'rincon-mesilla'], ['/estanteria', 'rincon-estanteria']]
+const ROOM: Record<string, true> = { '/': true, '/mesilla': true, '/estanteria': true }
+
 /** The way around the room: one short screen for each thing, always one touch away. */
 export function Nav() {
   const { db, me } = usePeople()
-  const { pathname } = useLocation()
+  const { pathname, key } = useLocation()
+  const room = CORNERS.some(([path]) => path === pathname)
+  // In the room the three shortcuts are corners of one page: the lit one is where the scroll is.
+  const [corner, setCorner] = useState('/')
+  useEffect(() => {
+    if (!room) return
+    const read = () => {
+      const line = window.innerHeight * 0.45
+      const bottom = window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
+      let now = '/'
+      for (const [path, id] of CORNERS) {
+        const top = id && document.getElementById(id)?.getBoundingClientRect().top
+        if (typeof top === 'number' && (top <= line || bottom)) now = path
+      }
+      setCorner(now)
+    }
+    const frame = requestAnimationFrame(read)
+    window.addEventListener('scroll', read, { passive: true })
+    window.addEventListener('resize', read)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', read)
+      window.removeEventListener('resize', read)
+    }
+  }, [room, key])
   const waiting = useMemo(() => waitingFor(db, me.id).length, [db, me.id])
   // The evening is the candle and nothing else.
   if (pathname === '/velada') return null
 
-  const item = (to: string, label: string, icon: ReactNode, badge = false) => (
-    <NavLink
+  const item = (to: string, label: string, icon: ReactNode, badge = false) => {
+    // The three corners of the room light up by where the scroll is; the other two by the screen you are on.
+    const active = room && to in ROOM ? to === corner : !room && pathname === to
+    return (
+    <Link
       to={to}
-      end
-      className={({ isActive }) =>
-        `relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[12.5px] transition-colors ${
-          isActive ? 'bg-ink/10 font-semibold text-ink' : 'text-muted'
-        }`
-      }
+      aria-current={active ? (to in ROOM ? 'location' : 'page') : undefined}
+      className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[12.5px] transition-colors ${
+        active ? 'bg-ink/10 font-semibold text-ink' : 'text-muted'
+      }`}
     >
       <span className="relative">
         {icon}
@@ -28,8 +56,9 @@ export function Nav() {
       </span>
       {label}
       {badge && <span className="sr-only">, hay algo esperándote</span>}
-    </NavLink>
-  )
+    </Link>
+    )
+  }
 
   return (
     <nav
