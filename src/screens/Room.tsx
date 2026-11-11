@@ -15,13 +15,14 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Covers, Flame, Plus, Spines, Search } from '@/ui/icons'
+import { Covers, Flame, Plus, Spines, Search, More } from '@/ui/icons'
 import { setShelfView, useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { Sheet } from '@/ui/Sheet'
+import { StatusSheet } from '@/ui/StatusSheet'
 import { toast } from '@/ui/toast'
 import { useHold } from '@/ui/useHold'
-import { PersonRow, Wax, type Person } from '@/ui/Who'
+import { Wax, type Person } from '@/ui/Who'
 
 /** The whole app is this room: the sill with your two candles, the nightstand, and the shelf below. */
 export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' }) {
@@ -80,7 +81,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const [whose, setWhose] = useState<Whose>('todos')
   const groups = standGroups(stand)
   const myBooks = [...groups.both, ...groups.mine]
-  const myOpen = myBooks.length
   // One line per book with notes of theirs I can read now. What they say is read inside the book.
   const notices = [...new Set(waiting.map((thing) => thing.book))].map((book) => ({
     book,
@@ -125,6 +125,8 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const shelfView = useShelfView()
   /** The book pulled halfway out of the shelf to look at its cover. */
   const [peek, setPeek] = useState<BookView | null>(null)
+  /** The book whose state is being changed. */
+  const [statusFor, setStatusFor] = useState<BookView | null>(null)
   // By their spines you first pull a book out to see its cover; facing out, you already see it.
   const take = (book: Book) => {
     const view = views.find((v) => v.book.id === book.id)
@@ -299,7 +301,8 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                           partner={partner}
                           kind={kind}
                           candle={view === chosen}
-                          onMoveCandle={myOpen > 1 && view !== chosen ? () => moveCandle(view) : undefined}
+                          onMoveCandle={() => (view === chosen ? toast('Tu vela ya es para este libro') : moveCandle(view))}
+                          onStatus={() => setStatusFor(view)}
                           i={i}
                         />
                       ))}
@@ -510,12 +513,27 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 {peek.theirs?.rating ? <span className="flex items-center gap-1.5"><Wax who="you" /> {peek.theirs.rating}★</span> : null}
               </p>
             )}
-            <button className="btn btn-primary w-full" onClick={() => open(peek.book)}>
-              Abrir el libro
-            </button>
+            <div className="flex w-full flex-col gap-1">
+              <button className="btn btn-primary w-full" onClick={() => open(peek.book)}>
+                Abrir el libro
+              </button>
+              {peek.mine && (
+                <button
+                  className="btn btn-text self-center"
+                  onClick={() => {
+                    setStatusFor(peek)
+                    setPeek(null)
+                  }}
+                >
+                  Cambiar su estado
+                </button>
+              )}
+            </div>
           </div>
         )}
       </Sheet>
+
+      <StatusSheet reading={statusFor?.mine ?? null} book={statusFor?.book} onClose={() => setStatusFor(null)} />
 
       {(remote.ensayo || status.pending > 0 || status.offline) && (
         <p className="quiet mt-12 text-center text-[15px]">
@@ -587,13 +605,16 @@ interface OpenBookProps {
   kind: 'both' | 'mine' | 'theirs'
   /** My candle is for this one. */
   candle: boolean
-  /** Offered when I have more than one book open and the candle is for another. */
-  onMoveCandle?: () => void
+  onMoveCandle: () => void
+  onStatus: () => void
   i: number
 }
 
-/** A book open on the nightstand: its edge is the wax of whoever is in it, and each has their own line. */
-function OpenBook({ view, partner, kind, candle, onMoveCandle, i }: OpenBookProps) {
+/**
+ * A book open on the nightstand, in a line: its edge is the wax of whoever is in it, and one track carries both
+ * bookmarks. The flame says (and chooses) which book the candle is for; «⋯» changes how you have it.
+ */
+function OpenBook({ view, partner, kind, candle, onMoveCandle, onStatus, i }: OpenBookProps) {
   const { book, mine, theirs } = view
   const present = (r?: typeof mine) => (r && r.status !== 'pendiente' && r.status !== 'dejado' ? r : undefined)
   const place = (r: NonNullable<typeof mine>) => (r.status === 'terminado' ? 'terminado' : fmtPosition(r))
@@ -602,43 +623,74 @@ function OpenBook({ view, partner, kind, candle, onMoveCandle, i }: OpenBookProp
   const me = present(mine)
   const them = partner ? present(theirs) : undefined
   const join = kind === 'theirs' && !mine
+  const marks = [them && { who: 'you' as const, at: progressOf(them) }, me && { who: 'me' as const, at: progressOf(me) }].filter(
+    (m): m is { who: Person; at: number } => !!m,
+  )
+  const furthest = Math.max(0, ...marks.map((m) => m.at))
   return (
     <div
-      className={`rise relative overflow-hidden rounded-[22px] ${kind === 'theirs' ? 'border-[1.5px] border-rule' : 'card'}`}
+      className={`rise relative overflow-hidden rounded-[20px] ${kind === 'theirs' ? 'border-[1.5px] border-rule' : 'card'}`}
       style={{ '--i': i + 2 } as CSSProperties}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[7px]" style={{ background: edge }} />
-      <Link to={`/libro/${book.id}`} className="pressable flex gap-4 py-4 pr-4 pl-[22px]">
-        <Cover book={book} width={62} />
-        <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 py-0.5">
-          <div>
-            <h3 className="line-clamp-2 text-[20px] leading-tight">{book.title}</h3>
-            <p className="quiet truncate text-[15.5px] italic">{book.author}</p>
+      <Link to={`/libro/${book.id}`} className={`pressable flex items-center gap-3.5 py-3 pl-[20px] ${mine ? 'pr-[52px]' : 'pr-4'}`}>
+        <Cover book={book} width={48} />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[18.5px] leading-tight">{book.title}</h3>
+          <p className="quiet truncate text-[15px] italic">{book.author}</p>
+          <div className="relative mt-2 h-[13px]" aria-hidden>
+            <div className="absolute inset-x-0 top-[5px] h-[3px] rounded-full bg-rule" />
+            <div className="absolute top-[5px] left-0 h-[3px] rounded-full bg-ink/30" style={{ width: `${furthest * 100}%`, transition: 'width 900ms var(--ease)' }} />
+            {marks.map((mark) => (
+              <span
+                key={mark.who}
+                className="absolute top-0 h-[13px] w-[13px] -translate-x-1/2 rounded-full"
+                style={{
+                  left: `clamp(6px, ${mark.at * 100}%, calc(100% - 6px))`,
+                  background: mark.who === 'me' ? 'var(--me)' : 'var(--you)',
+                  boxShadow: '0 0 0 2px var(--surface), 0 1px 3px rgb(0 0 0 / 0.4)',
+                  transition: 'left 900ms var(--ease)',
+                }}
+              />
+            ))}
           </div>
-          <div className="flex flex-col gap-2">
-            {me && <PersonRow who="me" name="Tú" text={place(me)} at={progressOf(me)} />}
-            {them && <PersonRow who="you" name={partner!.name} text={place(them)} at={progressOf(them)} />}
-          </div>
+          <p className="quiet mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[15px] leading-snug">
+            {me && (
+              <span className="flex items-center gap-1.5">
+                <Wax who="me" size={9} /> <span><span className="text-ink">Tú</span> {place(me)}</span>
+              </span>
+            )}
+            {them && (
+              <span className="flex items-center gap-1.5">
+                <Wax who="you" size={9} /> <span><span className="text-ink">{partner!.name}</span> {place(them)}</span>
+              </span>
+            )}
+          </p>
         </div>
       </Link>
-      {(candle || onMoveCandle || join) && mine?.status !== 'terminado' && (
-        <div className="flex min-h-11 items-center border-t border-rule pr-3 pl-[22px] text-[15.5px]">
-          {candle && kind !== 'theirs' && (
-            <span className="flex items-center gap-2 text-flame-ink">
-              <Flame size={17} /> Tu vela es para este
-            </span>
-          )}
-          {!candle && onMoveCandle && kind !== 'theirs' && (
-            <button type="button" className="quiet -ml-1 flex min-h-11 items-center gap-2 px-1 underline decoration-rule underline-offset-4" onClick={onMoveCandle}>
-              <Flame size={17} /> Poner aquí mi vela
+      {mine && (
+        <div className="absolute inset-y-0 right-1 flex flex-col items-center justify-center">
+          {mine.status === 'leyendo' && (
+            <button
+              type="button"
+              className={`grid h-10 w-10 place-items-center rounded-full transition-colors ${candle ? 'text-flame-ink' : 'text-muted opacity-70'}`}
+              style={candle ? { background: 'color-mix(in oklab, var(--flame) 18%, transparent)' } : undefined}
+              aria-pressed={candle}
+              aria-label={candle ? `Tu vela es para ${book.title}` : `Poner mi vela en ${book.title}`}
+              onClick={onMoveCandle}
+            >
+              <Flame size={19} />
             </button>
           )}
-          {join && (
-            <Link to={`/libro/${book.id}?unirme=1`} className="quiet -ml-1 flex min-h-11 items-center px-1 underline decoration-rule underline-offset-4">
-              Yo también quiero leerlo
-            </Link>
-          )}
+          <button type="button" className="grid h-10 w-10 place-items-center rounded-full text-muted" aria-label={`Cambiar el estado de ${book.title}`} onClick={onStatus}>
+            <More size={20} />
+          </button>
         </div>
+      )}
+      {join && (
+        <Link to={`/libro/${book.id}?unirme=1`} className="quiet flex min-h-10 items-center border-t border-rule pl-[20px] text-[15px] underline decoration-rule underline-offset-4">
+          Yo también quiero leerlo
+        </Link>
       )}
     </div>
   )

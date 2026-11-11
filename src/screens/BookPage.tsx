@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  dropReading, editBook, markNext, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
-  removeBookmark, removeSession, resizeReading, restoreBook, restoreBookmark, restoreSession, saveEvening, shelveForLater,
+  editBook, markNext, editSession, finishReading, leaveSlip, lightCandle, openBook, placeBookmark, rateReading, removeBook,
+  removeBookmark, removeSession, resizeReading, restoreBook, restoreBookmark, restoreSession, saveEvening,
 } from '@/lib/actions'
 import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
 import { fmtDay, fmtMinutes } from '@/lib/time'
@@ -16,13 +16,14 @@ import { PlacementForm } from '@/ui/Placement'
 import { Sheet } from '@/ui/Sheet'
 import { MinutesField } from '@/ui/Minutes'
 import { Stars } from '@/ui/Stars'
+import { StatusSheet } from '@/ui/StatusSheet'
 import { toast } from '@/ui/toast'
 import { PersonRow, Wax } from '@/ui/Who'
 import { PlaceField } from '@/ui/PlaceField'
 import { useBack } from '@/ui/useBack'
 import { BookSlips } from './BookSlips'
 
-type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove'
+type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove' | 'status'
 
 /** A book pulled off the shelf: where each of you is in it, and everything it has gathered. */
 export function BookPage() {
@@ -223,12 +224,7 @@ export function BookPage() {
         <div className="flex flex-col">
           <Option onClick={() => setOpen('edit')}>Corregir título, autor, páginas o portada</Option>
           {mine && mine.status !== 'terminado' && <Option onClick={() => setOpen('size')}>Cambiar cómo lo cuento (páginas o %)</Option>}
-          {mine?.status === 'leyendo' && (
-            <>
-              <Option onClick={() => { shelveForLater(mine); close() }}>Dejarlo para más adelante</Option>
-              <Option onClick={() => { dropReading(mine); close(); toast('Dejado a medias. No pasa nada.') }}>Dejarlo a medias</Option>
-            </>
-          )}
+          {mine && <Option onClick={() => setOpen('status')}>Cambiar su estado (leyendo, para luego, terminado, dejado)</Option>}
           {mine?.status === 'pendiente' &&
             (isNext(mine) ? (
               <Option onClick={() => { markNext(mine, false); close() }}>Ya no es el siguiente</Option>
@@ -237,10 +233,11 @@ export function BookPage() {
                 Que sea el siguiente que lea
               </Option>
             ))}
-          {mine?.status === 'terminado' && <Option onClick={() => { openBook(mine); close() }}>Volver a leerlo</Option>}
           <Option danger onClick={() => setOpen('remove')}>Quitarlo…</Option>
         </div>
       </Sheet>
+
+      <StatusSheet reading={open === 'status' ? (mine ?? null) : null} book={book} onClose={close} />
 
       <Sheet open={open === 'remove'} onClose={close} title="¿Qué quitamos?">
         <div className="flex flex-col gap-3">

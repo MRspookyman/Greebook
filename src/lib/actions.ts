@@ -292,6 +292,25 @@ export function shelveForLater(reading: Reading) {
   patch('readings', reading.id, { status: 'pendiente' })
 }
 
+/** Says how I have a book, from wherever: the four states lead to the same four moves. */
+export function setStatus(reading: Reading, status: Status) {
+  if (status === reading.status) return
+  if (status === 'leyendo') openBook(reading)
+  else if (status === 'terminado') finishReading(reading, reading.rating)
+  else {
+    if (status === 'dejado') dropReading(reading)
+    else shelveForLater(reading)
+    // A book that is no longer finished has no day on the shelf.
+    if (reading.status === 'terminado') patch('readings', reading.id, { finished_on: null })
+  }
+}
+
+/** Puts a bookmark back exactly as it was, to undo a change of state. */
+export function restoreReading(before: Reading) {
+  const now = getDb().readings[before.id]
+  if (now) save('readings', { ...now, status: before.status, position: before.position, started_on: before.started_on, finished_on: before.finished_on, next_at: before.next_at ?? null })
+}
+
 export function removeBookmark(reading: Reading) {
   snuffForReading(reading)
   patch('readings', reading.id, { deleted_at: nowIso() })
