@@ -12,6 +12,7 @@ import { storageKey } from './store'
  */
 const SERVER = 'gb.ensayo.servidor'
 const WHO = 'gb.ensayo.yo'
+const INVITES = 'gb.ensayo.invitaciones'
 export const LAURA = '00000000-0000-4000-8000-00000000000a'
 export const JAVIER = '00000000-0000-4000-8000-00000000000b'
 
@@ -37,6 +38,15 @@ function read(): Db {
   return fresh()
 }
 const write = (db: Db) => localStorage.setItem(SERVER, JSON.stringify(db))
+
+/** Invitations waiting to be accepted: code → who made it. */
+const invites = (): Record<string, string> => {
+  try {
+    return JSON.parse(localStorage.getItem(INVITES) ?? '{}') as Record<string, string>
+  } catch {
+    return {}
+  }
+}
 
 let last = 0
 /** Server time: always moves forward, like `updated_at` stamped by Postgres. */
@@ -73,7 +83,14 @@ export function create(): Remote {
     /** Any password works; the «email» only has to say which of the two you are. */
     async signIn(email) {
       const id = /javier/i.test(email) ? JAVIER : LAURA
-      if (/historia/i.test(email)) {
+      if (/sin-pareja/i.test(email)) {
+        // To rehearse the invitation: both start alone, as two people who have just made their accounts.
+        const db = fresh()
+        for (const profile of Object.values(db.profiles)) profile.partner_id = null
+        write(db)
+        localStorage.removeItem(INVITES)
+        await Promise.all([LAURA, JAVIER].map((user) => del(storageKey(user)).catch(() => {})))
+      } else if (/historia/i.test(email)) {
         write(story(fresh(), LAURA, JAVIER))
         // A new story replaces the server: copies kept from the previous one would look newer and win.
         await Promise.all([LAURA, JAVIER].map((user) => del(storageKey(user)).catch(() => {})))
@@ -84,6 +101,36 @@ export function create(): Remote {
     async signOut() {
       sessionStorage.removeItem(WHO)
       listeners.forEach((listener) => listener(null))
+    },
+
+    async signUp() {
+      throw new RemoteError('El ensayo no crea cuentas', true)
+    },
+    async ensureProfile() {},
+    async invite() {
+      const me = who()
+      if (!me) throw new RemoteError('sin_perfil', true)
+      if (read().profiles[me]?.partner_id) throw new RemoteError('ya_emparejado', true)
+      const all = invites()
+      const mine = Object.keys(all).find((code) => all[code] === me)
+      if (mine) return mine
+      const code = Array.from(crypto.getRandomValues(new Uint8Array(5)), (byte) => byte.toString(16).padStart(2, '0')).join('').toUpperCase()
+      localStorage.setItem(INVITES, JSON.stringify({ ...all, [code]: me }))
+      return code
+    },
+    async acceptInvite(code) {
+      const me = who()
+      const all = invites()
+      const other = all[code.replace(/[^0-9a-z]/gi, '').toUpperCase()]
+      if (!me) throw new RemoteError('sin_perfil', true)
+      if (!other) throw new RemoteError('invitacion_no_vale', true)
+      if (other === me) throw new RemoteError('invitacion_propia', true)
+      const db = read()
+      if (db.profiles[me]?.partner_id || db.profiles[other]?.partner_id) throw new RemoteError('ya_emparejado', true)
+      db.profiles[me] = { ...db.profiles[me], partner_id: other, updated_at: stamp() }
+      db.profiles[other] = { ...db.profiles[other], partner_id: me, updated_at: stamp() }
+      write(db)
+      localStorage.setItem(INVITES, JSON.stringify(Object.fromEntries(Object.entries(all).filter(([, from]) => from !== me && from !== other))))
     },
 
     async pull(cursors) {

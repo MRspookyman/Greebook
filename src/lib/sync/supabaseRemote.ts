@@ -49,6 +49,24 @@ export function create(): Remote {
     async signOut() {
       await supabase.auth.signOut()
     },
+    async signUp(email, password) {
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) throw failure(error, error.status)
+      return !!data.session
+    },
+    async ensureProfile() {
+      const { error, status } = await supabase.rpc('ensure_profile')
+      if (error) throw failure(error, status)
+    },
+    async invite() {
+      const { data, error, status } = await supabase.rpc('invite')
+      if (error) throw failure(error, status)
+      return data as string
+    },
+    async acceptInvite(code) {
+      const { error, status } = await supabase.rpc('accept_invitation', { p_code: code })
+      if (error) throw failure(error, status)
+    },
 
     async pull(cursors) {
       const [profiles, books, readings, sessions, slips] = await Promise.all([

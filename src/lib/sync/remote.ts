@@ -34,6 +34,14 @@ export interface Remote {
   onAuth(listener: (userId: string | null) => void): () => void
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
+  /** Creates an account. False when the server wants the email confirmed before letting you in. */
+  signUp(email: string, password: string): Promise<boolean>
+  /** Makes sure whoever is signed in has a profile: the first time, nobody has made one for them. */
+  ensureProfile(): Promise<void>
+  /** My invitation code for whoever reads with me; the same one while it lasts. */
+  invite(): Promise<string>
+  /** Pairs me with whoever made that invitation. Fails for good with a reason in `message`. */
+  acceptInvite(code: string): Promise<void>
   pull(cursors: Cursors): Promise<Pulled>
   push<T extends Table>(table: T, row: Row<T>): Promise<void>
   openSlip(id: string, loved: boolean | null): Promise<void>

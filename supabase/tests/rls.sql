@@ -169,5 +169,59 @@ do $$ begin
 end $$;
 commit;
 
+-- ── Emparejarse desde la app ──
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-00000000000d', 'nuevo.lector@example.com'),
+  ('00000000-0000-0000-0000-00000000000e', 'otra@example.com');
+create temp table _invite (code text);
+grant all on _invite to authenticated;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d', true);
+select ensure_profile();
+select ensure_profile();
+insert into _invite select invite();
+do $$ begin
+  assert (select name from profiles where id = auth.uid()) = 'Nuevo.Lector', 'quien entra por primera vez recibe su perfil';
+  assert (select invite()) = (select code from _invite), 'la invitación vigente es siempre la misma';
+  assert pg_temp.fails($q$select * from invitations$q$), 'la tabla de invitaciones no se lee desde la app';
+  assert pg_temp.fails($q$select accept_invitation((select code from _invite))$q$), 'nadie acepta su propia invitación';
+end $$;
+commit;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'laura', true);
+do $$ begin
+  assert pg_temp.fails($q$select invite()$q$), 'quien ya tiene pareja no invita';
+  assert pg_temp.fails($q$select accept_invitation((select code from _invite))$q$), 'quien ya tiene pareja no acepta';
+end $$;
+commit;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000e', true);
+select ensure_profile();
+do $$ begin
+  assert pg_temp.fails($q$select accept_invitation('0000000000')$q$), 'un código inventado no vale';
+end $$;
+-- Tal como se teclea: en minúsculas y con un guion.
+select accept_invitation(lower(substr(code, 1, 5)) || '-' || substr(code, 6)) from _invite;
+do $$ begin
+  assert (select public.my_partner()) = '00000000-0000-0000-0000-00000000000d', 'al aceptar quedan emparejadas';
+  assert (select count(*) from profiles) = 2, 'y cada una ve a la otra';
+  assert pg_temp.fails($q$select accept_invitation((select code from _invite))$q$), 'la invitación se gasta al usarla';
+end $$;
+commit;
+
+begin;
+set local role anon;
+do $$ begin
+  assert pg_temp.fails('select public.ensure_profile()'), 'anon no crea perfiles';
+  assert pg_temp.fails($q$select public.accept_invitation('0000000000')$q$), 'anon no acepta invitaciones';
+end $$;
+commit;
+
 \o
 \echo 'OK · RLS y papeles doblados'

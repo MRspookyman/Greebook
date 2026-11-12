@@ -223,10 +223,16 @@ async function once() {
     const told = await flush(server)
     const pulled = await server.pull(local.cursors)
     if (me !== user) return
+    const before = local.db.profiles[user]?.partner_id ?? null
     local = {
       ...local,
       db: mergePull(local.db, new Set(local.dirty), pulled),
       cursors: advance(local.cursors, pulled),
+    }
+    // Just paired: everything of theirs is older than my cursors. Start over to bring it all down.
+    if ((local.db.profiles[user]?.partner_id ?? null) !== before && Object.keys(local.cursors).length) {
+      local = { ...local, cursors: {} }
+      again = true
     }
     status = { ...status, offline: false }
     connect()

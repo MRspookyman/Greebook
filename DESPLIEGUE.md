@@ -8,8 +8,8 @@ estáticos). Nada más.
 ### Si ya teníais el Greenbook anterior
 
 1. Supabase → **SQL Editor** → pega entero `supabase/migrations/0001_greenbook.sql` → **Run**. Después, igual,
-   `supabase/migrations/0002_siguiente.sql` y `supabase/migrations/0003_notas_abiertas.sql`, `supabase/migrations/0004_notas_ocultas.sql` y
-   `supabase/migrations/0005_portadas_con_foto.sql`.
+   `supabase/migrations/0002_siguiente.sql`, `0003_notas_abiertas.sql`, `0004_notas_ocultas.sql`,
+   `0005_portadas_con_foto.sql` y `0006_emparejar.sql`.
    - **Borra todos los datos anteriores** (libros, sesiones, citas…).
    - Conserva vuestras dos cuentas, los nombres, quién es pareja de quién y un color para cada uno.
 2. Ya está. Entráis con el mismo email y contraseña.
@@ -22,10 +22,15 @@ Limpieza opcional de lo que ya no se usa (no molesta si se queda):
 
 ### Si es un proyecto nuevo
 
-1. Authentication → Users → **Add user** dos veces (marca «Auto Confirm User»).
-2. SQL Editor → pega y ejecuta `supabase/migrations/0001_greenbook.sql` y luego `supabase/migrations/0002_siguiente.sql` y `supabase/migrations/0003_notas_abiertas.sql`, `supabase/migrations/0004_notas_ocultas.sql` y
-   `supabase/migrations/0005_portadas_con_foto.sql`.
-3. SQL Editor → abre `supabase/seed.sql`, cambia los dos emails y los dos nombres, ejecuta.
+1. SQL Editor → pega y ejecuta, en orden, todos los archivos de `supabase/migrations/` (del `0001` al `0006`).
+2. Abre la app y pulsa **Es mi primera vez: crear una cuenta**. La otra persona hace lo mismo en su móvil.
+   - Si en Authentication → Sign In / Providers → Email está activado «Confirm email», cada cuenta tiene que
+     confirmar su correo antes de entrar. Para dos personas es más cómodo desactivarlo.
+   - Cuando ya tengáis las dos cuentas podéis desactivar «Allow new users to sign up» para que nadie más cree una.
+3. Uno de los dos va a **Tú → Leer con alguien → Crear mi invitación** y le envía el enlace o el código al otro,
+   que lo abre (o lo escribe en **Tú → Tengo un código**). Quedáis emparejados al momento.
+
+`supabase/seed.sql` sigue valiendo si preferís crear y emparejar las cuentas a mano desde el SQL Editor.
 
 ### Tiempo real
 
@@ -56,10 +61,10 @@ lee la fila en el servidor y manda el aviso a su pareja. No hay cron, webhooks n
    ```
 
 4. Pon la clave pública en Cloudflare como `VITE_VAPID_PUBLIC_KEY` y vuelve a desplegar la app.
-5. En cada móvil: avatar (arriba a la derecha) → **Avisarme en este móvil**. En iPhone hay que añadir antes
+5. En cada móvil: pestaña **Tú** (abajo a la derecha) → **Avisos** → **Avisarme en este móvil**. En iPhone hay que añadir antes
    Greenbook a la pantalla de inicio.
 
-Avisa de cuatro cosas: el otro enciende su vela (como mucho una vez cada tres horas), deja un papel (si está
+Avisa de cuatro cosas: el otro enciende su vela (como mucho una vez cada tres horas), deja una nota (si está
 doblado para ti, el aviso no lleva su texto), encuentra uno tuyo, o termina un libro.
 
 > La función no se ha podido ejecutar en el entorno donde se escribió (no había Deno ni un proyecto de
@@ -87,7 +92,7 @@ A mano, desde el portátil: `npm run build && npx wrangler deploy`.
 
 ## 3. Comprobar
 
-- `npm test` · lógica (doblado de papeles, noches, estantería, sincronización).
+- `npm test` · lógica (notas ocultas, noches, estantería, sincronización).
 - `npm run test:sql` · levanta un Postgres temporal y comprueba que una tercera cuenta no ve nada y que un
   papel doblado no suelta su texto. Necesita Postgres instalado en la máquina; no toca Supabase.
 - `npm run lint` · `npm run build`.

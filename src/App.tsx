@@ -3,7 +3,8 @@ import { flushSync } from 'react-dom'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router'
 import { loadRemote, type Remote } from '@/lib/sync/remote'
 import { closeStore, openStore, sync, useDb, useSyncStatus } from '@/lib/sync/store'
-import { SessionContext } from './session'
+import { SessionContext, useSession } from './session'
+import { pendingInvite } from '@/lib/invite'
 import { isLit } from '@/lib/model'
 import { clearCandleNotice, showCandleNotice } from '@/lib/ongoing'
 import { disablePush, reclaimPush } from '@/lib/push'
@@ -157,7 +158,24 @@ function Gate({ userId }: { userId: string }) {
   const db = useDb()
   const status = useSyncStatus()
   const [retrying, setRetrying] = useState(false)
+  const { remote } = useSession()
+  const { pathname } = useLocation()
   const me = db.profiles[userId]
+  // The first time nobody has made your place yet: ask for it, then bring it down.
+  const missing = !me
+  const [making, setMaking] = useState(missing)
+  useEffect(() => {
+    if (!missing) return
+    let alive = true
+    void remote
+      .ensureProfile()
+      .then(() => sync())
+      .catch(() => {})
+      .finally(() => alive && setMaking(false))
+    return () => {
+      alive = false
+    }
+  }, [missing, remote])
   const partner = me?.partner_id ? db.profiles[me.partner_id] : undefined
 
   useEffect(() => {
@@ -176,6 +194,7 @@ function Gate({ userId }: { userId: string }) {
   // Nothing of yours stays on the lock screen of a phone you have signed out of.
   useEffect(() => () => void clearCandleNotice(), [])
 
+  if (!me && making) return <Blank />
   if (!me) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-5 px-7">
@@ -183,7 +202,7 @@ function Gate({ userId }: { userId: string }) {
         <p className="quiet">
           {status.offline
             ? 'Parece que no hay conexión. La primera vez hace falta para traer lo vuestro.'
-            : 'Tu cuenta aún no está emparejada con la de tu pareja.'}
+            : 'No he podido preparar tu sitio. Prueba otra vez en un momento.'}
         </p>
         <button
           className="btn btn-primary self-start"
@@ -191,7 +210,11 @@ function Gate({ userId }: { userId: string }) {
           aria-busy={retrying}
           onClick={() => {
             setRetrying(true)
-            void sync().finally(() => setRetrying(false))
+            void remote
+              .ensureProfile()
+              .catch(() => {})
+              .then(() => sync())
+              .finally(() => setRetrying(false))
           }}
         >
           {retrying ? 'Buscando tu sitio…' : 'Probar otra vez'}
@@ -200,6 +223,8 @@ function Gate({ userId }: { userId: string }) {
     )
   }
   if (!me.welcomed_at) return <Welcome />
+  // Arrived by an invitation link: straight to where it is accepted.
+  if (!partner && pendingInvite() && pathname !== '/ajustes') return <Navigate to="/ajustes#pareja" replace />
   return (
     <>
       <ScrollToTop />

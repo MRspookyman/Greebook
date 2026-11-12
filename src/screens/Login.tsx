@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Remote } from '@/lib/sync/remote'
 import { RemoteError } from '@/lib/sync/remote'
 import { Candle } from '@/ui/Candle'
+import { pendingInvite } from '@/lib/invite'
 
 /** The door: two unlit candles and, behind it, your room. */
 export function Login({ remote }: { remote: Remote }) {
@@ -10,6 +11,9 @@ export function Login({ remote }: { remote: Remote }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [withStory, setWithStory] = useState(true)
+  /** Making a new account instead of entering an existing one. */
+  const [creating, setCreating] = useState(false)
+  const [confirm, setConfirm] = useState(false)
 
   async function enter(who: string, secret: string) {
     setBusy(true)
@@ -25,10 +29,29 @@ export function Login({ remote }: { remote: Remote }) {
       setBusy(false)
     }
   }
+  async function create() {
+    setBusy(true)
+    setError(null)
+    try {
+      // With a session it lets you straight in; without one, the email has to be confirmed first.
+      if (!(await remote.signUp(email.trim(), password))) {
+        setConfirm(true)
+        setCreating(false)
+      }
+    } catch (cause) {
+      setError(
+        cause instanceof RemoteError && cause.permanent
+          ? 'No he podido crear la cuenta. Puede que ese email ya tenga una, o que la contraseña sea muy corta.'
+          : 'No hay conexión. Prueba otra vez en un momento.',
+      )
+    }
+    setBusy(false)
+  }
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    void enter(email, password)
+    void (creating ? create() : enter(email, password))
   }
+  const invited = !!pendingInvite()
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-7 pt-safe pb-safe">
@@ -60,9 +83,14 @@ export function Login({ remote }: { remote: Remote }) {
             />
             Empezar con una historia de ejemplo
           </label>
+          <button className="btn btn-text self-start !px-0" disabled={busy} onClick={() => enter('laura+sin-pareja', '')}>
+            Entrar sin pareja, para ensayar la invitación
+          </button>
         </div>
       ) : (
         <form onSubmit={submit} className="mt-9 flex flex-col gap-4">
+          {invited && <p className="text-[17px]">Te han invitado a leer. {creating ? 'Crea tu cuenta' : 'Entra o crea tu cuenta'} y os emparejo al momento.</p>}
+          {confirm && <p role="status" className="text-[17px]">Te he mandado un correo para confirmar la cuenta. Ábrelo y vuelve a entrar aquí.</p>}
           <div>
             <label className="label" htmlFor="email">
               Email
@@ -86,7 +114,8 @@ export function Login({ remote }: { remote: Remote }) {
               id="password"
               className="field"
               type="password"
-              autoComplete="current-password"
+              autoComplete={creating ? 'new-password' : 'current-password'}
+              minLength={creating ? 6 : undefined}
               required
               value={password}
               onChange={(event) => setPassword(event.currentTarget.value)}
@@ -98,7 +127,17 @@ export function Login({ remote }: { remote: Remote }) {
             </p>
           )}
           <button className="btn btn-primary mt-2" disabled={busy}>
-            {busy ? 'Abriendo…' : 'Entrar'}
+            {busy ? 'Abriendo…' : creating ? 'Crear mi cuenta' : 'Entrar'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-text self-center"
+            onClick={() => {
+              setCreating(!creating)
+              setError(null)
+            }}
+          >
+            {creating ? 'Ya tengo cuenta' : 'Es mi primera vez: crear una cuenta'}
           </button>
         </form>
       )}

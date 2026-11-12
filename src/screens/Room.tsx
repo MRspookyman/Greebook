@@ -267,6 +267,15 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         {mineLit && theirsLit && partner && <p className="quiet relative mt-3 text-center text-[15px]">Toca su vela para mandarle un guiño.</p>}
       </section>
 
+      {!partner && (
+        <Link to="/ajustes#pareja" className="card pressable rise mt-8 flex items-center gap-3 px-4 py-3" style={{ '--i': 2 } as CSSProperties}>
+          <span className="min-w-0 flex-1 text-[16.5px] leading-snug">
+            Lees a solas. <span className="quiet">Invita a quien lee contigo y veréis la vela del otro.</span>
+          </span>
+          <span className="quiet flex-none text-[15px] underline decoration-rule underline-offset-4">Invitar</span>
+        </Link>
+      )}
+
       {/* ── Notas por leer: solo el aviso; se leen dentro del libro ── */}
       {notices.length > 0 && partner && (
         <section className="mt-8 flex flex-col gap-2" aria-label="Notas por leer">

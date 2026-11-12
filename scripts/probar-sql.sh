@@ -34,6 +34,8 @@ sql "$root/supabase/migrations/0004_notas_ocultas.sql"
 sql "$root/supabase/migrations/0004_notas_ocultas.sql"
 sql "$root/supabase/migrations/0005_portadas_con_foto.sql"
 sql "$root/supabase/migrations/0005_portadas_con_foto.sql"
+sql "$root/supabase/migrations/0006_emparejar.sql"
+sql "$root/supabase/migrations/0006_emparejar.sql"
 out="$(sql "$root/supabase/tests/rls.sql")"
 echo "$out"
 echo "$out" | grep -q '^OK' || { echo 'Las pruebas SQL han fallado'; exit 1; }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
 import { exportSheets } from '@/lib/export'
 import { xlsx } from '@/lib/xlsx'
 import { useBack } from '@/ui/useBack'
@@ -8,6 +9,7 @@ import { getDb, useSyncStatus } from '@/lib/sync/store'
 import { usePeople, useSession } from '@/session'
 import { Candle } from '@/ui/Candle'
 import { ColorPicker } from '@/ui/ColorPicker'
+import { Pairing } from '@/ui/Pairing'
 import { Back } from '@/ui/icons'
 
 /** The little there is to adjust: who you are here. */
@@ -29,9 +31,13 @@ export function Settings() {
       alive = false
     }
   }, [remote])
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [hash])
   const partnerName = partner?.name ?? 'tu pareja'
   const PUSH_LINES: Record<PushState, string> = {
-    on: `Este móvil te avisa cuando ${partnerName} enciende su vela, te deja un papel o encuentra uno tuyo.`,
+    on: `Este móvil te avisa cuando ${partnerName} enciende su vela, te deja una nota o encuentra una tuya.`,
     off: `Que este móvil te avise cuando ${partnerName} encienda su vela o te deje algo.`,
     denied: 'Los avisos están bloqueados para Greenbook en los ajustes de este móvil.',
     'needs-install': 'En el iPhone los avisos funcionan al añadir Greenbook a la pantalla de inicio (Compartir → Añadir a inicio).',
@@ -89,7 +95,15 @@ export function Settings() {
         </div>
       </section>
 
-      {!remote.ensayo && push && (
+      {!partner && (
+        <section id="pareja" className="mt-10 scroll-mt-6 border-t border-rule pt-6">
+          <h2 className="title">Leer con alguien</h2>
+          <p className="quiet mt-2 mb-6 text-[16px]">Ahora lees a solas. Con otra persona, cada uno ve la vela del otro y os dejáis notas entre las páginas.</p>
+          <Pairing />
+        </section>
+      )}
+
+      {!remote.ensayo && push && partner && (
         <section className="mt-10 border-t border-rule pt-6">
           <h2 className="title">Avisos</h2>
           <p className="quiet mt-2 text-[16px]">{PUSH_LINES[push]}</p>
