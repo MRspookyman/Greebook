@@ -115,7 +115,7 @@ export function Notes() {
             Se escriben dentro de un libro, o mientras arde tu vela: una frase que subrayarías, lo que te ha hecho sentir una página.
             {partner ? ` ${partner.name} la encontrará al llegar.` : ''}
           </p>
-          <Link to="/#mesilla" className="btn btn-soft mt-5">
+          <Link to="/mesilla" className="btn btn-soft mt-5">
             Ir a la mesilla
           </Link>
         </div>

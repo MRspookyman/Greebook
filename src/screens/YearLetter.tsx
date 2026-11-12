@@ -24,7 +24,7 @@ export function YearLetter() {
   const now = useNow(60_000)
   const letter = useMemo(() => (Number.isInteger(year) ? letterFor(db, me.id, year) : null), [db, me.id, year])
   const years = useMemo(() => letterYears(db, me.id), [db, me.id])
-  if (!letter) return <Navigate to="/#estanteria" replace />
+  if (!letter) return <Navigate to="/estanteria" replace />
 
   /** Said to both when you are two, to you when you read alone. */
   const say = (both: string, alone: string) => (partner ? both : alone)
