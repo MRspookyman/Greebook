@@ -2,9 +2,9 @@ import { useMemo, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { mailbox } from '@/lib/slips'
 import { usePeople } from '@/session'
-import { BookOpen, Flame, Paper, Spines } from './icons'
+import { Flame, Paper } from './icons'
 
-/** The way around the room: one short screen for each thing, always one touch away. */
+/** The way around: the room (candles, nightstand and shelf on one page), the notes, and you. */
 export function Nav() {
   const { db, me } = usePeople()
   const { pathname } = useLocation()
@@ -19,6 +19,8 @@ export function Nav() {
     <Link
       to={to}
       aria-current={active ? 'page' : undefined}
+      // Already there: the same touch takes you back up to the candles.
+      onClick={active ? () => window.scrollTo({ top: 0, behavior: 'smooth' }) : undefined}
       className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[12.5px] transition-colors ${
         active ? 'bg-ink/10 font-semibold text-ink' : 'text-muted'
       }`}
@@ -45,9 +47,7 @@ export function Nav() {
       }}
     >
       <div className="mx-auto flex max-w-xl gap-1 px-2 py-1.5">
-        {item('/', 'Velas', <Flame size={22} />)}
-        {item('/mesilla', 'Mesilla', <BookOpen size={22} />)}
-        {item('/estanteria', 'Estantería', <Spines size={22} />)}
+        {item('/', 'Habitación', <Flame size={22} />)}
         {item('/notas', 'Notas', <Paper size={22} />, waiting > 0)}
         {item(
           '/ajustes',

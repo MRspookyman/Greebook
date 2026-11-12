@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
   bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
@@ -27,8 +27,11 @@ import { toast } from '@/ui/toast'
 import { useHold } from '@/ui/useHold'
 import { Wax, type Person } from '@/ui/Who'
 
-/** The whole app is this room: the sill with your two candles, the nightstand, and the shelf below. */
-export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' }) {
+/**
+ * The whole app is this room, on one page: the sill with your two candles fills the first screen, and the
+ * nightstand and the shelf are below it, as far as the thumb wants to go.
+ */
+export function Room() {
   const { db, me, partner } = usePeople()
   const { remote } = useSession()
   const status = useSyncStatus()
@@ -165,21 +168,17 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             : `${second ? 'lo dejaste' : 'lo dejó'} a medias`
   const nightsIn = (year: number) => new Set(sessions.filter((s) => s.day.startsWith(String(year))).map((s) => s.day)).size
   const empty = !stand.length && !allPending.length && !allYears.length
-  return (
-    <main className={`relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28 ${section === 'velas' ? 'flex flex-col' : ''}`}>
-      {/* Candlelight on the wall; on the sill it hangs over the candles themselves. */}
-      {section !== 'velas' && (
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
-        style={{
-          background: 'radial-gradient(60% 55% at 50% 38%, color-mix(in oklab, var(--flame) 30%, transparent), transparent 75%)',
-          opacity: (Number(mineLit) + Number(theirsLit)) / 2,
-          transition: 'opacity 1.6s var(--ease)',
-        }}
-      />
-      )}
+  // Arriving at a corner by its name («/#estanteria»): go there once the page has its height.
+  const { hash, key } = useLocation()
+  useEffect(() => {
+    if (!hash) return
+    const frame = requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [hash, key])
 
+  return (
+    <main className="relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28">
+      {/* Candlelight on the wall; on the sill it hangs over the candles themselves. */}
       <header
         className="relative flex min-h-11 items-center justify-between"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px)' }}
@@ -187,9 +186,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         <p className="eyebrow">{capital(fmtToday(new Date(now)))}</p>
       </header>
 
-      {section === 'velas' && (
-      <div className="flex flex-1 flex-col">
-      <h1 className="sr-only">Velas</h1>
+      {/* The sill is one screen tall, less a strip: the nightstand's heading shows under it and says there is more. */}
+      <div className="flex flex-col" style={{ minHeight: 'calc(100dvh - 215px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
+      <h1 className="sr-only">La habitación</h1>
       {/* The sill sits low, where the thumb is: the room above it is wall. */}
       <div aria-hidden className="min-h-1 flex-[3]" />
       {/* ── La repisa ── */}
@@ -332,15 +331,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
       <div aria-hidden className="flex-[2]" />
       </div>
-      )}
 
       {/* ── La mesilla ── */}
-      {section === 'mesilla' && (
-      <section className="mt-4" aria-labelledby="mesilla">
+      <section id="mesilla" className="scroll-mt-4 pt-6" aria-labelledby="mesilla-title">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <h1 id="mesilla" className="title">
+          <h2 id="mesilla-title" className="title">
             La mesilla
-          </h1>
+          </h2>
           {stand.length > 0 && (
             <Link to="/anadir" className="btn btn-soft !min-h-11 !gap-1.5 !px-4 !text-[16px]">
               <Plus size={18} /> Añadir
@@ -410,15 +407,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         )}
       </section>
-      )}
 
       {/* ── La estantería ── */}
-      {section === 'estanteria' && (
-      <section className="mt-4" aria-labelledby="estanteria">
+      <section id="estanteria" className="mt-12 scroll-mt-4" aria-labelledby="estanteria-title">
         <div className="mb-1 flex items-center justify-between gap-3">
-          <h1 id="estanteria" className="title">
+          <h2 id="estanteria-title" className="title">
             La estantería
-          </h1>
+          </h2>
           <div className="flex items-center gap-2">
           <Link to="/anadir" className="icon-btn border-[1.5px] border-rule" aria-label="Añadir un libro">
             <Plus size={20} />
@@ -607,7 +602,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </Fold>
         )}
       </section>
-      )}
 
       <Sheet open={choosing} onClose={() => setChoosing(false)} title="Tu vela es para">
         <div role="radiogroup" aria-label="Para qué libro es tu vela" className="flex flex-col gap-2.5">

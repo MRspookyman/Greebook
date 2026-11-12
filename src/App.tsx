@@ -62,7 +62,7 @@ function BrowserAppearance() {
   const bookId = pathname.startsWith('/libro/') ? pathname.split('/')[2] : undefined
   const letterYear = pathname.startsWith('/carta/') ? pathname.split('/')[2] : undefined
   const title = letterYear ? `La carta de ${letterYear}` : bookId ? db.books[bookId]?.title ?? 'Libro' : ({
-    '/': 'Velas', '/mesilla': 'Mesilla', '/estanteria': 'Estantería',
+    '/': 'La habitación',
     '/velada': 'Velada', '/notas': 'Las notas', '/anadir': 'Añadir un libro', '/ajustes': 'Tu vela',
   } as Record<string, string>)[pathname]
   useLayoutEffect(() => {
@@ -232,9 +232,9 @@ function Gate({ userId }: { userId: string }) {
     <>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<Room section="velas" />} />
-        <Route path="/mesilla" element={<Room section="mesilla" />} />
-        <Route path="/estanteria" element={<Room section="estanteria" />} />
+        <Route path="/" element={<Room />} />
+        <Route path="/mesilla" element={<Navigate to="/#mesilla" replace />} />
+        <Route path="/estanteria" element={<Navigate to="/#estanteria" replace />} />
         <Route path="/notas" element={<Notes />} />
         <Route path="/carta/:year" element={<YearLetter />} />
         <Route path="/velada" element={<Evening />} />
