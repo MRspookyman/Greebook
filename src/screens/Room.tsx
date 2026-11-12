@@ -17,7 +17,7 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Covers, Flame, Plus, Spines, Search, More } from '@/ui/icons'
+import { Covers, Flame, Paper, Plus, Spines, Search, More } from '@/ui/icons'
 import { setShelfView, useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { Fold } from '@/ui/Fold'
@@ -561,6 +561,12 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             }
           >
             <Shelf items={books.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
+            {!searching && whose === 'todos' && (
+              <Link to={`/carta/${year}`} className="quiet mt-3 flex min-h-11 items-center gap-2 text-[16px]">
+                <Paper size={18} className="flex-none" />
+                <span className="underline decoration-rule underline-offset-4">La carta de {year}</span>
+              </Link>
+            )}
           </Fold>
         ))}
 

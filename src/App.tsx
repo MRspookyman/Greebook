@@ -19,6 +19,7 @@ import { BookPage } from '@/screens/BookPage'
 import { AddBook } from '@/screens/AddBook'
 import { Settings } from '@/screens/Settings'
 import { Notes } from '@/screens/Notes'
+import { YearLetter } from '@/screens/YearLetter'
 
 function Blank() {
   return <div className="min-h-dvh bg-bg" aria-busy="true" />
@@ -59,7 +60,8 @@ function BrowserAppearance() {
   const { pathname } = useLocation()
   const db = useDb()
   const bookId = pathname.startsWith('/libro/') ? pathname.split('/')[2] : undefined
-  const title = bookId ? db.books[bookId]?.title ?? 'Libro' : ({
+  const letterYear = pathname.startsWith('/carta/') ? pathname.split('/')[2] : undefined
+  const title = letterYear ? `La carta de ${letterYear}` : bookId ? db.books[bookId]?.title ?? 'Libro' : ({
     '/': 'Velas', '/mesilla': 'Mesilla', '/estanteria': 'Estantería',
     '/velada': 'Velada', '/notas': 'Las notas', '/anadir': 'Añadir un libro', '/ajustes': 'Tu vela',
   } as Record<string, string>)[pathname]
@@ -234,6 +236,7 @@ function Gate({ userId }: { userId: string }) {
         <Route path="/mesilla" element={<Room section="mesilla" />} />
         <Route path="/estanteria" element={<Room section="estanteria" />} />
         <Route path="/notas" element={<Notes />} />
+        <Route path="/carta/:year" element={<YearLetter />} />
         <Route path="/velada" element={<Evening />} />
         <Route path="/libro/:bookId" element={<BookPage />} />
         <Route path="/anadir" element={<AddBook />} />
