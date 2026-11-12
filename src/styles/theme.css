@@ -10,7 +10,7 @@
   --bg-deep: #e7dfc9;
   --surface: #faf6ea;
   --ink: #1c3227;
-  --muted: #586759;
+  --muted: #4c5a4e;
   --rule: #d9cfb6;
   --primary: #1f4a37;
   --on-primary: #f6f0df;
@@ -48,7 +48,7 @@
     --bg-deep: #09130f;
     --surface: #162820;
     --ink: #efe8d6;
-    --muted: #a3b3a5;
+    --muted: #b9c6ba;
     --rule: #284132;
     --primary: #e9a23b;
     --on-primary: #1c1505;
@@ -71,7 +71,7 @@
   --bg-deep: #09130f;
   --surface: #162820;
   --ink: #efe8d6;
-  --muted: #a3b3a5;
+  --muted: #b9c6ba;
   --rule: #284132;
   --primary: #e9a23b;
   --on-primary: #1c1505;
@@ -155,7 +155,7 @@ button {
   font-size: 24px;
 }
 .eyebrow {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -360,6 +360,11 @@ input[type='search']::-webkit-search-cancel-button {
 .candle-reflection {
   animation: gb-light 2.7s ease-in-out infinite;
 }
+.candle-invite {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gb-invite 2.8s ease-in-out infinite;
+}
 .smoke {
   opacity: 0;
   transform-box: fill-box;
@@ -400,11 +405,40 @@ input[type='search']::-webkit-search-cancel-button {
   47% { opacity: 0.68; }
   71% { opacity: 0.85; }
 }
+@keyframes gb-invite {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 0.95; transform: scale(1.2); }
+}
 @keyframes gb-smoke {
   0% { opacity: 0; transform: translate(0, 0) scaleX(0.7); }
   12% { opacity: 0.65; }
   45% { opacity: 0.4; transform: translate(3px, -12px) scaleX(1); }
   100% { opacity: 0; transform: translate(-5px, -38px) scaleX(1.45); }
+}
+
+/* ── The sill: the candles grow with the screen, and their names stand under them ── */
+.sill {
+  --candle: clamp(112px, 19dvh, 158px);
+}
+.sill .candle {
+  width: var(--candle);
+  height: auto;
+  aspect-ratio: 1 / 2;
+}
+/* The other's candle stands a step back: it is theirs to light. */
+.sill .theirs .candle {
+  width: calc(var(--candle) * 0.86);
+}
+.sill .theirs.unlit {
+  opacity: 0.72;
+}
+.sill .theirs {
+  transition: opacity 1.2s var(--ease);
+}
+
+/* A row that says it goes on: its ends fade where there is more to scroll. */
+.fade-edges {
+  mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
 }
 
 /* ── Movement ── */

@@ -12,6 +12,8 @@ interface Props {
   lean?: -1 | 0 | 1
   /** 0–1 while the finger is held on the wick. */
   igniting?: number
+  /** An unlit wick that can be lit breathes a faint ember, so the gesture is seen before it is read. */
+  inviting?: boolean
   /** Changes whenever the flame should shiver (a «guiño»). */
   tremble?: number
   /** Shows the wisp of smoke of a candle just blown out. */
@@ -19,7 +21,7 @@ interface Props {
 }
 
 /** A candle on its brass dish. Purely a drawing: whoever places it decides what touching it does. */
-export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0, tremble = 0, smoke = false }: Props) {
+export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0, inviting = false, tremble = 0, smoke = false }: Props) {
   const id = useId()
   const height = 62 + 86 * Math.max(0, Math.min(1, wax))
   const top = 212 - height
@@ -141,9 +143,31 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
       <path d={`M60 ${top + 2}Q63 ${top - 3} 60 ${wick}`} stroke="#32271f" strokeWidth="2.3" strokeLinecap="round" fill="none" />
       <path d={`M60 ${top - 3}Q61 ${top - 6} 60 ${wick}`} stroke="#171b1b" strokeWidth="1.5" strokeLinecap="round" fill="none" />
 
+      {!lit && inviting && igniting === 0 && (
+        <g className="candle-invite">
+          <circle cx="60" cy={wick} r="15" fill={`url(#${id}warm)`} />
+          <circle cx="60" cy={wick} r="1.5" fill="#ffc86c" />
+        </g>
+      )}
+
       {/* The ember grows from the charred tip, not from the whole candle. */}
       {!lit && igniting > 0 && (
         <g opacity={0.4 + igniting * 0.6}>
+          {/* A ring closes around the wick: how long is left to hold. */}
+          <circle cx="60" cy={wick - 3} r="25" stroke="#ffc86c" strokeOpacity="0.16" strokeWidth="2.2" fill="none" />
+          <circle
+            cx="60"
+            cy={wick - 3}
+            r="25"
+            stroke="#ffc86c"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            fill="none"
+            pathLength={1}
+            strokeDasharray="1"
+            strokeDashoffset={1 - igniting}
+            transform={`rotate(-90 60 ${wick - 3})`}
+          />
           <circle cx="60" cy={wick} r={4 + igniting * 15} fill={`url(#${id}warm)`} />
           <ellipse cx="60" cy={wick - igniting * 3} rx={1 + igniting * 2.4} ry={1.4 + igniting * 5} fill="#ffc86c" />
           <circle cx="60" cy={wick} r="1.2" fill="#fff1c2" />

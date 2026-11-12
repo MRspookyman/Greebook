@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nightsLine, nightsOf, runEndingAt, sharedNights } from './nights'
+import { lastNights, nightsLine, nightsOf, runEndingAt, sharedNights } from './nights'
 import { nightOf } from './time'
 import type { Session } from './types'
 
@@ -39,5 +39,13 @@ describe('noches', () => {
     expect(nightsLine(['2026-10-01', '2026-11-08', '2026-11-09', '2026-11-10'], '2026-11-10')).toBe(
       '4 noches leyendo los dos · 3 seguidas',
     )
+  })
+
+  it('las últimas siete noches acaban en la de hoy y marcan las que fueron de los dos', () => {
+    const week = lastNights(['2026-11-10', '2026-11-12', '2026-10-01'], '2026-11-12')
+    expect(week.map((night) => night.letter).join('')).toBe('VSDLMXJ')
+    expect(week.filter((night) => night.shared).map((night) => night.day)).toEqual(['2026-11-10', '2026-11-12'])
+    expect(week.at(-1)).toMatchObject({ day: '2026-11-12', tonight: true })
+    expect(week.filter((night) => night.tonight)).toHaveLength(1)
   })
 })

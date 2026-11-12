@@ -1,5 +1,5 @@
 import type { Session } from './types'
-import { addDays } from './time'
+import { addDays, parseDay } from './time'
 
 /** The nights on which a person read. */
 export function nightsOf(sessions: Session[], userId: string): Set<string> {
@@ -33,4 +33,25 @@ export function nightsLine(shared: string[], tonight: string): string | null {
   const run = runEndingAt(new Set(shared), tonight)
   const total = shared.length === 1 ? 'Una noche leyendo los dos' : `${shared.length} noches leyendo los dos`
   return run >= 3 && run < shared.length ? `${total} · ${run} seguidas` : total
+}
+
+/** One of the last few nights, for the row under the candles. */
+export interface Night {
+  day: string
+  /** «L», «M», «X»… */
+  letter: string
+  /** Both read that night. */
+  shared: boolean
+  tonight: boolean
+}
+
+const LETTERS = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+
+/** The last `n` nights ending tonight, oldest first. It only says where you met: an unlit night is nobody's fault. */
+export function lastNights(shared: Iterable<string>, tonight: string, n = 7): Night[] {
+  const both = new Set(shared)
+  return Array.from({ length: n }, (_, i) => {
+    const day = addDays(tonight, i - n + 1)
+    return { day, letter: LETTERS[parseDay(day).getDay()], shared: both.has(day), tonight: day === tonight }
+  })
 }

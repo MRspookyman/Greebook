@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router'
 import { useNoticed } from '@/lib/noticed'
 import { waitingFor } from '@/lib/slips'
 import { usePeople } from '@/session'
-import { BookOpen, Flame, Plus, Spines } from './icons'
+import { BookOpen, Flame, Spines } from './icons'
 
 /** The way around the room: one short screen for each thing, always one touch away. */
 export function Nav() {
@@ -49,7 +49,6 @@ export function Nav() {
         {item('/', 'Velas', <Flame size={22} />, waiting > 0)}
         {item('/mesilla', 'Mesilla', <BookOpen size={22} />)}
         {item('/estanteria', 'Estantería', <Spines size={22} />)}
-        {item('/anadir', 'Añadir', <Plus size={22} />)}
         {item(
           '/ajustes',
           'Tú',

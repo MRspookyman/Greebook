@@ -1,16 +1,16 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
   bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, matchesStars, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
   waxLeft, type BookView, type ShelfOrder, type Whose,
 } from '@/lib/model'
-import { nightsLine, nightsOf, sharedNights } from '@/lib/nights'
+import { lastNights, nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { markNoticed, useNoticed } from '@/lib/noticed'
 import { askForCandleNotice } from '@/lib/ongoing'
 import { reviewsOf, waitingFor } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
-import { capital, fmtSince, fmtToday, nightOf } from '@/lib/time'
+import { capital, fmtDay, fmtSince, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
 import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
@@ -40,9 +40,12 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const chosen = candleReading(db, me.id, views, sessions)
   const mineLit = isLit(me, now)
   const theirsLit = isLit(partner, now)
-  const nights = partner
-    ? nightsLine(sharedNights(nightsOf(sessions, me.id), nightsOf(sessions, partner.id)), nightOf(new Date(now)))
-    : null
+  const tonight = nightOf(new Date(now))
+  const theirNights = useMemo(() => (partner ? nightsOf(sessions, partner.id) : new Set<string>()), [sessions, partner])
+  const shared = useMemo(() => sharedNights(nightsOf(sessions, me.id), theirNights), [sessions, me.id, theirNights])
+  const nights = partner ? nightsLine(shared, tonight) : null
+  /** The week under the candles appears once there is a night to show in it. */
+  const week = partner && shared.length ? lastNights(shared, tonight) : null
 
   const bookOf = (person: Profile | null): Book | undefined => {
     const reading = person?.candle_reading_id ? db.readings[person.candle_reading_id] : undefined
@@ -149,10 +152,19 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             : `${second ? 'lo dejaste' : 'lo dejó'} a medias`
   const nightsIn = (year: number) => new Set(sessions.filter((s) => s.day.startsWith(String(year))).map((s) => s.day)).size
   const empty = !stand.length && !allPending.length && !allYears.length
+  // The book the candle is for is brought to the middle of its row, wherever it was.
+  const chosenCard = useRef<HTMLButtonElement>(null)
+  const chosenId = chosen?.book.id
+  useEffect(() => {
+    const card = chosenCard.current
+    const row = card?.closest<HTMLElement>('[data-row]')
+    if (card && row) row.scrollLeft = card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2
+  }, [chosenId, section])
 
   return (
-    <main className="relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28">
-      {/* Candlelight on the wall */}
+    <main className={`relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28 ${section === 'velas' ? 'flex flex-col' : ''}`}>
+      {/* Candlelight on the wall; on the sill it hangs over the candles themselves. */}
+      {section !== 'velas' && (
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
@@ -162,6 +174,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           transition: 'opacity 1.6s var(--ease)',
         }}
       />
+      )}
 
       <header
         className="relative flex min-h-11 items-center justify-between"
@@ -171,42 +184,87 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       </header>
 
       {section === 'velas' && (
-      <>
+      <div className="flex flex-1 flex-col">
       <h1 className="sr-only">Velas</h1>
+      {/* The sill sits low, where the thumb is: the room above it is wall. */}
+      <div aria-hidden className="min-h-1 flex-[3]" />
       {/* ── La repisa ── */}
-      <section className="relative mt-1" aria-label="La repisa">
-        <div className="flex items-end justify-center gap-9">
+      <section className="sill relative" aria-label="La repisa">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-5 -top-28 h-[520px]"
+          style={{
+            background: 'radial-gradient(62% 50% at 50% 40%, color-mix(in oklab, var(--flame) 30%, transparent), transparent 75%)',
+            opacity: (Number(mineLit) + Number(theirsLit)) / 2,
+            transition: 'opacity 1.6s var(--ease)',
+          }}
+        />
+        <div className="relative flex items-end justify-center">
           {partner && (
-            <button
-              type="button"
-              className="rise rounded-[20px]"
-              disabled={!(mineLit && theirsLit)}
-              aria-label={mineLit && theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}`}
-              onClick={wink.send}
-            >
-              <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} lean={mineLit ? 1 : 0} tremble={wink.received} />
-            </button>
-          )}
-          <MyCandle me={me} lit={mineLit} now={now} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onLight={light} onOpen={() => navigate('/velada')} />
-        </div>
-        <Plank />
-        <div className="mt-3 flex justify-center gap-9 text-center">
-          {partner && (
-            <div className="w-[120px]">
-              <p className="text-[18px]">{partner.name}</p>
-              <p className="quiet text-[15px]">{theirsLit ? `lee ${fmtSince(partner.candle_lit_at!, now)}` : 'apagada'}</p>
+            <div className="flex w-[calc(var(--candle)+36px)] justify-center">
+              <button
+                type="button"
+                className="rise rounded-[20px]"
+                disabled={!(mineLit && theirsLit)}
+                aria-label={mineLit && theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}`}
+                onClick={wink.send}
+              >
+                <span className={`theirs block ${theirsLit ? '' : 'unlit'}`}>
+                  <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} lean={mineLit ? 1 : 0} tremble={wink.received} />
+                </span>
+              </button>
             </div>
           )}
-          <div className="w-[120px]">
-            <p className="text-[18px]">Tú</p>
-            <p className="quiet text-[15px]">{mineLit ? `lees ${fmtSince(me.candle_lit_at!, now)}` : 'mantén para encender'}</p>
+          <div className="flex w-[calc(var(--candle)+36px)] justify-center">
+            <MyCandle me={me} lit={mineLit} now={now} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onLight={light} onOpen={() => navigate('/velada')} />
           </div>
         </div>
-        <p className="mx-auto mt-6 max-w-[19em] text-center text-[21px] leading-snug" aria-live="polite">
+        <Plank />
+        <div className="relative mt-3 flex justify-center text-center">
+          {partner && (
+            <div className="w-[calc(var(--candle)+36px)]">
+              <p className="text-[18px]">{partner.name}</p>
+              <p className="quiet text-[15px] whitespace-nowrap">
+                {theirsLit ? `lee ${fmtSince(partner.candle_lit_at!, now)}` : theirNights.has(tonight) ? 'ya ha leído hoy' : 'aún no ha leído hoy'}
+              </p>
+            </div>
+          )}
+          <div className="w-[calc(var(--candle)+36px)]">
+            <p className="text-[18px] font-medium">Tú</p>
+            {mineLit ? (
+              <p className="quiet text-[15px] whitespace-nowrap">lees {fmtSince(me.candle_lit_at!, now)}</p>
+            ) : (
+              <p className="text-[15.5px] whitespace-nowrap text-flame-ink">mantén para encender</p>
+            )}
+          </div>
+        </div>
+        <p className="relative mx-auto mt-6 max-w-[19em] text-center text-[21px] leading-snug" aria-live="polite">
           {line}
         </p>
-        {nights && line !== nights && <p className="eyebrow mt-3 text-center">{nights}</p>}
-        {mineLit && theirsLit && partner && <p className="quiet mt-2 text-center text-[15px]">Toca su vela para mandarle un guiño.</p>}
+        {nights && line !== nights && <p className="eyebrow relative mt-3 text-center">{nights}</p>}
+        {week && (
+          <ol aria-label="Las últimas siete noches" className="relative mt-4 flex justify-center gap-1.5">
+            {week.map((night) => (
+              <li key={night.day} className="flex w-9 flex-col items-center gap-1">
+                <span
+                  aria-hidden
+                  className={`grid h-9 w-9 place-items-center rounded-full ${night.tonight ? 'border-[1.5px] border-rule' : ''} ${night.shared ? 'text-flame-ink' : 'text-muted'}`}
+                  style={night.shared ? { background: 'color-mix(in oklab, var(--flame) 17%, transparent)' } : undefined}
+                >
+                  {night.shared ? <Flame size={17} /> : <span className="h-[5px] w-[5px] rounded-full bg-current opacity-45" />}
+                </span>
+                <span aria-hidden className={`text-[12.5px] leading-none ${night.tonight ? 'font-semibold text-ink' : 'quiet'}`}>
+                  {night.letter}
+                </span>
+                <span className="sr-only">
+                  {night.tonight ? 'Hoy' : capital(fmtDay(night.day, tonight))}
+                  {night.shared ? ': leísteis los dos' : ''}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+        {mineLit && theirsLit && partner && <p className="quiet relative mt-3 text-center text-[15px]">Toca su vela para mandarle un guiño.</p>}
       </section>
 
       {/* ── Notas por leer: solo el aviso; se leen dentro del libro ── */}
@@ -234,28 +292,44 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
       {/* ── Para qué libro es la vela ── */}
       {myBooks.length > 1 ? (
-        <div className="mt-8">
-          <p className="eyebrow mb-2 text-center">Tu vela es para</p>
-          <div role="radiogroup" aria-label="Para qué libro es tu vela" className="flex flex-wrap justify-center gap-2">
-            {myBooks.map((view) => (
-              <button
-                key={view.book.id}
-                type="button"
-                role="radio"
-                aria-checked={view === chosen}
-                aria-pressed={view === chosen}
-                className="chip max-w-full gap-2"
-                onClick={() => view !== chosen && moveCandle(view)}
-              >
-                {view === chosen && <Flame size={16} className="flex-none" />}
-                <span className="truncate">{view.book.title}</span>
-              </button>
-            ))}
+        <div className="mt-7">
+          <p className="eyebrow mb-1.5 text-center">Tu vela es para</p>
+          <div data-row className="fade-edges no-scrollbar relative -mx-5 overflow-x-auto px-5 py-1">
+            <div role="radiogroup" aria-label="Para qué libro es tu vela" className="mx-auto flex w-max gap-2.5">
+              {myBooks.map((view) => {
+                const on = view === chosen
+                return (
+                  <button
+                    key={view.book.id}
+                    ref={on ? chosenCard : undefined}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    className={`pressable flex w-[178px] flex-none items-center gap-3 rounded-[16px] border-[1.5px] px-3 py-2 text-left transition-colors ${
+                      on ? 'border-flame bg-surface' : 'border-rule'
+                    }`}
+                    onClick={() => !on && moveCandle(view)}
+                  >
+                    <Cover book={view.book} width={30} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[16px] leading-tight">{view.book.title}</span>
+                      <span className={`mt-1 flex items-center gap-1 text-[14px] leading-none ${on ? 'text-flame-ink' : 'quiet'}`}>
+                        {on && <Flame size={13} className="flex-none" />}
+                        <span className="truncate">
+                          {fmtPosition(view.mine!)}
+                          {view.mine!.unit !== 'porcentaje' && ` · ${Math.round(progressOf(view.mine!) * 100)} %`}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       ) : (
         chosen?.mine && (
-          <Link to={`/libro/${chosen.book.id}`} className="quiet mt-8 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
+          <Link to={`/libro/${chosen.book.id}`} className="quiet mt-7 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
             <Flame size={17} className="flex-none text-flame-ink" />
             <span className="min-w-0 truncate">
               Tu vela es para <em className="text-ink">{chosen.book.title}</em> · {fmtPosition(chosen.mine)}
@@ -264,15 +338,23 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         )
       )}
 
-      </>
+      <div aria-hidden className="flex-[2]" />
+      </div>
       )}
 
       {/* ── La mesilla ── */}
       {section === 'mesilla' && (
       <section className="mt-4" aria-labelledby="mesilla">
-        <h1 id="mesilla" className="title mb-5">
-          La mesilla
-        </h1>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h1 id="mesilla" className="title">
+            La mesilla
+          </h1>
+          {stand.length > 0 && (
+            <Link to="/anadir" className="btn btn-soft !min-h-11 !gap-1.5 !px-4 !text-[16px]">
+              <Plus size={18} /> Añadir
+            </Link>
+          )}
+        </div>
         {stand.length ? (
           <div className="flex flex-col gap-4">
             {(
@@ -345,6 +427,10 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           <h1 id="estanteria" className="title">
             La estantería
           </h1>
+          <div className="flex items-center gap-2">
+          <Link to="/anadir" className="icon-btn border-[1.5px] border-rule" aria-label="Añadir un libro">
+            <Plus size={20} />
+          </Link>
           {(allPending.length > 0 || allYears.length > 0) && (
             <div role="group" aria-label="Cómo ver la estantería" className="flex rounded-full border-[1.5px] border-rule p-[3px]">
               {(
@@ -366,6 +452,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {partner && (allPending.length > 0 || allYears.length > 0) && (
@@ -618,6 +705,8 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
     if (ready) setHint(true)
     else onLight()
   }
+  // A light tick as the wick takes the finger, before the longer one when it catches.
+  const began = () => navigator.vibrate?.(6)
   return (
     <button
       type="button"
@@ -629,6 +718,7 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
         setHint(false)
         event.currentTarget.setPointerCapture(event.pointerId)
         hold.start()
+        if (ready) began()
       }}
       onPointerUp={release}
       onPointerCancel={() => hold.cancel()}
@@ -639,7 +729,7 @@ function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps)
         else if (event.detail === 0) onLight()
       }}
     >
-      <Candle color={me.color} lit={lit} wax={lit ? waxLeft(me.candle_lit_at, now) : 1} lean={lean} igniting={hold.progress} />
+      <Candle color={me.color} lit={lit} wax={lit ? waxLeft(me.candle_lit_at, now) : 1} lean={lean} igniting={hold.progress} inviting={ready} />
       {hint && !lit && <span role="status" className="pointer-events-none absolute inset-x-[-34px] bottom-2 rounded-xl bg-surface px-3 py-2 text-center text-[15px] leading-snug text-ink shadow-sm">Mantén el dedo sobre la mecha hasta que prenda.</span>}
     </button>
   )
