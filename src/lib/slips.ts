@@ -58,3 +58,37 @@ export function waitingFor(db: Db, me: string): Waiting[] {
   }
   return out
 }
+
+/** A book and the notes between its pages, as the mailbox shows it. */
+export interface Bundle {
+  book: Book
+  /** In reading order. */
+  slips: Slip[]
+  /** Theirs, readable now and not opened yet. */
+  unread: number
+  /** Theirs, still hidden further on. */
+  ahead: number
+  /** When the newest of them was written. */
+  latest: string
+}
+
+/**
+ * «Las notas»: every note between pages that the two of you have left, book by book. Books with something to
+ * read come first; after that, wherever something was written last.
+ */
+export function mailbox(db: Db, me: string): Bundle[] {
+  const bundles = new Map<string, Bundle>()
+  for (const slip of liveSlips(db)) {
+    const book = db.books[slip.book_id]
+    if (slip.at == null || !book || book.deleted_at) continue
+    let bundle = bundles.get(book.id)
+    if (!bundle) bundles.set(book.id, (bundle = { book, slips: [], unread: 0, ahead: 0, latest: '' }))
+    bundle.slips.push(slip)
+    if (slip.created_at > bundle.latest) bundle.latest = slip.created_at
+    if (slip.user_id === me) continue
+    if (slip.locked || slip.body == null) bundle.ahead++
+    else if (!slip.seen_at) bundle.unread++
+  }
+  for (const bundle of bundles.values()) bundle.slips.sort((a, b) => a.at! - b.at! || a.created_at.localeCompare(b.created_at))
+  return [...bundles.values()].sort((a, b) => Number(b.unread > 0) - Number(a.unread > 0) || b.latest.localeCompare(a.latest))
+}

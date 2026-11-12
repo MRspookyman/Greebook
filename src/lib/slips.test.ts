@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { positionFor } from './lock'
-import { papersOf, reviewsOf, slipPlace, waitingFor } from './slips'
+import { mailbox, papersOf, reviewsOf, slipPlace, waitingFor } from './slips'
 import { emptyDb, type Book, type Db, type Reading, type Slip } from './types'
 
 const book: Book = {
@@ -76,5 +76,32 @@ describe('lo que te espera', () => {
     expect(waitingFor(db([reading('me', { position: 150 })], [hidden]), 'me')).toEqual([
       { kind: 'papel', book, slip: hidden, opening: true },
     ])
+  })
+})
+
+describe('las notas, libro a libro', () => {
+  const other: Book = { ...book, id: 'c', title: 'Nada' }
+  it('agrupa por libro, en orden de lectura, y cuenta lo que hay por leer y lo que espera', () => {
+    const base = db([reading('me')], [
+      slip('you', 'nota', { at: 0.6, body: null, locked: true }),
+      slip('me', 'nota', { at: 0.3 }),
+      slip('you', 'nota', { at: 0.1 }),
+      slip('you', 'nota', { at: 0.05, seen_at: '2026-11-02T10:00:00Z' }),
+      slip('me', 'nota'),
+    ])
+    const [bundle, ...rest] = mailbox(base, 'me')
+    expect(rest).toHaveLength(0)
+    expect(bundle.slips.map((s) => s.at)).toEqual([0.05, 0.1, 0.3, 0.6])
+    expect([bundle.unread, bundle.ahead]).toEqual([1, 1])
+  })
+  it('primero el libro con algo por leer; después, donde se escribió lo último', () => {
+    const base = db([], [
+      slip('me', 'nota', { at: 0.2, created_at: '2026-11-09T10:00:00Z' }),
+      slip('me', 'nota', { at: 0.2, book_id: 'c', created_at: '2026-11-01T10:00:00Z' }),
+    ])
+    base.books.c = other
+    expect(mailbox(base, 'me').map((b) => b.book.id)).toEqual(['b', 'c'])
+    base.slips.x = slip('you', 'nota', { at: 0.4, book_id: 'c', created_at: '2026-10-01T10:00:00Z' })
+    expect(mailbox(base, 'me').map((b) => b.book.id)).toEqual(['c', 'b'])
   })
 })

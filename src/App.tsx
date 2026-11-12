@@ -18,6 +18,7 @@ import { Evening } from '@/screens/Evening'
 import { BookPage } from '@/screens/BookPage'
 import { AddBook } from '@/screens/AddBook'
 import { Settings } from '@/screens/Settings'
+import { Notes } from '@/screens/Notes'
 
 function Blank() {
   return <div className="min-h-dvh bg-bg" aria-busy="true" />
@@ -60,7 +61,7 @@ function BrowserAppearance() {
   const bookId = pathname.startsWith('/libro/') ? pathname.split('/')[2] : undefined
   const title = bookId ? db.books[bookId]?.title ?? 'Libro' : ({
     '/': 'Velas', '/mesilla': 'Mesilla', '/estanteria': 'Estantería',
-    '/velada': 'Velada', '/anadir': 'Añadir un libro', '/ajustes': 'Tu vela',
+    '/velada': 'Velada', '/notas': 'Las notas', '/anadir': 'Añadir un libro', '/ajustes': 'Tu vela',
   } as Record<string, string>)[pathname]
   useLayoutEffect(() => {
     document.title = title ? `Greenbook · ${title}` : 'Greenbook'
@@ -232,6 +233,7 @@ function Gate({ userId }: { userId: string }) {
         <Route path="/" element={<Room section="velas" />} />
         <Route path="/mesilla" element={<Room section="mesilla" />} />
         <Route path="/estanteria" element={<Room section="estanteria" />} />
+        <Route path="/notas" element={<Notes />} />
         <Route path="/velada" element={<Evening />} />
         <Route path="/libro/:bookId" element={<BookPage />} />
         <Route path="/anadir" element={<AddBook />} />

@@ -1,16 +1,15 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
-import { useNoticed } from '@/lib/noticed'
-import { waitingFor } from '@/lib/slips'
+import { mailbox } from '@/lib/slips'
 import { usePeople } from '@/session'
-import { BookOpen, Flame, Spines } from './icons'
+import { BookOpen, Flame, Paper, Spines } from './icons'
 
 /** The way around the room: one short screen for each thing, always one touch away. */
 export function Nav() {
   const { db, me } = usePeople()
   const { pathname } = useLocation()
-  const noticed = useNoticed(me.id)
-  const waiting = useMemo(() => waitingFor(db, me.id).filter((thing) => !noticed.has(thing.slip.id)).length, [db, me.id, noticed])
+  // Notes of theirs I can read and haven't opened: the dot stays on «Notas» until they are.
+  const waiting = useMemo(() => mailbox(db, me.id).reduce((sum, bundle) => sum + bundle.unread, 0), [db, me.id])
   // The evening is the candle and nothing else.
   if (pathname === '/velada') return null
 
@@ -29,7 +28,7 @@ export function Nav() {
         {badge && <span aria-hidden="true" className="absolute -top-0.5 -right-1.5 h-2.5 w-2.5 rounded-full bg-flame" />}
       </span>
       {label}
-      {badge && <span className="sr-only">, hay algo esperándote</span>}
+      {badge && <span className="sr-only">, hay algo por leer</span>}
     </Link>
     )
   }
@@ -46,9 +45,10 @@ export function Nav() {
       }}
     >
       <div className="mx-auto flex max-w-xl gap-1 px-2 py-1.5">
-        {item('/', 'Velas', <Flame size={22} />, waiting > 0)}
+        {item('/', 'Velas', <Flame size={22} />)}
         {item('/mesilla', 'Mesilla', <BookOpen size={22} />)}
         {item('/estanteria', 'Estantería', <Spines size={22} />)}
+        {item('/notas', 'Notas', <Paper size={22} />, waiting > 0)}
         {item(
           '/ajustes',
           'Tú',
