@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
-  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, matchesStars, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
+  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
   waxLeft, type BookView, type ShelfOrder, type Whose,
 } from '@/lib/model'
 import { lastNights, nightsLine, nightsOf, sharedNights } from '@/lib/nights'
+import { knowsTheGesture, litOnce } from '@/lib/learned'
 import { markNoticed, useNoticed } from '@/lib/noticed'
 import { askForCandleNotice } from '@/lib/ongoing'
 import { reviewsOf, waitingFor } from '@/lib/slips'
@@ -60,9 +61,19 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
     }
     navigator.vibrate?.(18)
     askForCandleNotice()
+    litOnce()
     lightCandle(chosen.mine)
     navigate('/velada')
   }
+  /** The line under «Tú» that fills while the finger is held: the finger itself hides the wick. */
+  const meter = useRef<HTMLSpanElement>(null)
+  const showHold = useCallback((progress: number) => {
+    const bar = meter.current
+    if (!bar) return
+    bar.style.transform = `scaleX(${progress})`
+    bar.parentElement?.style.setProperty('--holding', progress > 0 ? '1' : '0')
+  }, [])
+  const myNights = useMemo(() => nightsOf(sessions, me.id), [sessions, me.id])
 
   let line: ReactNode
   if (mineLit && theirsLit) line = 'Estáis leyendo los dos.'
@@ -85,6 +96,10 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   // Notes of theirs I can read and whose notice I haven't tapped yet. Tapped once, it is not said again.
   const waiting = useMemo(() => waitingFor(db, me.id).filter((thing) => !noticed.has(thing.slip.id)), [db, me.id, noticed])
   const [whose, setWhose] = useState<Whose>('todos')
+  /** The last seven nights, shown on asking. */
+  const [showWeek, setShowWeek] = useState(false)
+  /** Choosing which open book the candle is for. */
+  const [choosing, setChoosing] = useState(false)
   const groups = standGroups(stand)
   const myBooks = [...groups.both, ...groups.mine]
   // One line per book with notes of theirs I can read now. What they say is read inside the book.
@@ -96,17 +111,15 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const allYears = shelves(views)
   const [text, setText] = useState('')
   const [order, setOrder] = useState<ShelfOrder>('fecha')
-  const [minStars, setMinStars] = useState(0)
-  const searching = text.trim() !== '' || minStars !== 0
-  // Stars only exist on finished books: asking for them leaves the pile and the dropped ones out.
-  const pending = minStars !== 0 ? [] : allPending.filter((view) => heldBy(view, whose, 'pendiente') && matchesText(view, text))
-  const finished = (view: BookView) => heldBy(view, whose, 'terminado') && matchesText(view, text) && matchesStars(view, minStars, whose)
+  const searching = text.trim() !== ''
+  const pending = allPending.filter((view) => heldBy(view, whose, 'pendiente') && matchesText(view, text))
+  const finished = (view: BookView) => heldBy(view, whose, 'terminado') && matchesText(view, text)
   const years = allYears.map(({ year, books }) => ({ year, books: books.filter(finished) })).filter(({ books }) => books.length > 0)
   /** Ordered by anything but the year, the finished books stand all together. */
   const together = order === 'fecha' ? null : sortViews(years.flatMap(({ books }) => books), order, whose)
   const myNext = pending.find((view) => isNext(view.mine))
   const theirNext = pending.find((view) => isNext(view.theirs))
-  const left = minStars !== 0 ? [] : dropped(views).filter((view) => matchesText(view, text))
+  const left = dropped(views).filter((view) => matchesText(view, text))
   /** Moves the candle to another open book: at once if it is burning, for next time if it isn't. */
   const moveCandle = (view: BookView) => {
     if (!view.mine) return
@@ -152,15 +165,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             : `${second ? 'lo dejaste' : 'lo dejó'} a medias`
   const nightsIn = (year: number) => new Set(sessions.filter((s) => s.day.startsWith(String(year))).map((s) => s.day)).size
   const empty = !stand.length && !allPending.length && !allYears.length
-  // The book the candle is for is brought to the middle of its row, wherever it was.
-  const chosenCard = useRef<HTMLButtonElement>(null)
-  const chosenId = chosen?.book.id
-  useEffect(() => {
-    const card = chosenCard.current
-    const row = card?.closest<HTMLElement>('[data-row]')
-    if (card && row) row.scrollLeft = card.offsetLeft - (row.clientWidth - card.offsetWidth) / 2
-  }, [chosenId, section])
-
   return (
     <main className={`relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28 ${section === 'velas' ? 'flex flex-col' : ''}`}>
       {/* Candlelight on the wall; on the sill it hangs over the candles themselves. */}
@@ -216,7 +220,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             </div>
           )}
           <div className="flex w-[calc(var(--candle)+36px)] justify-center">
-            <MyCandle me={me} lit={mineLit} now={now} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onLight={light} onOpen={() => navigate('/velada')} />
+            <MyCandle me={me} lit={mineLit} now={now} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onHold={showHold} onLight={light} onOpen={() => navigate('/velada')} />
           </div>
         </div>
         <Plank />
@@ -233,17 +237,29 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             <p className="text-[18px] font-medium">Tú</p>
             {mineLit ? (
               <p className="quiet text-[15px] whitespace-nowrap">lees {fmtSince(me.candle_lit_at!, now)}</p>
+            ) : knowsTheGesture() ? (
+              <p className="quiet text-[15px] whitespace-nowrap">{myNights.has(tonight) ? 'ya has leído hoy' : 'aún no has leído hoy'}</p>
             ) : (
               <p className="text-[15.5px] whitespace-nowrap text-flame-ink">mantén para encender</p>
+            )}
+            {!mineLit && (
+              <span aria-hidden className="mx-auto mt-1.5 block h-[3px] w-[92px] overflow-hidden rounded-full" style={{ background: 'color-mix(in oklab, var(--flame) 20%, transparent)', opacity: 'var(--holding, 0)', transition: 'opacity 160ms' } as CSSProperties}>
+                <span ref={meter} className="block h-full origin-left rounded-full bg-flame" style={{ transform: 'scaleX(0)' }} />
+              </span>
             )}
           </div>
         </div>
         <p className="relative mx-auto mt-6 max-w-[19em] text-center text-[21px] leading-snug" aria-live="polite">
           {line}
         </p>
-        {nights && line !== nights && <p className="eyebrow relative mt-3 text-center">{nights}</p>}
-        {week && (
-          <ol aria-label="Las últimas siete noches" className="relative mt-4 flex justify-center gap-1.5">
+        {nights && week && (
+          <button type="button" className="eyebrow relative mx-auto mt-3 flex min-h-11 items-center gap-1.5 px-3" aria-expanded={showWeek} onClick={() => setShowWeek(!showWeek)}>
+            {line === nights ? 'Esta semana' : nights}
+            <span aria-hidden className="text-[11px]" style={{ transform: showWeek ? 'rotate(180deg)' : undefined, transition: 'transform 200ms' }}>▾</span>
+          </button>
+        )}
+        {week && showWeek && (
+          <ol aria-label="Las últimas siete noches" className="fade relative mt-1 flex justify-center gap-1.5">
             {week.map((night) => (
               <li key={night.day} className="flex w-9 flex-col items-center gap-1">
                 <span
@@ -299,52 +315,19 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         </Link>
       )}
 
-      {/* ── Para qué libro es la vela ── */}
-      {myBooks.length > 1 ? (
-        <div className="mt-7">
-          <p className="eyebrow mb-1.5 text-center">Tu vela es para</p>
-          <div data-row className="fade-edges no-scrollbar relative -mx-5 overflow-x-auto px-5 py-1">
-            <div role="radiogroup" aria-label="Para qué libro es tu vela" className="mx-auto flex w-max gap-2.5">
-              {myBooks.map((view) => {
-                const on = view === chosen
-                return (
-                  <button
-                    key={view.book.id}
-                    ref={on ? chosenCard : undefined}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    className={`pressable flex w-[178px] flex-none items-center gap-3 rounded-[16px] border-[1.5px] px-3 py-2 text-left transition-colors ${
-                      on ? 'border-flame bg-surface' : 'border-rule'
-                    }`}
-                    onClick={() => !on && moveCandle(view)}
-                  >
-                    <Cover book={view.book} width={30} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[16px] leading-tight">{view.book.title}</span>
-                      <span className={`mt-1 flex items-center gap-1 text-[14px] leading-none ${on ? 'text-flame-ink' : 'quiet'}`}>
-                        {on && <Flame size={13} className="flex-none" />}
-                        <span className="truncate">
-                          {fmtPosition(view.mine!)}
-                          {view.mine!.unit !== 'porcentaje' && ` · ${Math.round(progressOf(view.mine!) * 100)} %`}
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        chosen?.mine && (
-          <Link to={`/libro/${chosen.book.id}`} className="quiet mt-7 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
-            <Flame size={17} className="flex-none text-flame-ink" />
-            <span className="min-w-0 truncate">
-              Tu vela es para <em className="text-ink">{chosen.book.title}</em> · {fmtPosition(chosen.mine)}
-            </span>
+      {/* ── Para qué libro es la vela: una línea; con varios abiertos, se cambia desde ella ── */}
+      {chosen?.mine && (
+        <div className="quiet mt-7 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
+          <Flame size={17} className="flex-none text-flame-ink" />
+          <Link to={`/libro/${chosen.book.id}`} className="min-w-0 truncate">
+            Tu vela es para <em className="text-ink">{chosen.book.title}</em> · {fmtPosition(chosen.mine)}
           </Link>
-        )
+          {myBooks.length > 1 && (
+            <button type="button" className="-my-2 flex min-h-11 flex-none items-center px-1 underline decoration-rule underline-offset-4" onClick={() => setChoosing(true)}>
+              Cambiar
+            </button>
+          )}
+        </div>
       )}
 
       <div aria-hidden className="flex-[2]" />
@@ -508,13 +491,6 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
               <option value="autor">Por autor</option>
               <option value="puntuacion">Por puntuación</option>
             </select>
-            <select aria-label="Filtrar por puntuación" className="field !min-h-11 !w-auto min-w-0 flex-1 !py-1.5 text-[16px]" value={minStars} onChange={(event) => setMinStars(Number(event.currentTarget.value))}>
-              <option value={0}>Cualquier nota</option>
-              <option value={5}>5★</option>
-              <option value={4}>4★ o más</option>
-              <option value={3}>3★ o más</option>
-              <option value={-1}>Sin puntuar</option>
-            </select>
           </div>
         )}
 
@@ -627,6 +603,39 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       </section>
       )}
 
+      <Sheet open={choosing} onClose={() => setChoosing(false)} title="Tu vela es para">
+        <div role="radiogroup" aria-label="Para qué libro es tu vela" className="flex flex-col gap-2.5">
+          {myBooks.map((view) => {
+            const on = view === chosen
+            return (
+              <button
+                key={view.book.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`pressable flex items-center gap-3 rounded-[16px] border-[1.5px] px-3 py-2.5 text-left transition-colors ${on ? 'border-flame bg-surface' : 'border-rule'}`}
+                onClick={() => {
+                  if (!on) moveCandle(view)
+                  setChoosing(false)
+                }}
+              >
+                <Cover book={view.book} width={36} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[17px] leading-tight">{view.book.title}</span>
+                  <span className={`mt-1 flex items-center gap-1 text-[15px] leading-none ${on ? 'text-flame-ink' : 'quiet'}`}>
+                    {on && <Flame size={13} className="flex-none" />}
+                    <span className="truncate">
+                      {fmtPosition(view.mine!)}
+                      {view.mine!.unit !== 'porcentaje' && ` · ${Math.round(progressOf(view.mine!) * 100)} %`}
+                    </span>
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </Sheet>
+
       <Sheet open={!!peek} onClose={() => setPeek(null)} label={peek?.book.title}>
         {peek && (
           <div className="flex flex-col items-center gap-5 pb-1 text-center">
@@ -700,13 +709,16 @@ interface MyCandleProps {
   lean: -1 | 0 | 1
   /** There is a book to light it for. */
   ready: boolean
+  /** Filled 0 → 1 while the finger is held, where the finger does not cover it. */
+  onHold: (progress: number) => void
   onLight: () => void
   onOpen: () => void
 }
 
 /** Your candle: hold a finger on it to light it; once lit, a tap takes you back to your evening. */
-function MyCandle({ me, lit, now, lean, ready, onLight, onOpen }: MyCandleProps) {
+function MyCandle({ me, lit, now, lean, ready, onHold, onLight, onOpen }: MyCandleProps) {
   const hold = useHold(onLight)
+  useEffect(() => onHold(hold.progress), [hold.progress, onHold])
   const [hint, setHint] = useState(false)
   const release = () => {
     if (!hold.cancel()) return

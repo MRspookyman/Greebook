@@ -214,14 +214,6 @@ export function matchesText(view: BookView, text: string): boolean {
   return !wanted || plain(`${view.book.title} ${view.book.author}`).includes(wanted)
 }
 
-/** `min` stars or more; 0 lets everything through and -1 keeps only the ones nobody has rated. */
-export function matchesStars(view: BookView, min: number, whose: Whose = 'todos'): boolean {
-  const stars = ratingOf(view, whose)
-  if (min === 0) return true
-  if (min < 0) return stars == null
-  return stars != null && stars >= min
-}
-
 /** Finished books all together, in the order asked for. Unrated books go last when ordering by stars. */
 export function sortViews(views: BookView[], order: ShelfOrder, whose: Whose = 'todos'): BookView[] {
   const title = (a: BookView, b: BookView) => a.book.title.localeCompare(b.book.title, 'es', { sensitivity: 'base' })

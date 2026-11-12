@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesStars, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, waxLeft,
+  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, waxLeft,
 } from './model'
 import { stepMinutes } from './time'
 import { emptyDb, type Book, type Db, type Reading, type Session } from './types'
@@ -206,12 +206,6 @@ describe('buscar y ordenar la estantería', () => {
     expect(ids(views.filter((v) => matchesText(v, 'arbol')))).toEqual(['ccc'])
     expect(ids(views.filter((v) => matchesText(v, 'DELIBES')))).toEqual(['bb'])
     expect(views.filter((v) => matchesText(v, '  '))).toHaveLength(3)
-  })
-
-  it('filtra por estrellas, y aparta los que nadie ha puntuado', () => {
-    expect(ids(views.filter((v) => matchesStars(v, 4)))).toEqual(['bb'])
-    expect(ids(views.filter((v) => matchesStars(v, -1)))).toEqual(['ccc'])
-    expect(views.filter((v) => matchesStars(v, 0))).toHaveLength(3)
   })
 
   it('ordena por título, autor o puntuación', () => {
