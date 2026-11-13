@@ -11,7 +11,7 @@ interface Props {
 }
 
 const CHOICES: Array<{ status: Status; title: string; detail: string }> = [
-  { status: 'leyendo', title: 'Lo empiezo ya', detail: 'Va a la mesilla.' },
+  { status: 'leyendo', title: 'Lo empiezo ya', detail: 'Va a la mesita.' },
   { status: 'pendiente', title: 'Para más adelante', detail: 'A la pila de por leer.' },
   { status: 'terminado', title: 'Ya lo leí', detail: 'Directo a la estantería.' },
 ]

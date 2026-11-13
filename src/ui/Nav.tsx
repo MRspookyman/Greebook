@@ -25,7 +25,7 @@ export function Nav() {
     <nav aria-label="Secciones" className="app-nav">
       <div className="app-nav-inner">
         {item('/', 'Velas', <Flame size={22} />)}
-        {item('/mesilla', 'Mesilla', <BookOpen size={22} />)}
+        {item('/mesilla', 'Mesita', <BookOpen size={22} />)}
         {item('/estanteria', 'Estantería', <Spines size={22} />)}
         {item('/notas', 'Notas', <Paper size={22} />, waiting > 0)}
         {item(

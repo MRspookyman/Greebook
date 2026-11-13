@@ -117,7 +117,7 @@ export function Notes() {
             {partner ? ` ${partner.name} la encontrará al llegar.` : ''}
           </p>
           <Link to="/mesilla" className="btn btn-soft mt-5">
-            Ir a la mesilla
+            Ir a la mesita
           </Link>
         </div>
       )}

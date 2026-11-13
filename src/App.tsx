@@ -62,7 +62,7 @@ function BrowserAppearance() {
   const bookId = pathname.startsWith('/libro/') ? pathname.split('/')[2] : undefined
   const letterYear = pathname.startsWith('/carta/') ? pathname.split('/')[2] : undefined
   const title = letterYear ? `La carta de ${letterYear}` : bookId ? db.books[bookId]?.title ?? 'Libro' : ({
-    '/': 'Velas', '/mesilla': 'Mesilla', '/estanteria': 'Estantería',
+    '/': 'Velas', '/mesilla': 'Mesita', '/estanteria': 'Estantería',
     '/velada': 'Velada', '/notas': 'Las notas', '/anadir': 'Añadir un libro', '/ajustes': 'Tu vela',
   } as Record<string, string>)[pathname]
   useLayoutEffect(() => {

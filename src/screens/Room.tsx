@@ -57,7 +57,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
   const light = () => {
     if (!chosen?.mine) {
-      toast('Primero pon un libro en la mesilla', { label: 'Añadir', run: () => navigate('/anadir') })
+      toast('Primero pon un libro en la mesita', { label: 'Añadir', run: () => navigate('/anadir') })
       return
     }
     navigator.vibrate?.(18)
@@ -85,7 +85,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       </>
     )
   } else if (mineLit) line = partner ? `Tu vela está encendida. ${partner.name} la ve.` : 'Tu vela está encendida.'
-  else if (!chosen) line = 'Pon un libro en la mesilla y enciende tu vela.'
+  else if (!chosen) line = 'Pon un libro en la mesita y enciende tu vela.'
   else line = nights ?? 'Las dos velas esperan.'
 
   const wink = useWink(partner?.name)
@@ -350,7 +350,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       <section className="mt-4" aria-labelledby="mesilla">
         <div className="mb-5 flex items-center justify-between gap-3">
           <h1 id="mesilla" className="title room-section-title">
-            La <em>mesilla</em>
+            La <em>mesita</em>
           </h1>
           {stand.length > 0 && (
             <Link to="/anadir" className="btn btn-soft room-add !min-h-11 !gap-1.5 !px-4 !text-[16px]">

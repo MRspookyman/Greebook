@@ -153,21 +153,7 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
       {/* The ember grows from the charred tip, not from the whole candle. */}
       {!lit && igniting > 0 && (
         <g opacity={0.4 + igniting * 0.6}>
-          {/* A ring closes around the wick: how long is left to hold. */}
-          <circle cx="60" cy={wick - 3} r="25" stroke="#ffc86c" strokeOpacity="0.16" strokeWidth="2.2" fill="none" />
-          <circle
-            cx="60"
-            cy={wick - 3}
-            r="25"
-            stroke="#ffc86c"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            fill="none"
-            pathLength={1}
-            strokeDasharray="1"
-            strokeDashoffset={1 - igniting}
-            transform={`rotate(-90 60 ${wick - 3})`}
-          />
+          {/* The ember alone shows the hold; the one progress line sits under the name. */}
           <circle cx="60" cy={wick} r={4 + igniting * 15} fill={`url(#${id}warm)`} />
           <ellipse cx="60" cy={wick - igniting * 3} rx={1 + igniting * 2.4} ry={1.4 + igniting * 5} fill="#ffc86c" />
           <circle cx="60" cy={wick} r="1.2" fill="#fff1c2" />

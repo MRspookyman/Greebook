@@ -4,7 +4,7 @@ import { Sheet } from './Sheet'
 import { toast } from './toast'
 
 const CHOICES: Array<{ status: Status; title: string; detail: string; done: string }> = [
-  { status: 'leyendo', title: 'Lo estoy leyendo', detail: 'En la mesilla.', done: 'Está en la mesilla' },
+  { status: 'leyendo', title: 'Lo estoy leyendo', detail: 'En la mesita.', done: 'Está en la mesita' },
   { status: 'pendiente', title: 'Para más adelante', detail: 'A la pila de por leer.', done: 'Guardado para más adelante' },
   { status: 'terminado', title: 'Terminado', detail: 'A la estantería, con tu cinta.', done: 'Ya está en la estantería' },
   { status: 'dejado', title: 'Dejado a medias', detail: 'Sin culpa. Se puede retomar cuando quieras.', done: 'Dejado a medias. No pasa nada.' },
@@ -56,7 +56,7 @@ export function StatusSheet({ reading, book, onClose, onChanged }: Props) {
                 <span>
                   <span className="block text-[18px] leading-tight">{choice.title}</span>
                   <span className="quiet block text-[15px]">
-                    {choice.status === 'leyendo' && reading.status === 'terminado' ? 'Vuelve a la mesilla, desde el principio.' : choice.detail}
+                    {choice.status === 'leyendo' && reading.status === 'terminado' ? 'Vuelve a la mesita, desde el principio.' : choice.detail}
                   </span>
                 </span>
               </button>
