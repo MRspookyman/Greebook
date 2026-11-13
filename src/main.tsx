@@ -6,6 +6,7 @@ import '@fontsource-variable/newsreader/opsz-italic.css'
 import '@fontsource/caveat/latin-500.css'
 import '@/styles/theme.css'
 import '@/styles/room.css'
+import '@/styles/library.css'
 import App from './App'
 import { toast } from './ui/toast'
 

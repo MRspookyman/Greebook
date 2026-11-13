@@ -1,0 +1,7 @@
+{
+  "extends": "../../../tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../../node_modules/.tmp/shelf-mockup.tsbuildinfo"
+  },
+  "include": ["./mockup.tsx"]
+}

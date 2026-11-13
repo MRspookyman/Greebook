@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
-  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, isNext, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
+  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
   waxLeft, type BookView, type ShelfOrder, type Whose,
 } from '@/lib/model'
 import { lastNights, nightsLine, nightsOf, sharedNights } from '@/lib/nights'
@@ -18,8 +18,9 @@ import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
 import { ReadingStillLife, RoomScene } from '@/ui/RoomArt'
-import { BookOpen, Covers, Flame, Paper, Plus, Spines, Search, More } from '@/ui/icons'
-import { setShelfView, useShelfView } from '@/lib/shelfView'
+import { BookOpen, Chevron, Flame, Paper, Plus, Spines, Search, More } from '@/ui/icons'
+import { PendingBooks, ShelfCabinet, ShelfViewSwitch } from '@/ui/Library'
+import { useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { Fold } from '@/ui/Fold'
 import { Sheet } from '@/ui/Sheet'
@@ -118,9 +119,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const years = allYears.map(({ year, books }) => ({ year, books: books.filter(finished) })).filter(({ books }) => books.length > 0)
   /** Ordered by anything but the year, the finished books stand all together. */
   const together = order === 'fecha' ? null : sortViews(years.flatMap(({ books }) => books), order, whose)
-  const myNext = pending.find((view) => isNext(view.mine))
-  const theirNext = pending.find((view) => isNext(view.theirs))
-  const left = dropped(views).filter((view) => matchesText(view, text))
+  const allLeft = dropped(views)
+  const left = allLeft.filter((view) => heldBy(view, whose, 'dejado') && matchesText(view, text))
+  const hasLibrary = allPending.length > 0 || allYears.length > 0 || allLeft.length > 0
   /** Moves the candle to another open book: at once if it is burning, for next time if it isn't. */
   const moveCandle = (view: BookView) => {
     if (!view.mine) return
@@ -166,6 +167,23 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             : `${second ? 'lo dejaste' : 'lo dejó'} a medias`
   const nightsIn = (year: number) => new Set(sessions.filter((s) => s.day.startsWith(String(year))).map((s) => s.day)).size
   const empty = !stand.length && !allPending.length && !allYears.length
+
+  const yearShelf = ({ year, books }: (typeof years)[number], first: boolean) => (
+    <ShelfCabinet
+      key={year}
+      id={`estanteria:${year}`}
+      title={year}
+      summary={<>{books.length === 1 ? 'un libro' : `${books.length} libros`}{whose === 'todos' && nightsIn(year) > 0 && ` · ${nightsIn(year) === 1 ? 'una noche' : `${nightsIn(year)} noches`}`}</>}
+      open={searching}
+      archive={!first}
+      controls={<>
+        {!searching && whose === 'todos' && <Link to={`/carta/${year}`} className="shelf-letter" aria-label={`La carta de ${year}`} title={`La carta de ${year}`}><Paper size={18} /></Link>}
+        {first && <ShelfViewSwitch view={shelfView} />}
+      </>}
+    >
+      <Shelf items={books.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
+    </ShelfCabinet>
+  )
   return (
     <main className={`room room--${section} relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28 ${section === 'velas' ? 'flex flex-col' : ''}`}>
       {/* Candlelight on the wall; on the sill it hangs over the candles themselves. */}
@@ -427,199 +445,92 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
       {/* ── La estantería ── */}
       {section === 'estanteria' && (
-      <section className="mt-4" aria-labelledby="estanteria">
-        <div className="mb-1 flex items-center justify-between gap-3">
-          <h1 id="estanteria" className="title room-section-title">
-            La <em>estantería</em>
-          </h1>
-          <div className="flex items-center gap-2">
-          <Link to="/anadir" className="icon-btn room-add border-[1.5px] border-rule" aria-label="Añadir un libro">
-            <Plus size={20} />
-          </Link>
+      <section className="shelf-library relative" aria-labelledby="estanteria">
+        <div className="shelf-heading">
+          <div>
+            <h1 id="estanteria">La <em>estantería</em></h1>
+            <p>Historias que se quedan.</p>
           </div>
+          <Link to="/anadir" className="room-add shelf-add" aria-label="Añadir un libro"><Plus size={21} /></Link>
         </div>
 
-        {partner && (allPending.length > 0 || allYears.length > 0) && (
-          <div role="group" aria-label="De quién son las cintas. Toca para ver solo esos libros" className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 py-1">
-            {(
-              [
-                ['todos', 'Todos', []],
-                ['dos', 'Los dos', ['you', 'me']],
-                ['yo', 'Tú', ['me']],
-                ['tu', partner.name, ['you']],
-              ] as Array<[Whose, string, Person[]]>
-            ).map(([value, label, wax]) => (
-              <button key={value} type="button" className="chip shrink-0 gap-2 whitespace-nowrap" aria-pressed={whose === value} onClick={() => setWhose(value)}>
-                {wax.length > 0 && (
-                  <span className="flex items-center -space-x-1">
-                    {wax.map((who) => (
-                      <Wax key={who} who={who} size={12} />
-                    ))}
-                  </span>
-                )}
+        {partner && hasLibrary && (
+          <div role="group" aria-label="De quién son las cintas. Toca para ver solo esos libros" className="shelf-owners no-scrollbar">
+            {([
+              ['todos', 'Todos', []], ['dos', 'Los dos', ['you', 'me']],
+              ['yo', 'Tú', ['me']], ['tu', partner.name, ['you']],
+            ] as Array<[Whose, string, Person[]]>).map(([value, label, wax]) => (
+              <button key={value} type="button" aria-pressed={whose === value} onClick={() => setWhose(value)}>
+                {wax.length > 0 && <span className="shelf-dots">{wax.map(who => <Wax key={who} who={who} size={9} />)}</span>}
                 {label}
               </button>
             ))}
           </div>
         )}
 
-        {(allPending.length > 0 || allYears.length > 0) && (
-          <div className="room-shelf-tools mt-2 flex flex-wrap gap-2">
-            <label className="relative basis-full">
+        {hasLibrary && (
+          <div className="shelf-tools">
+            <label className="shelf-search">
+              <Search size={18} />
               <span className="sr-only">Buscar por título o autor</span>
-              <Search className="quiet absolute top-1/2 left-3.5 -translate-y-1/2" size={18} />
-              <input
-                className="field !min-h-11 !py-1.5 !pl-10 text-[16px]"
-                type="search"
-                enterKeyHint="search"
-                placeholder="Título o autor"
-                value={text}
-                onChange={(event) => setText(event.currentTarget.value)}
-              />
+              <input type="search" enterKeyHint="search" placeholder="Título o autor" value={text} onChange={event => setText(event.currentTarget.value)} />
             </label>
-            <select aria-label="Ordenar los leídos" className="field !min-h-11 !w-auto min-w-0 flex-1 !py-1.5 text-[16px]" value={order} onChange={(event) => setOrder(event.currentTarget.value as ShelfOrder)}>
-              <option value="fecha">Por año</option>
-              <option value="titulo">Por título</option>
-              <option value="autor">Por autor</option>
-              <option value="puntuacion">Por puntuación</option>
-            </select>
-          {(allPending.length > 0 || allYears.length > 0) && (
-            <div role="group" aria-label="Cómo ver la estantería" className="room-view-switch flex rounded-full border-[1.5px] border-rule p-[3px]">
-              {(
-                [
-                  ['lomos', 'Ver los lomos', <Spines key="l" size={20} />],
-                  ['portadas', 'Ver las portadas', <Covers key="p" size={20} />],
-                ] as const
-              ).map(([value, label, icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={label}
-                  aria-pressed={shelfView === value}
-                  className={`grid h-10 w-12 place-items-center rounded-full transition-colors ${shelfView === value ? 'bg-ink text-bg' : 'text-muted'}`}
-                  onClick={() => setShelfView(value)}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-          )}
-
+            <label className="shelf-order">
+              <span className="sr-only">Ordenar los leídos</span>
+              <select value={order} onChange={event => setOrder(event.currentTarget.value as ShelfOrder)}>
+                <option value="fecha">Por año</option>
+                <option value="titulo">Por título</option>
+                <option value="autor">Por autor</option>
+                <option value="puntuacion">Valoración</option>
+              </select>
+              <Chevron size={13} />
+            </label>
           </div>
         )}
 
-        {pending.length > 0 && (
-          <Fold
-            id="estanteria:porleer"
-            open={searching}
-            className="mt-5"
-            header={
-              <span className="flex items-baseline gap-3">
-                <span className="eyebrow">Por leer</span>
-                <span className="quiet text-[15px]">{pending.length === 1 ? 'un libro' : `${pending.length} libros`}</span>
-              </span>
-            }
-          >
-            {myNext && (
-              <p className="quiet mt-1.5 flex items-center gap-2 text-[15.5px]">
-                <Wax who="me" />
-                <span>
-                  Tu siguiente: <em className="text-ink">{myNext.book.title}</em>
-                </span>
-              </p>
-            )}
-            {theirNext && partner && (
-              <p className="quiet mt-1 flex items-center gap-2 text-[15.5px]">
-                <Wax who="you" />
-                <span>
-                  El siguiente de {partner.name}: <em className="text-ink">{theirNext.book.title}</em>
-                </span>
-              </p>
-            )}
-            <Shelf items={pending.map(item((s) => s === 'pendiente'))} onOpen={take} view={shelfView} />
-          </Fold>
-        )}
-
         {together && together.length > 0 && (
-          <Fold
-            id="estanteria:leidos"
-            open={searching}
-            className="mt-6"
-            header={
-              <span className="flex items-baseline gap-3">
-                <span className="text-[26px]">Leídos</span>
-                <span className="quiet text-[15px]">
-                  {together.length === 1 ? 'un libro' : `${together.length} libros`} · {order === 'titulo' ? 'por título' : order === 'autor' ? 'por autor' : 'de más a menos estrellas'}
-                </span>
-              </span>
-            }
-          >
-            <Shelf items={together.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
-          </Fold>
+          <ShelfCabinet id="estanteria:leidos" title="Leídos" open={searching}
+            summary={<>{together.length === 1 ? 'un libro' : `${together.length} libros`} · {order === 'titulo' ? 'por título' : order === 'autor' ? 'por autor' : 'de más a menos estrellas'}</>}
+            controls={<ShelfViewSwitch view={shelfView} />}>
+            <Shelf items={together.map(item(s => s === 'terminado'))} onOpen={take} view={shelfView} />
+          </ShelfCabinet>
         )}
+        {!together && years[0] && yearShelf(years[0], true)}
 
-        {!together && years.map(({ year, books }) => (
-          <Fold
-            key={year}
-            id={`estanteria:${year}`}
-            open={searching}
-            className="mt-6"
-            header={
-              <span className="flex items-baseline gap-3">
-                <span className="text-[26px]">{year}</span>
-                <span className="quiet text-[15px]">
-                  {books.length === 1 ? 'un libro' : `${books.length} libros`}
-                  {whose === 'todos' && nightsIn(year) > 0 && ` · ${nightsIn(year) === 1 ? 'una noche' : `${nightsIn(year)} noches`}`}
-                </span>
-              </span>
-            }
-          >
-            <Shelf items={books.map(item((s) => s === 'terminado'))} onOpen={take} view={shelfView} />
-            {!searching && whose === 'todos' && (
-              <Link to={`/carta/${year}`} className="quiet mt-3 flex min-h-11 items-center gap-2 text-[16px]">
-                <Paper size={18} className="flex-none" />
-                <span className="underline decoration-rule underline-offset-4">La carta de {year}</span>
-              </Link>
-            )}
-          </Fold>
-        ))}
+        <PendingBooks books={pending} partner={partner} searching={searching} />
+
+        {!together && years.slice(1).map(year => yearShelf(year, false))}
 
         {!years.length && !pending.length && !left.length && (
-          <p className="quiet mt-5">
-            {searching
-              ? 'No hay ningún libro que encaje con eso.'
-              : allYears.length || allPending.length
-              ? 'Todavía no hay ningún libro así en la estantería.'
-              : 'Aquí irán quedando los lomos de lo que leáis. Cada uno con su cinta.'}
-          </p>
+          <div className="shelf-empty">
+            <Spines size={34} />
+            <h2>{hasLibrary ? 'No hay libros con estos filtros.' : 'Aquí empieza tu estantería.'}</h2>
+            <p>{hasLibrary ? 'Prueba con otro título, autor o lector.' : `Aquí irán quedando los lomos de lo que ${partner ? 'leáis' : 'leas'}. Cada uno con su cinta.`}</p>
+            {hasLibrary
+              ? <button type="button" onClick={() => { setText(''); setWhose('todos') }}>Ver todos los libros</button>
+              : <Link className="shelf-empty-add" to="/anadir">Añadir un libro</Link>}
+          </div>
         )}
 
         {left.length > 0 && (
-          <Fold
-            id="estanteria:dejados"
-            open={searching}
-            className="mt-8"
-            header={
+          <div className="shelf-abandoned">
+            {!years.length && <div className="shelf-standalone-views"><ShelfViewSwitch view={shelfView} /></div>}
+            <Fold id="estanteria:dejados" open={searching} header={
               <span className="flex items-baseline gap-3">
                 <span className="eyebrow">{left.length === 1 ? 'Dejado a medias' : 'Dejados a medias'}</span>
                 <span className="quiet text-[15px]">{left.length === 1 ? 'un libro' : `${left.length} libros`}</span>
               </span>
-            }
-          >
-            {shelfView === 'portadas' ? (
-              <Shelf items={left.map((view) => ({ book: view.book, ribbons: [] }))} onOpen={take} view="portadas" />
-            ) : (
-              <>
+            }>
+              {shelfView === 'portadas' ? <Shelf items={left.map(view => ({ book: view.book, ribbons: [] }))} onOpen={take} view="portadas" /> : <>
                 <div className="mt-3 flex flex-col-reverse items-center gap-[2px] px-3">
-                  {left.map((view, i) => (
-                    <Lying key={view.book.id} book={view.book} onClick={() => take(view.book)} style={{ marginLeft: ((i % 3) - 1) * 16 }} />
-                  ))}
+                  {left.map((view, i) => <Lying key={view.book.id} book={view.book} onClick={() => take(view.book)} style={{ marginLeft: ((i % 3) - 1) * 16 }} />)}
                 </div>
                 <Plank />
-              </>
-            )}
-          </Fold>
+              </>}
+            </Fold>
+          </div>
         )}
+        {hasLibrary && <p className="shelf-footnote"><span aria-hidden>✧</span> Cada lomo, un lugar al que volver.</p>}
       </section>
       )}
 

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Greenbook · Vista móvil de la propuesta</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #f5f1e7;
+      }
+      iframe {
+        display: block;
+        border: 0;
+        width: 390px;
+        height: 844px;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe src="./mockup.html" title="Mockup de la estantería móvil"></iframe>
+    <script>
+      const width = Number(new URLSearchParams(location.search).get('width'))
+      if ([320, 390, 430].includes(width)) document.querySelector('iframe').style.width = width + 'px'
+    </script>
+  </body>
+</html>
