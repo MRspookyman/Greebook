@@ -17,7 +17,8 @@ import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
 import { Cover, Lying } from '@/ui/Book'
 import { Candle } from '@/ui/Candle'
-import { Covers, Flame, Paper, Plus, Spines, Search, More } from '@/ui/icons'
+import { ReadingStillLife, RoomScene } from '@/ui/RoomArt'
+import { BookOpen, Covers, Flame, Paper, Plus, Spines, Search, More } from '@/ui/icons'
 import { setShelfView, useShelfView } from '@/lib/shelfView'
 import { Plank, Shelf, type ShelfItem } from '@/ui/Shelf'
 import { Fold } from '@/ui/Fold'
@@ -166,7 +167,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const nightsIn = (year: number) => new Set(sessions.filter((s) => s.day.startsWith(String(year))).map((s) => s.day)).size
   const empty = !stand.length && !allPending.length && !allYears.length
   return (
-    <main className={`relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28 ${section === 'velas' ? 'flex flex-col' : ''}`}>
+    <main className={`room room--${section} relative mx-auto min-h-dvh max-w-xl overflow-x-clip px-5 pb-28 ${section === 'velas' ? 'flex flex-col' : ''}`}>
       {/* Candlelight on the wall; on the sill it hangs over the candles themselves. */}
       {section !== 'velas' && (
       <div
@@ -181,19 +182,23 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       )}
 
       <header
-        className="relative flex min-h-11 items-center justify-between"
+        className="room-header relative flex min-h-11 items-center justify-between"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px)' }}
       >
-        <p className="eyebrow">{capital(fmtToday(new Date(now)))}</p>
+        <p className="eyebrow room-date">{capital(fmtToday(new Date(now)))}</p>
+        <BookOpen size={19} className="room-mark" />
       </header>
 
       {section === 'velas' && (
       <div className="flex flex-1 flex-col">
-      <h1 className="sr-only">Velas</h1>
+      <div className="room-intro">
+        <h1 className="display">{partner ? <>Un ratito para<br /><em>nosotros.</em></> : <>Un ratito<br /><em>para ti.</em></>}</h1>
+
+      </div>
       {/* The sill sits low, where the thumb is: the room above it is wall. */}
-      <div aria-hidden className="min-h-1 flex-[3]" />
+      <div aria-hidden className="room-wall" />
       {/* ── La repisa ── */}
-      <section className="sill relative" aria-label="La repisa">
+      <section className="sill relative" aria-label="La repisa" data-lit={mineLit || theirsLit ? 'true' : 'false'}>
         <div
           aria-hidden
           className="pointer-events-none absolute -inset-x-5 -top-28 h-[520px]"
@@ -203,7 +208,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             transition: 'opacity 1.6s var(--ease)',
           }}
         />
-        <div className="relative flex items-end justify-center">
+        <div className="room-candle-stage">
+        <RoomScene />
+        <div className="room-candles relative flex items-end justify-center">
           {partner && (
             <div className="flex w-[calc(var(--candle)+36px)] justify-center">
               <button
@@ -224,7 +231,8 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           </div>
         </div>
         <Plank />
-        <div className="relative mt-3 flex justify-center text-center">
+        </div>
+        <div className="room-candle-names relative mt-3 flex justify-center text-center">
           {partner && (
             <div className="w-[calc(var(--candle)+36px)]">
               <p className="text-[18px]">{partner.name}</p>
@@ -249,7 +257,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             )}
           </div>
         </div>
-        <p className="relative mx-auto mt-6 max-w-[19em] text-center text-[21px] leading-snug" aria-live="polite">
+        <p className="room-candle-message relative mx-auto mt-6 max-w-[19em] text-center text-[21px] leading-snug" aria-live="polite">
           {line}
         </p>
         {nights && week && (
@@ -283,6 +291,24 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         {mineLit && theirsLit && partner && <p className="quiet relative mt-3 text-center text-[15px]">Toca su vela para mandarle un guiño.</p>}
       </section>
 
+
+      {chosen?.mine && (
+        <div className="room-current-book">
+          <Link to={'/libro/' + chosen.book.id} className="room-current-link">
+            <Cover book={chosen.book} width={44} />
+            <span className="min-w-0 flex-1">
+              <span className="room-current-label"><Flame size={12} />Donde lo dejaste</span>
+              <span className="room-current-title">{chosen.book.title}</span>
+              {chosen.book.author && <span className="room-current-author">{chosen.book.author}</span>}
+            </span>
+            <span className="room-current-position">{fmtPosition(chosen.mine)}</span>
+          </Link>
+          {myBooks.length > 1 && (
+            <button type="button" className="room-current-change" onClick={() => setChoosing(true)}>Cambiar</button>
+          )}
+        </div>
+      )}
+
       {!partner && (
         <Link to="/ajustes#pareja" className="card pressable rise mt-8 flex items-center gap-3 px-4 py-3" style={{ '--i': 2 } as CSSProperties}>
           <span className="min-w-0 flex-1 text-[16.5px] leading-snug">
@@ -294,9 +320,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
       {/* ── Notas por leer: solo el aviso; se leen dentro del libro ── */}
       {notices.length > 0 && partner && (
-        <section className="mt-8 flex flex-col gap-2" aria-label="Notas por leer">
+        <section className="room-note-notices mt-8 flex flex-col gap-2" aria-label="Notas por leer">
           {notices.map(({ book, slips: { length: count }, slips }, i) => (
-            <Link key={book.id} to={`/libro/${book.id}#papeles`} onClick={() => markNoticed(me.id, slips)} className="card pressable rise flex items-center gap-3 px-4 py-3" style={{ '--i': i + 2 } as CSSProperties}>
+            <Link key={book.id} to={`/libro/${book.id}#papeles`} onClick={() => markNoticed(me.id, slips)} className="room-note-notice card pressable rise flex items-center gap-3 px-4 py-3" style={{ '--i': i + 2 } as CSSProperties}>
               <Wax who="you" size={13} />
               <span className="min-w-0 flex-1 text-[16.5px] leading-snug">
                 {partner.name} te ha dejado {count === 1 ? 'una nota' : `${count} notas`} en <em>{book.title}</em>
@@ -315,22 +341,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         </Link>
       )}
 
-      {/* ── Para qué libro es la vela: una línea; con varios abiertos, se cambia desde ella ── */}
-      {chosen?.mine && (
-        <div className="quiet mt-7 flex min-h-11 items-center justify-center gap-2 text-center text-[16px]">
-          <Flame size={17} className="flex-none text-flame-ink" />
-          <Link to={`/libro/${chosen.book.id}`} className="min-w-0 truncate">
-            Tu vela es para <em className="text-ink">{chosen.book.title}</em> · {fmtPosition(chosen.mine)}
-          </Link>
-          {myBooks.length > 1 && (
-            <button type="button" className="-my-2 flex min-h-11 flex-none items-center px-1 underline decoration-rule underline-offset-4" onClick={() => setChoosing(true)}>
-              Cambiar
-            </button>
-          )}
-        </div>
-      )}
-
-      <div aria-hidden className="flex-[2]" />
+      <div aria-hidden className="room-floor" />
       </div>
       )}
 
@@ -338,15 +349,16 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {section === 'mesilla' && (
       <section className="mt-4" aria-labelledby="mesilla">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <h1 id="mesilla" className="title">
-            La mesilla
+          <h1 id="mesilla" className="title room-section-title">
+            La <em>mesilla</em>
           </h1>
           {stand.length > 0 && (
-            <Link to="/anadir" className="btn btn-soft !min-h-11 !gap-1.5 !px-4 !text-[16px]">
+            <Link to="/anadir" className="btn btn-soft room-add !min-h-11 !gap-1.5 !px-4 !text-[16px]">
               <Plus size={18} /> Añadir
             </Link>
           )}
         </div>
+        <p className="room-section-caption">{partner ? 'Historias abiertas, compañía cerca.' : 'Tu próxima página te espera.'}</p>
         {stand.length ? (
           <div className="flex flex-col gap-4">
             {(
@@ -409,6 +421,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             </Link>
           </div>
         )}
+      {stand.length > 0 && <ReadingStillLife />}
       </section>
       )}
 
@@ -416,34 +429,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       {section === 'estanteria' && (
       <section className="mt-4" aria-labelledby="estanteria">
         <div className="mb-1 flex items-center justify-between gap-3">
-          <h1 id="estanteria" className="title">
-            La estantería
+          <h1 id="estanteria" className="title room-section-title">
+            La <em>estantería</em>
           </h1>
           <div className="flex items-center gap-2">
-          <Link to="/anadir" className="icon-btn border-[1.5px] border-rule" aria-label="Añadir un libro">
+          <Link to="/anadir" className="icon-btn room-add border-[1.5px] border-rule" aria-label="Añadir un libro">
             <Plus size={20} />
           </Link>
-          {(allPending.length > 0 || allYears.length > 0) && (
-            <div role="group" aria-label="Cómo ver la estantería" className="flex rounded-full border-[1.5px] border-rule p-[3px]">
-              {(
-                [
-                  ['lomos', 'Ver los lomos', <Spines key="l" size={20} />],
-                  ['portadas', 'Ver las portadas', <Covers key="p" size={20} />],
-                ] as const
-              ).map(([value, label, icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={label}
-                  aria-pressed={shelfView === value}
-                  className={`grid h-10 w-12 place-items-center rounded-full transition-colors ${shelfView === value ? 'bg-ink text-bg' : 'text-muted'}`}
-                  onClick={() => setShelfView(value)}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-          )}
           </div>
         </div>
 
@@ -472,7 +464,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         )}
 
         {(allPending.length > 0 || allYears.length > 0) && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="room-shelf-tools mt-2 flex flex-wrap gap-2">
             <label className="relative basis-full">
               <span className="sr-only">Buscar por título o autor</span>
               <Search className="quiet absolute top-1/2 left-3.5 -translate-y-1/2" size={18} />
@@ -491,6 +483,28 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
               <option value="autor">Por autor</option>
               <option value="puntuacion">Por puntuación</option>
             </select>
+          {(allPending.length > 0 || allYears.length > 0) && (
+            <div role="group" aria-label="Cómo ver la estantería" className="room-view-switch flex rounded-full border-[1.5px] border-rule p-[3px]">
+              {(
+                [
+                  ['lomos', 'Ver los lomos', <Spines key="l" size={20} />],
+                  ['portadas', 'Ver las portadas', <Covers key="p" size={20} />],
+                ] as const
+              ).map(([value, label, icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={shelfView === value}
+                  className={`grid h-10 w-12 place-items-center rounded-full transition-colors ${shelfView === value ? 'bg-ink text-bg' : 'text-muted'}`}
+                  onClick={() => setShelfView(value)}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          )}
+
           </div>
         )}
 
@@ -694,7 +708,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
       <StatusSheet reading={statusFor?.mine ?? null} book={statusFor?.book} onClose={() => setStatusFor(null)} />
 
       {(remote.ensayo || status.pending > 0 || status.offline) && (
-        <p className="quiet mt-12 text-center text-[15px]">
+        <p className="room-sync quiet mt-12 text-center text-[15px]">
           {remote.ensayo
             ? 'Modo ensayo: todo vive en este navegador.'
             : status.offline
@@ -793,15 +807,15 @@ function OpenBook({ view, partner, kind, candle, onMoveCandle, onStatus, i }: Op
   const furthest = Math.max(0, ...marks.map((m) => m.at))
   return (
     <div
-      className={`rise relative overflow-hidden rounded-[20px] ${kind === 'theirs' ? 'border-[1.5px] border-rule' : 'card'}`}
+      className={`open-book rise relative overflow-hidden rounded-[20px] ${kind === 'theirs' ? 'border-[1.5px] border-rule' : 'card'}`}
       style={{ '--i': i + 2 } as CSSProperties}
     >
-      <span aria-hidden className="absolute inset-y-0 left-0 w-[7px]" style={{ background: edge }} />
-      <Link to={`/libro/${book.id}`} className={`pressable flex items-center gap-3.5 py-3 pl-[20px] ${mine ? 'pr-[52px]' : 'pr-4'}`}>
-        <Cover book={book} width={48} />
+      <span aria-hidden className="open-book-edge absolute inset-y-0 left-0 w-[7px]" style={{ background: edge }} />
+      <Link to={`/libro/${book.id}`} className={`open-book-link pressable flex items-center gap-3.5 py-3 pl-[20px] ${mine ? 'pr-[52px]' : 'pr-4'}`}>
+        <Cover book={book} width={90} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[18.5px] leading-tight">{book.title}</h3>
-          <p className="quiet truncate text-[15px] italic">{book.author}</p>
+          <h3 className="open-book-title text-[22px] leading-tight">{book.title}</h3>
+          <p className="quiet truncate text-[16px] italic">{book.author}</p>
           <div className="relative mt-2 h-[13px]" aria-hidden>
             <div className="absolute inset-x-0 top-[5px] h-[3px] rounded-full bg-rule" />
             <div className="absolute top-[5px] left-0 h-[3px] rounded-full bg-ink/30" style={{ width: `${furthest * 100}%`, transition: 'width 900ms var(--ease)' }} />
@@ -833,7 +847,7 @@ function OpenBook({ view, partner, kind, candle, onMoveCandle, onStatus, i }: Op
         </div>
       </Link>
       {mine && (
-        <div className="absolute inset-y-0 right-1 flex flex-col items-center justify-center">
+        <div className="open-book-actions absolute inset-y-0 right-1 flex flex-col items-center justify-center">
           {mine.status === 'leyendo' && (
             <button
               type="button"
@@ -851,6 +865,7 @@ function OpenBook({ view, partner, kind, candle, onMoveCandle, onStatus, i }: Op
           </button>
         </div>
       )}
+      {!join && <Link to={'/libro/' + book.id} className="open-book-footer"><span>{me ? 'Volver a estas páginas' : 'Descubrir este libro'}</span><span aria-hidden>↗</span></Link>}
       {join && (
         <Link to={`/libro/${book.id}?unirme=1`} className="quiet flex min-h-10 items-center border-t border-rule pl-[20px] text-[15px] underline decoration-rule underline-offset-4">
           Yo también quiero leerlo

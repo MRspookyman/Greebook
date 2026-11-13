@@ -11,7 +11,8 @@
     "test": "vitest run",
     "icons": "pwa-assets-generator",
     "preview": "vite preview",
-    "test:sql": "bash scripts/probar-sql.sh"
+    "test:sql": "bash scripts/probar-sql.sh",
+    "dev:ensayo": "node scripts/preview.mjs"
   },
   "dependencies": {
     "@fontsource-variable/newsreader": "^5.3.0",

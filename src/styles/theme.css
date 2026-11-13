@@ -6,12 +6,12 @@
  * Cada persona es un color de cera. La acción principal es tinta verde de día y llama de noche.
  */
 :root {
-  --bg: #f2ecdc;
+  --bg: #f5f1e7;
   --bg-deep: #e7dfc9;
-  --surface: #faf6ea;
+  --surface: #fdfaf2;
   --ink: #1c3227;
-  --muted: #4c5a4e;
-  --rule: #d9cfb6;
+  --muted: #596657;
+  --rule: #ddd5c3;
   --primary: #1f4a37;
   --on-primary: #f6f0df;
   --flame: #e9a23b;
@@ -25,7 +25,7 @@
   --brass: #b8944c;
   --danger: #a13d2d;
   --scrim: rgb(24 34 27 / 0.45);
-  --lift: 0 14px 30px -20px rgb(40 50 30 / 0.55), 0 2px 5px -2px rgb(40 50 30 / 0.18);
+  --lift: 0 5px 16px -10px rgb(40 50 30 / 0.2), 0 1px 2px rgb(40 50 30 / 0.04);
 
   --salvia: #8fae93;
   --miel: #e0ad55;

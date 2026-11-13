@@ -15,7 +15,7 @@ export function Plank() {
   return (
     <div
       aria-hidden
-      className="h-[11px] rounded-[2px]"
+      className="shelf-plank h-[11px] rounded-[2px]"
       style={{
         background: 'linear-gradient(var(--wood), var(--wood-edge))',
         boxShadow: '0 10px 14px -8px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.18)',
@@ -58,7 +58,7 @@ export function Shelf({ items, onOpen, view = 'lomos' }: ShelfProps) {
     return (
       <div ref={ref} className="flex flex-col gap-6">
         {rows.map((row, r) => (
-          <div key={r}>
+          <div key={r} className="shelf-bay">
             <div className="flex items-end pt-4" style={{ gap: COVER_GAP, paddingInline: INSET }}>
               {row.map((item) => (
                 <button
@@ -110,7 +110,7 @@ export function Shelf({ items, onOpen, view = 'lomos' }: ShelfProps) {
         // With room to spare, the last book of the shelf leans on its neighbours, as they do.
         const leans = r === rows.length - 1 && row.length > 2 && plank - used > 34
         return (
-          <div key={r}>
+          <div key={r} className="shelf-bay">
             <div className="flex items-end pt-3" style={{ gap: GAP, paddingInline: INSET }}>
               {row.map((item, i) => (
                 <Spine

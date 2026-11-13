@@ -125,7 +125,8 @@ export function Cover({ book, width, className = '' }: CoverProps) {
     width,
     height,
     borderRadius: '2px 5px 5px 2px',
-    boxShadow: '0 12px 22px -12px rgb(0 0 0 / 0.65), 0 2px 4px rgb(0 0 0 / 0.2), inset 4px 0 5px -3px rgb(255 255 255 / 0.25)',
+    boxShadow:
+      '0 12px 22px -12px rgb(0 0 0 / 0.65), 0 2px 4px rgb(0 0 0 / 0.2), inset 4px 0 5px -3px rgb(255 255 255 / 0.25)',
   }
   if (book.cover_url && !broken) {
     return (
@@ -145,23 +146,38 @@ export function Cover({ book, width, className = '' }: CoverProps) {
   return (
     <div
       aria-hidden
-      className={`relative flex flex-none flex-col justify-between overflow-hidden ${className}`}
+      className={`book-cloth ${width < 54 ? 'book-cloth--mini' : ''} relative flex flex-none flex-col justify-between overflow-hidden ${className}`}
+      data-binding={spine.band}
       style={{ ...frame, background: spine.cloth.bg, color: spine.cloth.ink, padding: width * 0.11 }}
     >
-      <span className="absolute inset-y-0 left-[7%] w-px bg-current opacity-25" />
+      <span className="book-cloth-rule absolute inset-y-0 left-[7%] w-px bg-current opacity-25" />
+      {width >= 54 && (
+        <svg
+          className="book-cloth-emblem"
+          viewBox="0 0 64 64"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          aria-hidden
+        >
+          <circle cx="32" cy="32" r="23" />
+          <path d="M32 11v42M18 19c16 0 28 13 28 26-16 0-28-13-28-26ZM46 19c-16 0-28 13-28 26 16 0 28-13 28-26Z" />
+          <path d="M5 32h5m44 0h5M32 5v5m0 44v5" />
+        </svg>
+      )}
       <span
-        className="pl-[8%] leading-[1.08] font-medium"
+        className="book-cloth-title pl-[8%] leading-[1.08] font-medium"
         style={{
-          fontSize: Math.max(11, width * 0.135),
+          fontSize: Math.max(8, width * 0.145),
           display: '-webkit-box',
           WebkitLineClamp: 5,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}
       >
-        {book.title}
+        {width < 54 ? book.title.charAt(0) : book.title}
       </span>
-      <span className="truncate pl-[8%] italic opacity-80" style={{ fontSize: Math.max(9, width * 0.085) }}>
+      <span className="truncate pl-[8%] italic opacity-80" style={{ fontSize: Math.max(6, width * 0.085) }}>
         {book.author}
       </span>
     </div>

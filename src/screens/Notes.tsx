@@ -33,8 +33,9 @@ export function Notes() {
   const editingView = editing ? views.find((view) => view.book.id === editing.book_id) : undefined
 
   return (
-    <main className="fade mx-auto min-h-dvh max-w-xl px-5 pb-28" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px)' }}>
-      <h1 className="title mt-9">Las notas</h1>
+    <main className="notes-screen fade mx-auto min-h-dvh max-w-xl px-5 pb-28" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px)' }}>
+      <p className="eyebrow notes-eyebrow">Entre páginas</p>
+      <h1 className="title room-section-title mt-9">Las <em>notas</em></h1>
       {total > 0 && (
         <p className="quiet mt-1.5 text-[16px]">
           {[
