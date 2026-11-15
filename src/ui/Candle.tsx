@@ -1,4 +1,5 @@
 import { useId, type CSSProperties } from 'react'
+import { dripsFor, glowOf } from '@/lib/candle'
 import type { Color } from '@/lib/types'
 
 interface Props {
@@ -26,6 +27,10 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
   const height = 62 + 86 * Math.max(0, Math.min(1, wax))
   const top = 212 - height
   const wick = top - 10
+  // What an hour and a half does to it: wax runs down its side and gathers on the dish, and its light draws in.
+  const drips = dripsFor(wax, 209 - (top + 5))
+  const glow = glowOf(wax)
+  const waxLight = 'color-mix(in srgb, var(--candle-wax), #fff7df 26%)'
 
   return (
     <svg
@@ -107,7 +112,11 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
         </clipPath>
       </defs>
 
-      {lit && <ellipse className="glow" cx="60" cy={wick - 18} rx="77" ry="86" fill={`url(#${id}g)`} />}
+      {lit && (
+        <g opacity={0.25 + 0.75 * glow.strength}>
+          <ellipse className="glow" cx="60" cy={wick - 18} rx={77 * (0.55 + 0.45 * glow.reach)} ry={86 * (0.55 + 0.45 * glow.reach)} fill={`url(#${id}g)`} />
+        </g>
+      )}
 
       {/* The rolled brass edge catches the light above a soft contact shadow. */}
       <ellipse cx="60" cy="221" rx="48" ry="9" fill={`url(#${id}shadow)`} />
@@ -123,6 +132,25 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
       <path d={`M38 ${top + 1}Q60 ${top - 5} 82 ${top + 1}V209Q81 217 60 217Q39 217 38 209Z`} fill={`url(#${id}w)`} />
       <path d={`M42 ${top + 17}C41 ${top + 40} 42 190 43 207`} stroke="#fff7df" strokeOpacity="0.1" strokeWidth="1.2" strokeLinecap="round" fill="none" />
       {lit && <path d={`M38 ${top + 1}Q60 ${top - 5} 82 ${top + 1}V209Q81 217 60 217Q39 217 38 209Z`} fill={`url(#${id}falloff)`} />}
+      {/* Wax that has run down: a pool on the dish where it landed, then each run with its bead and its relief. */}
+      {drips.map((drip) => drip.landed && (
+        <g key={`pool${drip.x}`}>
+          <ellipse cx={drip.x} cy="210.6" rx={drip.pool} ry={drip.pool * 0.34} fill="color-mix(in srgb, var(--candle-wax), #3a2c1c 26%)" />
+          <ellipse cx={drip.x - drip.pool * 0.12} cy="210" rx={drip.pool * 0.78} ry={drip.pool * 0.24} fill={waxLight} />
+        </g>
+      ))}
+      {drips.map((drip) => {
+        const y0 = top + 5, y1 = y0 + drip.length
+        return (
+          <g key={drip.x} strokeLinecap="round" fill="none">
+            <path d={`M${drip.x + 0.9} ${y0}V${y1}`} stroke="#35291d" strokeOpacity="0.22" strokeWidth={drip.width * 2} />
+            <path d={`M${drip.x} ${y0}V${y1}`} stroke={waxLight} strokeWidth={drip.width * 2} />
+            {!drip.landed && <circle cx={drip.x} cy={y1} r={drip.width * 1.4} fill={waxLight} stroke="none" />}
+            <circle cx={drip.x} cy={y0 + 1} r={drip.width * 1.5} fill={waxLight} stroke="none" />
+            <path d={`M${drip.x - drip.width * 0.45} ${y0 + 2}V${Math.max(y0 + 2, y1 - drip.width)}`} stroke="#fff7df" strokeOpacity="0.4" strokeWidth="0.7" />
+          </g>
+        )
+      })}
       <path
         d={`M38 ${top + 1}C43 ${top + 6} 47 ${top + 2} 49 ${top + 7}L49 ${top + 25}C49 ${top + 31} 54 ${top + 31} 54 ${top + 25}L54 ${top + 10}C55 ${top + 5} 63 ${top + 8} 68 ${top + 7}C73 ${top + 6} 73 ${top + 10} 74 ${top + 14}C75 ${top + 18} 79 ${top + 17} 79 ${top + 12}L80 ${top + 5}L82 ${top + 1}Q60 ${top - 6} 38 ${top + 1}Z`}
         fill={`url(#${id}rim)`}
@@ -164,6 +192,8 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
         <g transform={`translate(60 ${wick + 3})`}>
           {/* Separate origins keep both the lean and the shiver rooted at the wick. */}
           <g className="flame-lean" style={{ transform: `rotate(${lean * 9}deg)` }}>
+            {/* Whoever draws the room may sway the flame with the light it casts (see CandleWall). */}
+            <g data-sway style={{ transformOrigin: '0 0' }}>
             <g key={tremble} className={`flame-wrap${tremble ? ' tremble' : ''}`}>
               <ellipse className="candle-flame-halo" cx="0" cy="-25" rx="24" ry="39" fill={`url(#${id}bloom)`} />
               <path className="flame" d="M0 1C-12 -3 -12 -19 -5 -33C-2 -39 2 -45 1 -52C10 -40 13 -27 10 -15C9 -7 4 -1 0 1Z" fill={`url(#${id}f)`} />
@@ -171,8 +201,9 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
               <path d="M-4 0Q-6 -5 -2 -9Q0 -5 1 -3Q3 -7 4 -8Q7 -2 3 1Z" fill="#8faecb" opacity="0.65" />
               <path d="M-1 1Q-3 -3 0 -6Q3 -3 2 1Z" fill="#453124" opacity="0.8" />
             </g>
+            </g>
           </g>
-          <circle cx="0" cy="-3" r="1.1" fill="#ffb361" />
+          <circle data-wick cx="0" cy="-3" r="1.1" fill="#ffb361" />
         </g>
       )}
 

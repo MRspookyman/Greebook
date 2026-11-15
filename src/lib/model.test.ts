@@ -96,18 +96,20 @@ describe('la habitación', () => {
 
 describe('la vela', () => {
   const now = Date.parse('2026-11-10T22:00:00Z')
-  it('arde tres horas y luego ya no cuenta como presencia', () => {
+  it('no se apaga sola: sigue encendida hasta que se sopla, pase el tiempo que pase', () => {
     expect(isLit({ candle_lit_at: '2026-11-10T21:30:00Z' }, now)).toBe(true)
-    expect(isLit({ candle_lit_at: '2026-11-10T18:59:00Z' }, now)).toBe(false)
+    expect(isLit({ candle_lit_at: '2026-11-10T18:59:00Z' }, now)).toBe(true)
+    expect(isLit({ candle_lit_at: '2026-11-08T22:00:00Z' }, now)).toBe(true)
     expect(isLit({ candle_lit_at: null }, now)).toBe(false)
     expect(isLit(null, now)).toBe(false)
   })
   it('tolera unos minutos de diferencia entre los dos relojes', () => {
     expect(isLit({ candle_lit_at: '2026-11-10T22:03:00Z' }, now)).toBe(true)
   })
-  it('se consume poco a poco', () => {
+  it('se consume en hora y media, y ahí se queda', () => {
     expect(waxLeft('2026-11-10T22:00:00Z', now)).toBe(1)
-    expect(waxLeft('2026-11-10T20:30:00Z', now)).toBe(0.5)
+    expect(waxLeft('2026-11-10T21:15:00Z', now)).toBe(0.5)
+    expect(waxLeft('2026-11-10T20:30:00Z', now)).toBe(0)
     expect(waxLeft('2026-11-10T10:00:00Z', now)).toBe(0)
   })
 })

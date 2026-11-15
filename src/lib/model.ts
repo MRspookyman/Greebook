@@ -1,8 +1,11 @@
 import type { Book, Db, Profile, Reading, Session, Slip } from './types'
 import { fractionOf } from './lock'
 
-/** A candle burns for three hours; after that one left lit no longer counts as presence. */
-export const CANDLE_MS = 3 * 60 * 60 * 1000
+/**
+ * A candle takes an hour and a half to burn down to its stub. It does not go out there: it stays lit, as small
+ * as it gets, for as long as the reading lasts, until whoever lit it blows it out.
+ */
+export const MELT_MS = 90 * 60 * 1000
 
 export function live<T extends { deleted_at?: string | null }>(rows: Record<string, T>): T[] {
   return Object.values(rows).filter((row) => !row.deleted_at)
@@ -12,13 +15,13 @@ export function live<T extends { deleted_at?: string | null }>(rows: Record<stri
 export function isLit(person: Pick<Profile, 'candle_lit_at'> | null | undefined, now: number): boolean {
   if (!person?.candle_lit_at) return false
   const elapsed = now - new Date(person.candle_lit_at).getTime()
-  return elapsed > -5 * 60_000 && elapsed < CANDLE_MS
+  return elapsed > -5 * 60_000
 }
 
-/** How much of the candle is left, 1 → 0 over its three hours. */
+/** How much of the candle is left: 1 → 0 over its first hour and a half, and 0 (the stub) from then on. */
 export function waxLeft(litAt: string | null | undefined, now: number): number {
   if (!litAt) return 1
-  return Math.min(1, Math.max(0, 1 - (now - new Date(litAt).getTime()) / CANDLE_MS))
+  return Math.min(1, Math.max(0, 1 - (now - new Date(litAt).getTime()) / MELT_MS))
 }
 
 /** A book as the two of you see it: one object, up to two bookmarks. */

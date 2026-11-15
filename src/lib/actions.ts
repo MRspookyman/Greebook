@@ -85,9 +85,12 @@ export function saveEvening({ reading, position, minutes, place, startedAt }: Ev
   return session
 }
 
-/** Minutes the candle has been burning, capped at what a candle lasts. */
+/**
+ * Minutes the candle has been burning, as the first guess of how long you read. A candle no longer goes out
+ * by itself, so one forgotten overnight is capped at the most an evening can hold; it is corrected on saving.
+ */
 export function burnedMinutes(litAt: string, now: number): number {
-  return Math.min(180, minutesBetween(litAt, now))
+  return Math.min(600, minutesBetween(litAt, now))
 }
 
 export interface EveningFix {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { burnedMinutes, finishReading, openSlip, saveEvening, snuffCandle } from '@/lib/actions'
 import { fractionOf } from '@/lib/lock'
@@ -8,7 +8,10 @@ import { fmtProgress, isLit, live, waxLeft } from '@/lib/model'
 import { capital, fmtMinutes, fmtSince, greeting } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow, useWink } from '@/session'
+import { useLivingWall } from '@/lib/ambience'
+import { glowOf } from '@/lib/candle'
 import { Candle } from '@/ui/Candle'
+import { CandleWall } from '@/ui/CandleWall'
 import { Back, Paper } from '@/ui/icons'
 import { MinutesField } from '@/ui/Minutes'
 import { NumberDial } from '@/ui/NumberDial'
@@ -44,6 +47,12 @@ export function Evening() {
   const [farewell, setFarewell] = useState<Farewell | null>(null)
   /** The goodbye has been said and there are notes to hand over before leaving. */
   const [handing, setHanding] = useState(false)
+  // The wall behind the candles needs to know where they stand, and which words to keep clear.
+  const livingWall = useLivingWall()
+  const mineRef = useRef<HTMLDivElement>(null)
+  const theirsRef = useRef<HTMLButtonElement>(null)
+  const wordsRef = useRef<HTMLDivElement>(null)
+  const [winksSent, setWinksSent] = useState(0)
 
   const reading = me.candle_reading_id ? db.readings[me.candle_reading_id] : undefined
   const book = reading ? db.books[reading.book_id] : undefined
@@ -110,16 +119,28 @@ export function Evening() {
     )
   }
 
+  const myWax = waxLeft(me.candle_lit_at, now)
+  const theirWax = theirsLit ? waxLeft(partner?.candle_lit_at, now) : 1
+  const sendWink = () => {
+    setWinksSent((n) => n + 1)
+    wink.send()
+  }
+
   return (
     <main className="night fixed inset-0 flex flex-col overflow-x-clip overflow-y-auto overscroll-contain">
+      {/* The room darkens as the candle burns down: a stub lights much less than a new one. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background: 'radial-gradient(70% 46% at 50% 36%, color-mix(in oklab, var(--flame) 26%, transparent), transparent 78%)',
-          opacity: burning ? 1 : 0.15,
+          opacity: burning ? 0.2 + 0.8 * glowOf(myWax).strength : 0.15,
+          transition: 'opacity 2s var(--ease)',
         }}
       />
+      {livingWall && (
+        <CandleWall mine={mineRef} theirs={theirsRef} mineLit={burning} theirsLit={theirsLit} mineWax={myWax} theirWax={theirWax} quiet={wordsRef} winkIn={wink.received} winkOut={winksSent} />
+      )}
       <header className="relative flex items-center px-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
         <button className="icon-btn" aria-label="Volver; la vela sigue encendida" onClick={back}>
           <Back />
@@ -130,25 +151,30 @@ export function Evening() {
         <div className="flex items-end justify-center">
           {partner && (
             <button
+              ref={theirsRef}
               type="button"
               className="-mr-2 mb-1 rounded-[14px] opacity-90"
               disabled={!(burning && theirsLit)}
               aria-label={theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}, apagada`}
-              onClick={wink.send}
+              onClick={sendWink}
             >
-              <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} size={62} lean={1} tremble={wink.received} />
+              <Candle color={partner.color} lit={theirsLit} wax={theirWax} size={62} lean={1} tremble={wink.received} />
             </button>
           )}
-          <Candle color={me.color} lit={burning} wax={waxLeft(me.candle_lit_at, now)} size={150} lean={theirsLit ? -1 : 0} />
+          <div ref={mineRef}>
+            <Candle color={me.color} lit={burning} wax={myWax} size={150} lean={theirsLit ? -1 : 0} />
+          </div>
           {partner && <div className="w-[54px]" aria-hidden />}
         </div>
+        <div ref={wordsRef}>
         <h1 className="mt-5 text-[27px] leading-tight italic">{book.title}</h1>
         <p className="quiet mt-2 text-[17px]">
-          {burning ? `${capital(fmtProgress(reading))} · encendida ${fmtSince(me.candle_lit_at, now)}` : 'La vela se consumió mientras leías.'}
+          {`${capital(fmtProgress(reading))} · encendida ${fmtSince(me.candle_lit_at, now)}`}
         </p>
         {partner && theirsLit && (
           <p className="mt-4 text-[17px] text-flame-ink">{partner.name} también está leyendo. Toca su vela para un guiño.</p>
         )}
+        </div>
       </div>
 
       <footer className="relative mx-auto flex w-full max-w-md flex-col gap-1 px-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>

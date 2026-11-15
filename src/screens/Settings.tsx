@@ -4,6 +4,7 @@ import { exportSheets } from '@/lib/export'
 import { xlsx } from '@/lib/xlsx'
 import { useBack } from '@/ui/useBack'
 import { updateMe } from '@/lib/actions'
+import { setLivingWall, useLivingWall } from '@/lib/ambience'
 import { disablePush, enablePush, pushState, type PushState } from '@/lib/push'
 import { getDb, useSyncStatus } from '@/lib/sync/store'
 import { usePeople, useSession } from '@/session'
@@ -20,6 +21,7 @@ export function Settings() {
   const back = useBack()
   const [name, setName] = useState(me.name)
   const [leaving, setLeaving] = useState(false)
+  const livingWall = useLivingWall()
   const [push, setPush] = useState<PushState | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
@@ -131,6 +133,17 @@ export function Settings() {
           {pushError && <p role="status" className="quiet mt-3 text-[16px]">{pushError}</p>}
         </section>
       )}
+
+      <section className="mt-10 border-t border-rule pt-6">
+        <h2 className="title">La velada</h2>
+        <label className="mt-3 flex min-h-11 items-start gap-3 text-[17px]">
+          <input type="checkbox" className="mt-1 h-5 w-5 flex-none accent-[var(--primary)]" checked={livingWall} onChange={(event) => setLivingWall(event.currentTarget.checked)} />
+          <span>
+            Pared viva
+            <span className="quiet block text-[16px]">La luz de la vela se dibuja en la pared y unas polillas la rondan. Si notas que gasta batería en veladas largas, quítala en este móvil.</span>
+          </span>
+        </label>
+      </section>
 
       <section className="mt-10 border-t border-rule pt-6">
         <h2 className="title">Lo vuestro es vuestro</h2>
