@@ -32,6 +32,8 @@ interface Farewell {
   /** Hidden notes of theirs that this evening's pages have just uncovered. */
   found?: string[]
   saved: boolean
+  /** What was left of the candle when it was blown out: it stays that way while it smokes. */
+  wax: number
 }
 
 /** «La velada»: your candle is burning. The only things to do are read, and blow it out when you stop. */
@@ -95,31 +97,22 @@ export function Evening() {
       </main>
     )
   }
-  if (farewell) {
-    const amount = farewell.unit === 'porcentaje' ? `${farewell.pages} %` : farewell.pages === 1 ? 'una página' : `${farewell.pages} páginas`
-    return (
-      <main className="night fixed inset-0 flex flex-col items-center justify-center-safe overflow-y-auto overscroll-contain px-8 py-6 text-center">
-        <Candle color={me.color} lit={false} wax={0.7} size={150} smoke />
-        <h1 className="display fade mt-2">{farewell.goodbye}</h1>
-        <p className="quiet fade mt-3 text-[19px]">
-          {[farewell.pages > 0 && amount, farewell.minutes && fmtMinutes(farewell.minutes)].filter(Boolean).join(' · ') ||
-            (farewell.saved ? 'Velada guardada' : 'Vela apagada')}
-        </p>
-      </main>
-    )
-  }
-  if (!me.candle_lit_at || !reading || reading.deleted_at || !book || book.deleted_at) return <Navigate to="/" replace />
+  // Blown out, the room stays as it was for a moment: same candles, same wall, the light going and the smoke rising.
+  const out = farewell
+  if (!out && (!me.candle_lit_at || !reading || reading.deleted_at || !book || book.deleted_at)) return <Navigate to="/" replace />
+  const open = !out && reading && book && me.candle_lit_at ? { reading, book, litAt: me.candle_lit_at } : null
 
   const leave = (result: Farewell) => {
     setAsking(false)
     setFarewell({ ...result, goodbye: greeting(new Date()) === 'Buenas noches' ? 'Buenas noches' : 'Hasta luego' })
     setTimeout(
       () => (result.found?.length ? setHanding(true) : navigate(result.finished ? `/libro/${result.bookId}?cerrar=1` : '/', { replace: true })),
-      1900,
+      3000,
     )
   }
 
-  const myWax = waxLeft(me.candle_lit_at, now)
+  const myWax = out ? out.wax : waxLeft(me.candle_lit_at, now)
+  const alight = !out && burning
   const theirWax = theirsLit ? waxLeft(partner?.candle_lit_at, now) : 1
   const sendWink = () => {
     setWinksSent((n) => n + 1)
@@ -134,15 +127,15 @@ export function Evening() {
         className="pointer-events-none absolute inset-0"
         style={{
           background: 'radial-gradient(70% 46% at 50% 36%, color-mix(in oklab, var(--flame) 26%, transparent), transparent 78%)',
-          opacity: burning ? 0.2 + 0.8 * glowOf(myWax).strength : 0.15,
+          opacity: alight ? 0.2 + 0.8 * glowOf(myWax).strength : 0.08,
           transition: 'opacity 2s var(--ease)',
         }}
       />
       {livingWall && (
-        <CandleWall mine={mineRef} theirs={theirsRef} mineLit={burning} theirsLit={theirsLit} mineWax={myWax} theirWax={theirWax} quiet={wordsRef} winkIn={wink.received} winkOut={winksSent} />
+        <CandleWall mine={mineRef} theirs={theirsRef} mineLit={alight} snuffed={!!out} theirsLit={theirsLit} mineWax={myWax} theirWax={theirWax} quiet={wordsRef} winkIn={wink.received} winkOut={winksSent} />
       )}
       <header className="relative flex items-center px-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
-        <button className="icon-btn" aria-label="Volver; la vela sigue encendida" onClick={back}>
+        <button className={`icon-btn ${out ? 'invisible' : ''}`} aria-label="Volver; la vela sigue encendida" onClick={back}>
           <Back />
         </button>
       </header>
@@ -154,7 +147,7 @@ export function Evening() {
               ref={theirsRef}
               type="button"
               className="-mr-2 mb-1 rounded-[14px] opacity-90"
-              disabled={!(burning && theirsLit)}
+              disabled={!(alight && theirsLit)}
               aria-label={theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}, apagada`}
               onClick={sendWink}
             >
@@ -162,43 +155,53 @@ export function Evening() {
             </button>
           )}
           <div ref={mineRef}>
-            <Candle color={me.color} lit={burning} wax={myWax} size={150} lean={theirsLit ? -1 : 0} />
+            <Candle color={me.color} lit={alight} wax={myWax} size={150} lean={theirsLit ? -1 : 0} smoke={!!out} />
           </div>
           {partner && <div className="w-[54px]" aria-hidden />}
         </div>
         <div ref={wordsRef}>
-        <h1 className="mt-5 text-[27px] leading-tight italic">{book.title}</h1>
-        <p className="quiet mt-2 text-[17px]">
-          {`${capital(fmtProgress(reading))} · encendida ${fmtSince(me.candle_lit_at, now)}`}
-        </p>
-        {partner && theirsLit && (
-          <p className="mt-4 text-[17px] text-flame-ink">{partner.name} también está leyendo. Toca su vela para un guiño.</p>
-        )}
+          {out ? (
+            <div role="status">
+              <h1 className="display fade mt-5">{out.goodbye}</h1>
+              <p className="quiet fade mt-3 text-[19px]">
+                {[
+                  out.pages > 0 && (out.unit === 'porcentaje' ? `${out.pages} %` : out.pages === 1 ? 'una página' : `${out.pages} páginas`),
+                  out.minutes && fmtMinutes(out.minutes),
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || (out.saved ? 'Velada guardada' : 'Vela apagada')}
+              </p>
+            </div>
+          ) : (
+            open && (
+              <>
+                <h1 className="mt-5 text-[27px] leading-tight italic">{open.book.title}</h1>
+                <p className="quiet mt-2 text-[17px]">{`${capital(fmtProgress(open.reading))} · encendida ${fmtSince(open.litAt, now)}`}</p>
+                {partner && theirsLit && (
+                  <p className="mt-4 text-[17px] text-flame-ink">{partner.name} también está leyendo. Toca su vela para un guiño.</p>
+                )}
+              </>
+            )
+          )}
         </div>
       </div>
 
-      <footer className="relative mx-auto flex w-full max-w-md flex-col gap-1 px-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>
+      {/* Kept in place, unseen, once the candle is out: the candles must not jump as the buttons go. */}
+      <footer className={`relative mx-auto flex w-full max-w-md flex-col gap-1 px-6 ${out ? 'invisible' : ''}`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>
         <button className="btn btn-primary" onClick={() => setAsking(true)}>
-          {burning ? 'Apagar la vela' : 'Guardar la velada'}
+          Apagar la vela
         </button>
         <button className="btn btn-text self-center" onClick={() => setWriting(true)}>
           <Paper size={18} /> Dejar una nota entre estas páginas
         </button>
       </footer>
 
-      <Sheet open={writing} onClose={() => setWriting(false)} title="Una nota entre páginas" night>
-        {writing && (
-          <WriteSlip
-            book={book}
-            mine={reading}
-            partner={partner}
-            onDone={() => setWriting(false)}
-          />
-        )}
+      <Sheet open={writing && !out} onClose={() => setWriting(false)} title="Una nota entre páginas" night>
+        {writing && open && <WriteSlip book={open.book} mine={open.reading} partner={partner} onDone={() => setWriting(false)} />}
       </Sheet>
 
-      <Sheet open={asking} onClose={() => setAsking(false)} title="¿Por dónde vas?" night>
-        {asking && <Snuff reading={reading} litAt={me.candle_lit_at} onDone={leave} />}
+      <Sheet open={asking && !out} onClose={() => setAsking(false)} title="¿Por dónde vas?" night>
+        {asking && open && <Snuff reading={open.reading} litAt={open.litAt} onDone={leave} />}
       </Sheet>
     </main>
   )
@@ -230,6 +233,7 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
       finished: position >= reading.total,
       saved: true,
       found,
+      wax: waxLeft(litAt, Date.now()),
     })
     // The server is the one that hands their text over: ask now, not at the next tick.
     if (found.length) void sync()
@@ -260,7 +264,7 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
           className="btn btn-text self-center"
           onClick={() => {
             snuffCandle()
-            onDone({ bookId: reading.book_id, pages: 0, minutes: null, unit: reading.unit, finished: false, saved: false })
+            onDone({ bookId: reading.book_id, pages: 0, minutes: null, unit: reading.unit, finished: false, saved: false, wax: waxLeft(litAt, Date.now()) })
           }}
         >
           Al final no he leído

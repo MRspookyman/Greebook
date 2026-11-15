@@ -8,6 +8,8 @@ interface Props {
   theirs: RefObject<HTMLElement | null>
   mineLit: boolean
   theirsLit: boolean
+  /** Your candle has just been blown out: its light goes and a thread of smoke climbs the wall. */
+  snuffed?: boolean
   /** What is left of each candle, 1 → 0: a spent one lights less of the wall. */
   mineWax: number
   theirWax: number
@@ -64,16 +66,16 @@ function blocked(ax: number, ay: number, bx: number, by: number, r: Body): boole
  * It is scenery: it reads nothing and decides nothing. It runs at a low frame rate, only where there is light,
  * stops while the screen is hidden, and stands still under «reduce motion».
  */
-export function CandleWall({ mine, theirs, mineLit, theirsLit, mineWax, theirWax: theirsWax, quiet, winkIn, winkOut }: Props) {
+export function CandleWall({ mine, theirs, mineLit, theirsLit, snuffed = false, mineWax, theirWax: theirsWax, quiet, winkIn, winkOut }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null)
   /** What the loop reads each frame; kept in a ref so new props never restart it. */
-  const live = useRef({ mineLit, theirsLit, mineWax, theirsWax })
+  const live = useRef({ mineLit, theirsLit, mineWax, theirsWax, snuffed })
   const poke = useRef<{ measure: () => void; wink: (from: 'mine' | 'theirs') => void } | null>(null)
 
   useEffect(() => {
-    live.current = { mineLit, theirsLit, mineWax, theirsWax }
+    live.current = { mineLit, theirsLit, mineWax, theirsWax, snuffed }
     poke.current?.measure()
-  }, [mineLit, theirsLit, mineWax, theirsWax])
+  }, [mineLit, theirsLit, mineWax, theirsWax, snuffed])
   // The first value is just where the counters stand when the screen opens: nothing has been sent yet.
   const seen = useRef({ winkIn, winkOut })
   useEffect(() => {
@@ -94,6 +96,8 @@ export function CandleWall({ mine, theirs, mineLit, theirsLit, mineWax, theirWax
     let lights: Light[] = [], bodies: Body[] = [], hush: { x0: number; x1: number; y0: number; y1: number } | null = null
     const rings: Ring[] = []
     let shiver = 0
+    /** When your candle went out, on the wall's own clock; -1 while it burns. */
+    let snuffedAt = -1
     const intensity = { mine: live.current.mineLit ? 1 : 0, theirs: live.current.theirsLit ? 1 : 0 }
     const sway = { mine: { lean: 0, power: 1 }, theirs: { lean: 0, power: 1 } }
     const moths: Moth[] = Array.from({ length: 3 }, (_, i) => ({
@@ -217,9 +221,26 @@ export function CandleWall({ mine, theirs, mineLit, theirsLit, mineWax, theirWax
         const f = flameFor(m)
         return f ? [{ x: f.x + (m.x - f.x) * 2.1, y: f.y + (m.y - f.y) * 2.1, rx: 20 * (0.75 + 0.25 * Math.sin(m.phase * 1.57)), k: intensity[f.who] }] : []
       })
+      if (!now.snuffed) snuffedAt = -1
+      else if (snuffedAt < 0) snuffedAt = clock.t
+      const smoke = snuffedAt >= 0 ? clock.t - snuffedAt : -1, wickAt = lights.find((l) => l.who === 'mine')
       let last = -1
       for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
         const x = c * cw + cw / 2, y = r * ch + ch / 2
+        // The smoke of a candle just blown out: a column that climbs from the wick, sways and comes apart.
+        if (smoke >= 0 && wickAt && y < wickAt.y + 18 && Math.abs(x - wickAt.x) < 120) {
+          const h = wickAt.y + 18 - y, front = smoke * 95
+          if (h < front) {
+            const drift = Math.sin(h * 0.034 + clock.t * 1.2) * h * 0.11 + (noise(h * 0.018, clock.t * 0.35) - 0.5) * h * 0.55
+            const s = Math.exp(-(((x - wickAt.x - drift) / (6 + h * 0.2)) ** 2)) * Math.sqrt(clamp(1 - h / front)) * clamp(1 - (smoke - 6) / 4) * clamp(1.15 - h / (H * 0.6))
+            if (s > 0.1) {
+              if (last !== -2) { ctx!.fillStyle = '#b9c6ba'; last = -2 }
+              ctx!.globalAlpha = Math.min(0.8, s * 0.95)
+              ctx!.fillText(s > 0.6 ? '*' : s > 0.3 ? ':' : '·', x, y)
+              continue
+            }
+          }
+        }
         let v = lightAt(x, y, true)
         let ring = 0
         for (const g of rings) { const age = clock.t - g.t; ring += g.k * (1 - age / g.life) * Math.exp(-(((Math.hypot(x - g.x, y - g.y) - age * g.speed) / 22) ** 2)) }
