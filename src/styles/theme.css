@@ -409,6 +409,15 @@ input[type='search']::-webkit-search-cancel-button {
   0%, 100% { opacity: 0.25; transform: scale(0.8); }
   50% { opacity: 0.95; transform: scale(1.2); }
 }
+.ember {
+  animation: gb-ember 2.4s ease-out both;
+}
+@keyframes gb-ember {
+  0% { opacity: 1; }
+  25% { opacity: 0.55; }
+  40% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
 @keyframes gb-smoke {
   0% { opacity: 0; transform: translate(0, 0) scaleX(0.7); }
   12% { opacity: 0.65; }

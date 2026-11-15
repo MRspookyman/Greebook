@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { burnedMinutes, finishReading, openSlip, saveEvening, snuffCandle } from '@/lib/actions'
 import { fractionOf } from '@/lib/lock'
 import { slipPlace } from '@/lib/slips'
 import { sync } from '@/lib/sync/store'
-import { fmtProgress, isLit, live, waxLeft } from '@/lib/model'
-import { capital, fmtMinutes, fmtSince, greeting } from '@/lib/time'
+import { fmtProgress, isLit, live, minutesTonight, waxAfter } from '@/lib/model'
+import { capital, fmtMinutes, fmtSince, greeting, nightOf } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow, useWink } from '@/session'
 import { useLivingWall } from '@/lib/ambience'
@@ -55,6 +55,15 @@ export function Evening() {
   const theirsRef = useRef<HTMLButtonElement>(null)
   const wordsRef = useRef<HTMLDivElement>(null)
   const [winksSent, setWinksSent] = useState(0)
+  // Tonight's candle: what all of tonight's reading has left of it, not only this sitting.
+  const sessions = useMemo(() => live(db.sessions), [db.sessions])
+  const tonight = nightOf(new Date(now))
+  const burnedWax = waxAfter(minutesTonight(sessions, me, tonight, now))
+  /** As it stood the last moment it burned: blown out, it stays exactly so while it smokes. */
+  const lastWax = useRef(burnedWax)
+  useEffect(() => {
+    if (me.candle_lit_at) lastWax.current = burnedWax
+  }, [burnedWax, me.candle_lit_at])
 
   const reading = me.candle_reading_id ? db.readings[me.candle_reading_id] : undefined
   const book = reading ? db.books[reading.book_id] : undefined
@@ -102,18 +111,18 @@ export function Evening() {
   if (!out && (!me.candle_lit_at || !reading || reading.deleted_at || !book || book.deleted_at)) return <Navigate to="/" replace />
   const open = !out && reading && book && me.candle_lit_at ? { reading, book, litAt: me.candle_lit_at } : null
 
-  const leave = (result: Farewell) => {
+  const leave = (result: Omit<Farewell, 'wax'>) => {
     setAsking(false)
-    setFarewell({ ...result, goodbye: greeting(new Date()) === 'Buenas noches' ? 'Buenas noches' : 'Hasta luego' })
+    setFarewell({ ...result, wax: lastWax.current, goodbye: greeting(new Date()) === 'Buenas noches' ? 'Buenas noches' : 'Hasta luego' })
     setTimeout(
       () => (result.found?.length ? setHanding(true) : navigate(result.finished ? `/libro/${result.bookId}?cerrar=1` : '/', { replace: true })),
       3000,
     )
   }
 
-  const myWax = out ? out.wax : waxLeft(me.candle_lit_at, now)
+  const myWax = out ? out.wax : burnedWax
   const alight = !out && burning
-  const theirWax = theirsLit ? waxLeft(partner?.candle_lit_at, now) : 1
+  const theirWax = waxAfter(minutesTonight(sessions, partner, tonight, now))
   const sendWink = () => {
     setWinksSent((n) => n + 1)
     wink.send()
@@ -208,7 +217,7 @@ export function Evening() {
 }
 
 /** Blowing the candle out asks one thing: where the bookmark goes. The rest is already filled in. */
-function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; onDone: (farewell: Farewell) => void }) {
+function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; onDone: (farewell: Omit<Farewell, 'wax'>) => void }) {
   const { db, me } = usePeople()
   const [position, setPosition] = useState(reading.position)
   const [minutes, setMinutes] = useState(() => burnedMinutes(litAt, Date.now()))
@@ -233,7 +242,6 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
       finished: position >= reading.total,
       saved: true,
       found,
-      wax: waxLeft(litAt, Date.now()),
     })
     // The server is the one that hands their text over: ask now, not at the next tick.
     if (found.length) void sync()
@@ -264,7 +272,7 @@ function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; on
           className="btn btn-text self-center"
           onClick={() => {
             snuffCandle()
-            onDone({ bookId: reading.book_id, pages: 0, minutes: null, unit: reading.unit, finished: false, saved: false, wax: waxLeft(litAt, Date.now()) })
+            onDone({ bookId: reading.book_id, pages: 0, minutes: null, unit: reading.unit, finished: false, saved: false })
           }}
         >
           Al final no he leído

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
   bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
-  waxLeft, type BookView, type ShelfOrder, type Whose,
+  minutesTonight, waxAfter, type BookView, type ShelfOrder, type Whose,
 } from '@/lib/model'
 import { lastNights, nightsLine, nightsOf, sharedNights } from '@/lib/nights'
 import { knowsTheGesture, litOnce } from '@/lib/learned'
@@ -11,7 +11,7 @@ import { markNoticed, useNoticed } from '@/lib/noticed'
 import { askForCandleNotice } from '@/lib/ongoing'
 import { reviewsOf, waitingFor } from '@/lib/slips'
 import { useSyncStatus } from '@/lib/sync/store'
-import { capital, fmtDay, fmtSince, fmtToday, nightOf } from '@/lib/time'
+import { capital, fmtDay, fmtMinutes, fmtToday, nightOf } from '@/lib/time'
 import type { Book, Profile } from '@/lib/types'
 import { memoryFor, memoryLine } from '@/lib/memory'
 import { usePeople, useNow, useSession, useWink } from '@/session'
@@ -76,6 +76,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
     bar.parentElement?.style.setProperty('--holding', progress > 0 ? '1' : '0')
   }, [])
   const myNights = useMemo(() => nightsOf(sessions, me.id), [sessions, me.id])
+  // Tonight's candle of each: as much of it as tonight's reading has left, and how long that reading has been.
+  const myMinutes = minutesTonight(sessions, me, tonight, now)
+  const theirMinutes = minutesTonight(sessions, partner, tonight, now)
 
   let line: ReactNode
   if (mineLit && theirsLit) line = 'Estáis leyendo los dos.'
@@ -239,13 +242,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 onClick={wink.send}
               >
                 <span className={`theirs block ${theirsLit ? '' : 'unlit'}`}>
-                  <Candle color={partner.color} lit={theirsLit} wax={theirsLit ? waxLeft(partner.candle_lit_at, now) : 1} lean={mineLit ? 1 : 0} tremble={wink.received} />
+                  <Candle color={partner.color} lit={theirsLit} wax={waxAfter(theirMinutes)} lean={mineLit ? 1 : 0} tremble={wink.received} />
                 </span>
               </button>
             </div>
           )}
           <div className="flex w-[calc(var(--candle)+36px)] justify-center">
-            <MyCandle me={me} lit={mineLit} now={now} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onHold={showHold} onLight={light} onOpen={() => navigate('/velada')} />
+            <MyCandle me={me} lit={mineLit} wax={waxAfter(myMinutes)} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onHold={showHold} onLight={light} onOpen={() => navigate('/velada')} />
           </div>
         </div>
         <Plank />
@@ -255,14 +258,18 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             <div className="w-[calc(var(--candle)+36px)]">
               <p className="text-[18px]">{partner.name}</p>
               <p className="quiet text-[15px] whitespace-nowrap">
-                {theirsLit ? `lee ${fmtSince(partner.candle_lit_at!, now)}` : theirNights.has(tonight) ? 'ya ha leído hoy' : 'aún no ha leído hoy'}
+                {theirsLit
+                  ? theirMinutes > 0 ? `leyendo · ${fmtMinutes(theirMinutes)} hoy` : 'acaba de encenderla'
+                  : theirMinutes > 0 ? `${fmtMinutes(theirMinutes)} hoy` : theirNights.has(tonight) ? 'ya ha leído hoy' : 'aún no ha leído hoy'}
               </p>
             </div>
           )}
           <div className="w-[calc(var(--candle)+36px)]">
             <p className="text-[18px] font-medium">Tú</p>
             {mineLit ? (
-              <p className="quiet text-[15px] whitespace-nowrap">lees {fmtSince(me.candle_lit_at!, now)}</p>
+              <p className="quiet text-[15px] whitespace-nowrap">{myMinutes > 0 ? `leyendo · ${fmtMinutes(myMinutes)} hoy` : 'recién encendida'}</p>
+            ) : myMinutes > 0 ? (
+              <p className="quiet text-[15px] whitespace-nowrap">{fmtMinutes(myMinutes)} hoy</p>
             ) : knowsTheGesture() ? (
               <p className="quiet text-[15px] whitespace-nowrap">{myNights.has(tonight) ? 'ya has leído hoy' : 'aún no has leído hoy'}</p>
             ) : (
@@ -636,7 +643,8 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 interface MyCandleProps {
   me: Profile
   lit: boolean
-  now: number
+  /** What tonight's reading has left of it. */
+  wax: number
   lean: -1 | 0 | 1
   /** There is a book to light it for. */
   ready: boolean
@@ -647,7 +655,7 @@ interface MyCandleProps {
 }
 
 /** Your candle: hold a finger on it to light it; once lit, a tap takes you back to your evening. */
-function MyCandle({ me, lit, now, lean, ready, onHold, onLight, onOpen }: MyCandleProps) {
+function MyCandle({ me, lit, wax, lean, ready, onHold, onLight, onOpen }: MyCandleProps) {
   const hold = useHold(onLight)
   useEffect(() => onHold(hold.progress), [hold.progress, onHold])
   const [hint, setHint] = useState(false)
@@ -681,7 +689,7 @@ function MyCandle({ me, lit, now, lean, ready, onHold, onLight, onOpen }: MyCand
         else if (event.detail === 0) onLight()
       }}
     >
-      <Candle color={me.color} lit={lit} wax={lit ? waxLeft(me.candle_lit_at, now) : 1} lean={lean} igniting={hold.progress} inviting={ready} />
+      <Candle color={me.color} lit={lit} wax={wax} lean={lean} igniting={hold.progress} inviting={ready} />
       {hint && !lit && <span role="status" className="pointer-events-none absolute inset-x-[-34px] bottom-2 rounded-xl bg-surface px-3 py-2 text-center text-[15px] leading-snug text-ink shadow-sm">Mantén el dedo sobre la mecha hasta que prenda.</span>}
     </button>
   )

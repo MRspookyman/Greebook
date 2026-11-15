@@ -18,10 +18,29 @@ export function isLit(person: Pick<Profile, 'candle_lit_at'> | null | undefined,
   return elapsed > -5 * 60_000
 }
 
-/** How much of the candle is left: 1 → 0 over its first hour and a half, and 0 (the stub) from then on. */
-export function waxLeft(litAt: string | null | undefined, now: number): number {
-  if (!litAt) return 1
-  return Math.min(1, Math.max(0, 1 - (now - new Date(litAt).getTime()) / MELT_MS))
+/**
+ * How long someone has read tonight, in minutes: the evenings already saved (as they were written down), plus
+ * the one whose candle is burning now. The night turns at 4 a.m., like everything else.
+ */
+export function minutesTonight(
+  sessions: Session[],
+  person: Pick<Profile, 'id' | 'candle_lit_at'> | null | undefined,
+  tonight: string,
+  now: number,
+): number {
+  if (!person) return 0
+  let minutes = 0
+  for (const session of sessions) if (session.user_id === person.id && session.day === tonight && !session.deleted_at) minutes += session.minutes ?? 0
+  if (person.candle_lit_at && isLit(person, now)) minutes += Math.max(0, Math.floor((now - new Date(person.candle_lit_at).getTime()) / 60_000))
+  return minutes
+}
+
+/**
+ * What is left of tonight's candle after that much reading: 1 → 0 over an hour and a half, and 0 (the stub)
+ * from then on. It is one candle per night: blown out and lit again, it goes on from where it was.
+ */
+export function waxAfter(minutes: number): number {
+  return Math.min(1, Math.max(0, 1 - (minutes * 60_000) / MELT_MS))
 }
 
 /** A book as the two of you see it: one object, up to two bookmarks. */

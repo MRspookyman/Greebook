@@ -207,6 +207,13 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
         </g>
       )}
 
+      {/* Just blown out: the tip of the wick stays red for a moment, and goes dark. */}
+      {smoke && !lit && (
+        <g className="ember">
+          <circle cx="60" cy={wick} r="7" fill={`url(#${id}warm)`} />
+          <circle cx="60" cy={wick} r="1.7" fill="#ff8a3c" />
+        </g>
+      )}
       {smoke && !lit && (
         <g className="smoke" stroke="var(--muted)" strokeLinecap="round" fill="none">
           <path d={`M60 ${wick}C54 ${wick - 9} 67 ${wick - 15} 63 ${wick - 24}S49 ${wick - 35} 59 ${wick - 47}S74 ${wick - 60} 66 ${wick - 70}`} strokeWidth="1.6" opacity="0.6" />

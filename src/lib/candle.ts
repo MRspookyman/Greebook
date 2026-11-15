@@ -1,6 +1,6 @@
 /**
  * How a candle wears down in its first hour and a half (after that it stays as it is, lit): the light it loses, and the wax that runs down its side.
- * `wax` is what is left of it, 1 → 0 (see `waxLeft`). Pure sums: the drawing and the wall both read from here.
+ * `wax` is what is left of it, 1 → 0 (see `waxAfter`). Pure sums: the drawing and the wall both read from here.
  */
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value))

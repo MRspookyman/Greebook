@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, waxLeft,
+  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, minutesTonight, waxAfter,
 } from './model'
 import { stepMinutes } from './time'
 import { emptyDb, type Book, type Db, type Reading, type Session } from './types'
@@ -106,11 +106,19 @@ describe('la vela', () => {
   it('tolera unos minutos de diferencia entre los dos relojes', () => {
     expect(isLit({ candle_lit_at: '2026-11-10T22:03:00Z' }, now)).toBe(true)
   })
-  it('se consume en hora y media, y ahí se queda', () => {
-    expect(waxLeft('2026-11-10T22:00:00Z', now)).toBe(1)
-    expect(waxLeft('2026-11-10T21:15:00Z', now)).toBe(0.5)
-    expect(waxLeft('2026-11-10T20:30:00Z', now)).toBe(0)
-    expect(waxLeft('2026-11-10T10:00:00Z', now)).toBe(0)
+  it('se consume en hora y media de lectura, y ahí se queda', () => {
+    expect(waxAfter(0)).toBe(1)
+    expect(waxAfter(45)).toBe(0.5)
+    expect(waxAfter(90)).toBe(0)
+    expect(waxAfter(700)).toBe(0)
+  })
+  it('lo leído hoy suma las veladas guardadas y la que arde ahora', () => {
+    const session = (user_id: string, day: string, minutes: number | null, deleted_at: string | null = null) => ({ user_id, day, minutes, deleted_at }) as Session
+    const sessions = [session('a', '2026-11-10', 25), session('a', '2026-11-10', null), session('a', '2026-11-10', 40, 'x'), session('a', '2026-11-09', 60), session('b', '2026-11-10', 15)]
+    expect(minutesTonight(sessions, { id: 'a', candle_lit_at: null }, '2026-11-10', now)).toBe(25)
+    expect(minutesTonight(sessions, { id: 'a', candle_lit_at: '2026-11-10T21:48:00Z' }, '2026-11-10', now)).toBe(37)
+    expect(minutesTonight(sessions, { id: 'b', candle_lit_at: null }, '2026-11-10', now)).toBe(15)
+    expect(minutesTonight(sessions, null, '2026-11-10', now)).toBe(0)
   })
 })
 

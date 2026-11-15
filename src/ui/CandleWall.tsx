@@ -61,7 +61,8 @@ function blocked(ax: number, ay: number, bx: number, by: number, r: Body): boole
 /**
  * The wall behind the candles, drawn in signs: each cell shows a denser, brighter one the more candlelight
  * reaches it. The light leans and dips with the flames (it is what sways them), draws in as the candles burn
- * down, and is cut by the candles' own bodies. Three moths circle the flames and throw their shadows on it.
+ * down, and is cut by the candles' own bodies. Three moths circle the flames and throw their shadows on it;
+ * when your candle is blown out they leave, and a thread of smoke climbs where the light was.
  *
  * It is scenery: it reads nothing and decides nothing. It runs at a low frame rate, only where there is light,
  * stops while the screen is hidden, and stands still under «reduce motion».
@@ -178,13 +179,19 @@ export function CandleWall({ mine, theirs, mineLit, theirsLit, snuffed = false, 
     }
 
     function stepMoths(dt: number) {
+      const leaving = live.current.snuffed
       for (const m of moths) {
         if (!m.placed) { m.x = W * (0.2 + hash(m.seed, 1) * 0.6); m.y = H * (0.1 + hash(m.seed, 2) * 0.3); m.placed = true }
         m.scared = Math.max(0, m.scared - dt); m.visit = Math.max(0, m.visit - dt)
         const f = m.scared > 0 ? null : flameFor(m)
         const wander = noise(m.seed, clock.t * 0.35) * Math.PI * 4
         let wx = 0, wy = 0
-        if (m.rest > 0) m.rest -= dt
+        if (leaving) {
+          // The light is gone: each makes for the nearest side of the room and is not seen again.
+          const side = m.x < W / 2 ? -1 : 1
+          wx = side * 150 + Math.cos(wander) * 40; wy = -46 + Math.sin(wander) * 40
+          m.rest = 0
+        } else if (m.rest > 0) m.rest -= dt
         else if (f) {
           // A wide orbit round the flame that opens and closes.
           const rx = m.x - f.x, ry = m.y - (f.y - 20), d = Math.hypot(rx, ry) || 1
@@ -197,10 +204,12 @@ export function CandleWall({ mine, theirs, mineLit, theirsLit, snuffed = false, 
         const k = Math.min(1, dt * (m.scared > 0 ? 0.7 : 2.2))
         m.vx += (wx - m.vx) * k; m.vy += (wy - m.vy) * k
         m.x += m.vx * dt; m.y += m.vy * dt
-        if (m.x < 16) m.vx += 160 * dt
-        if (m.x > W - 16) m.vx -= 160 * dt
-        if (m.y < 16) m.vy += 160 * dt
-        if (m.y > H * 0.86) m.vy -= 160 * dt
+        if (!leaving) {
+          if (m.x < 16) m.vx += 160 * dt
+          if (m.x > W - 16) m.vx -= 160 * dt
+          if (m.y < 16) m.vy += 160 * dt
+          if (m.y > H * 0.86) m.vy -= 160 * dt
+        }
         m.phase += dt * (m.rest > 0 ? 0 : 12)
       }
     }
