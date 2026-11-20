@@ -2,7 +2,7 @@ import { fractionOf } from './lock'
 import { isLit } from './model'
 import { isCover } from './photo'
 import { enqueue, getDb, getMe, keep, patch, save } from './sync/store'
-import { isoDate, minutesBetween, nightOf } from './time'
+import { isoDate, minutesBetween, nightOf, parseDay } from './time'
 import type { Book, Color, Reading, Session, Slip, SlipKind, Status, Unit } from './types'
 
 /** Everything the two of you can *do*. Each is a local write; the store takes care of the server. */
@@ -54,13 +54,26 @@ export interface Evening {
   place: string | null
   /** When the candle was lit, if it was. */
   startedAt: string | null
+  /** The night it was read, when it was not tonight: written down afterwards. */
+  day?: string
+}
+
+/** An evening written down afterwards for a past night: placed at nine that evening, so it sorts in its night. */
+const eveningOf = (day: string) => {
+  const at = parseDay(day)
+  at.setHours(21)
+  return at.toISOString()
 }
 
 /** Saves a «velada» and moves the bookmark. Blows the candle out if it was burning. */
-export function saveEvening({ reading, position, minutes, place, startedAt }: Evening): Session {
+export function saveEvening({ reading, position, minutes, place, startedAt, day }: Evening): Session {
   const now = new Date()
-  const began = startedAt ?? (minutes ? new Date(now.getTime() - minutes * 60_000).toISOString() : now.toISOString())
+  const past = !!day && day < nightOf(now)
+  const began = past ? eveningOf(day) : (startedAt ?? (minutes ? new Date(now.getTime() - minutes * 60_000).toISOString() : now.toISOString()))
   const stamp = now.toISOString()
+  // An evening from before one already written down tells where the book was then, not where it is now.
+  const at = (s: Session) => s.started_at ?? s.created_at
+  const later = past && Object.values(getDb().sessions).some((s) => s.reading_id === reading.id && !s.deleted_at && at(s) > began)
   const session: Session = {
     id: uid(),
     reading_id: reading.id,
@@ -77,11 +90,13 @@ export function saveEvening({ reading, position, minutes, place, startedAt }: Ev
   }
   save('sessions', session)
   patch('readings', reading.id, {
-    position,
+    position: later ? reading.position : position,
     status: reading.status === 'pendiente' ? 'leyendo' : reading.status,
-    started_on: reading.started_on ?? session.day,
+    // Started no later than the earliest evening with it.
+    started_on: reading.started_on && reading.started_on <= session.day ? reading.started_on : session.day,
   })
-  if (getDb().profiles[getMe()]?.candle_lit_at) snuffCandle()
+  // Writing down a past night leaves tonight's candle as it is.
+  if (!past && getDb().profiles[getMe()]?.candle_lit_at) snuffCandle()
   return session
 }
 
@@ -98,10 +113,12 @@ export interface EveningFix {
   position: number
   minutes: number | null
   place: string | null
+  /** The night it belongs to, if it was put on the wrong one. */
+  day?: string
 }
 
 /** Corrects a saved evening. If it was the last one, the bookmark follows the corrected page. */
-export function editSession(session: Session, { position, minutes, place }: EveningFix) {
+export function editSession(session: Session, { position, minutes, place, day }: EveningFix) {
   const db = getDb()
   const reading = db.readings[session.reading_id]
   const to = Math.max(0, Math.min(reading?.total ?? position, Math.round(position)))
@@ -114,7 +131,9 @@ export function editSession(session: Session, { position, minutes, place }: Even
     from_pos: Math.min(session.from_pos, to),
     minutes: minutes && minutes > 0 ? Math.min(1440, Math.round(minutes)) : null,
     place: place?.trim().slice(0, 40) || null,
+    ...(day && day !== session.day ? { day, started_at: eveningOf(day) } : {}),
   })
+  if (reading && day && reading.started_on && day < reading.started_on) patch('readings', reading.id, { started_on: day })
   if (reading && !later && reading.status === 'leyendo' && reading.position === session.to_pos && to !== session.to_pos) {
     patch('readings', reading.id, { position: to })
   }
@@ -205,10 +224,17 @@ export interface Placement {
   total: number
   /** For a book read before Greenbook: the year it was finished. */
   finishedYear?: number
+  /** Already under way when it came into the room: where the bookmark is, and since when (if remembered). */
+  already?: AlreadyStarted
+}
+
+export interface AlreadyStarted {
+  position: number
+  startedOn: string | null
 }
 
 /** Puts my bookmark in a book (or moves the one I already have). */
-export function placeBookmark(book: Book, { status, unit, total, finishedYear }: Placement): Reading {
+export function placeBookmark(book: Book, { status, unit, total, finishedYear, already }: Placement): Reading {
   const me = getMe()
   const today = isoDate(new Date())
   const existing = Object.values(getDb().readings).find(
@@ -222,9 +248,9 @@ export function placeBookmark(book: Book, { status, unit, total, finishedYear }:
     book_id: book.id,
     unit,
     total,
-    position: finished ? total : Math.min(existing?.position ?? 0, total),
+    position: finished ? total : Math.min(status === 'leyendo' && already ? already.position : (existing?.position ?? 0), total),
     status,
-    started_on: existing?.started_on ?? (status === 'leyendo' ? today : null),
+    started_on: status === 'leyendo' && already ? already.startedOn : (existing?.started_on ?? (status === 'leyendo' ? today : null)),
     finished_on: finished ? (finishedYear && finishedYear < Number(today.slice(0, 4)) ? `${finishedYear}-12-31` : today) : null,
     rating: existing?.rating ?? null,
     next_at: status === 'pendiente' ? (existing?.next_at ?? null) : null,
@@ -249,13 +275,13 @@ export function markNext(reading: Reading, next: boolean) {
 }
 
 /** From the pile (or back from the shelf) onto the nightstand. */
-export function openBook(reading: Reading) {
+export function openBook(reading: Reading, already?: AlreadyStarted) {
   patch('readings', reading.id, {
     status: 'leyendo',
     next_at: null,
-    started_on: reading.started_on ?? isoDate(new Date()),
+    started_on: already ? already.startedOn : (reading.started_on ?? isoDate(new Date())),
     finished_on: null,
-    position: reading.status === 'terminado' ? 0 : reading.position,
+    position: already ? Math.min(reading.total, already.position) : reading.status === 'terminado' ? 0 : reading.position,
   })
 }
 
@@ -270,12 +296,12 @@ export function resizeReading(reading: Reading, unit: Unit, total: number) {
 }
 
 /** Closes the book: it goes to the shelf. */
-export function finishReading(reading: Reading, rating: number | null) {
+export function finishReading(reading: Reading, rating: number | null, day?: string) {
   snuffForReading(reading)
   patch('readings', reading.id, {
     status: 'terminado',
     position: reading.total,
-    finished_on: nightOf(new Date()),
+    finished_on: day ?? nightOf(new Date()),
     rating,
   })
   enqueue({ id: uid(), kind: 'notify', what: 'final', ref: reading.id })

@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import type { Placement } from '@/lib/actions'
+import { nightOf } from '@/lib/time'
+import { alreadyPosition, type AlreadyDraft } from '@/lib/already'
+import { AlreadyStartedFields } from './AlreadyStarted'
 import type { Status, Unit } from '@/lib/types'
 
 interface Props {
@@ -23,10 +26,18 @@ export function PlacementForm({ pages, action = 'Añadir', onDone }: Props) {
   const [unit, setUnit] = useState<Unit>('paginas')
   const [total, setTotal] = useState(pages ? String(pages) : '')
   const [year, setYear] = useState(String(thisYear))
+  const [today] = useState(() => nightOf(new Date()))
+  /** Already under way when it comes into the room. */
+  const [started, setStarted] = useState(false)
+  const [already, setAlready] = useState<AlreadyDraft>({ position: '', startedOn: '' })
   const count = Number(total)
   const valid = unit === 'porcentaje' || (Number.isInteger(count) && count > 0 && count <= 20000)
   const finishedYear = Number(year)
   const yearValid = status !== 'terminado' || (Number.isInteger(finishedYear) && finishedYear > 1900 && finishedYear <= thisYear)
+  const size = unit === 'porcentaje' ? 100 : count
+  const at = alreadyPosition(already, size)
+  const asking = status === 'leyendo' && started
+  const alreadyValid = !asking || at != null
 
   return (
     <div className="flex flex-col gap-6">
@@ -104,15 +115,30 @@ export function PlacementForm({ pages, action = 'Añadir', onDone }: Props) {
         )}
       </div>
 
+      {status === 'leyendo' && (
+        <div className="flex flex-col gap-3">
+          <div role="radiogroup" aria-label="¿Lo empiezas ahora?" className="flex flex-wrap gap-2">
+            <button type="button" role="radio" className="chip" aria-checked={!started} aria-pressed={!started} onClick={() => setStarted(false)}>
+              Lo empiezo ahora
+            </button>
+            <button type="button" role="radio" className="chip" aria-checked={started} aria-pressed={started} onClick={() => setStarted(true)}>
+              Ya lo tenía empezado
+            </button>
+          </div>
+          {started && <AlreadyStartedFields unit={unit} total={size} today={today} value={already} onChange={setAlready} />}
+        </div>
+      )}
+
       <button
         className="btn btn-primary"
-        disabled={!valid || !yearValid}
+        disabled={!valid || !yearValid || !alreadyValid}
         onClick={() =>
           onDone({
             status,
             unit,
             total: unit === 'porcentaje' ? 100 : count,
             finishedYear: status === 'terminado' ? finishedYear : undefined,
+            already: asking && at != null ? { position: at, startedOn: already.startedOn || null } : undefined,
           })
         }
       >

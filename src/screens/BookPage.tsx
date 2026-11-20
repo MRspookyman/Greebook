@@ -6,7 +6,7 @@ import {
 } from '@/lib/actions'
 import { bookViews, byNewest, fmtPosition, fmtProgress, isLit, live, isNext, progressOf, tally } from '@/lib/model'
 import { askForCandleNotice } from '@/lib/ongoing'
-import { fmtDay, fmtMinutes } from '@/lib/time'
+import { fmtDay, fmtMinutes, nightOf } from '@/lib/time'
 import type { Book, Reading, Session, Unit } from '@/lib/types'
 import { usePeople, useNow } from '@/session'
 import { Cover } from '@/ui/Book'
@@ -22,9 +22,12 @@ import { toast } from '@/ui/toast'
 import { PersonRow, Wax } from '@/ui/Who'
 import { PlaceField } from '@/ui/PlaceField'
 import { useBack } from '@/ui/useBack'
+import { alreadyPosition, type AlreadyDraft } from '@/lib/already'
+import { AlreadyStartedFields } from '@/ui/AlreadyStarted'
+import { DayField } from '@/ui/DayField'
 import { BookReviews, BookSlips } from './BookSlips'
 
-type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove' | 'status'
+type Open = null | 'log' | 'finish' | 'more' | 'place' | 'edit' | 'size' | 'remove' | 'status' | 'start'
 
 /** A book pulled off the shelf: where each of you is in it, and everything it has gathered. */
 export function BookPage() {
@@ -120,7 +123,7 @@ export function BookPage() {
           </>
         )}
         {mine?.status === 'pendiente' && (
-          <button className="btn btn-primary" onClick={() => openBook(mine)}>
+          <button className="btn btn-primary" onClick={() => setOpen('start')}>
             Empezar a leerlo
           </button>
         )}
@@ -179,6 +182,19 @@ export function BookPage() {
 
       <Sheet open={!!fixing} onClose={() => setFixing(null)} title="Corregir la velada">
         {fixing && mine && <FixEvening session={fixing} reading={mine} onDone={() => setFixing(null)} />}
+      </Sheet>
+
+      <Sheet open={open === 'start'} onClose={close} title={book.title}>
+        {open === 'start' && mine && (
+          <Start
+            reading={mine}
+            onDone={(already) => {
+              openBook(mine, already)
+              close()
+              toast('Está en la mesita')
+            }}
+          />
+        )}
       </Sheet>
 
       <Sheet open={open === 'log'} onClose={close} title="¿Por dónde vas?">
@@ -352,10 +368,12 @@ function FixEvening({ session, reading, onDone }: { session: Session; reading: R
   const [position, setPosition] = useState(session.to_pos)
   const [minutes, setMinutes] = useState(session.minutes ?? 0)
   const [place, setPlace] = useState<string | null>(session.place)
+  const [today] = useState(() => nightOf(new Date()))
+  const [day, setDay] = useState(session.day)
   const percent = reading.unit === 'porcentaje'
   return (
     <div className="flex flex-col gap-6 pt-2">
-      <p className="quiet -mt-2">{fmtDay(session.day)}</p>
+      <DayField value={day} onChange={setDay} today={today} />
       <NumberDial
         value={position}
         onChange={setPosition}
@@ -371,7 +389,7 @@ function FixEvening({ session, reading, onDone }: { session: Session; reading: R
       <button
         className="btn btn-primary"
         onClick={() => {
-          editSession(session, { position, minutes: minutes || null, place: place || null })
+          editSession(session, { position, minutes: minutes || null, place: place || null, day })
           onDone()
           toast('Velada corregida')
         }}
@@ -398,9 +416,12 @@ function Option({ children, onClick, danger }: { children: React.ReactNode; onCl
 function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean) => void }) {
   const [position, setPosition] = useState(reading.position)
   const [minutes, setMinutes] = useState(0)
+  const [today] = useState(() => nightOf(new Date()))
+  const [day, setDay] = useState(today)
   const percent = reading.unit === 'porcentaje'
   return (
     <div className="flex flex-col gap-6 pt-2">
+      <DayField value={day} onChange={setDay} today={today} label="¿Cuándo leíste?" />
       <NumberDial
         value={position}
         onChange={setPosition}
@@ -416,8 +437,8 @@ function Log({ reading, onDone }: { reading: Reading; onDone: (finished: boolean
         className="btn btn-primary"
         disabled={position === reading.position && !minutes}
         onClick={() => {
-          saveEvening({ reading, position, minutes: minutes || null, place: null, startedAt: null })
-          if (position >= reading.total) finishReading(reading, reading.rating)
+          saveEvening({ reading, position, minutes: minutes || null, place: null, startedAt: null, day })
+          if (position >= reading.total) finishReading(reading, reading.rating, day)
           onDone(position >= reading.total)
         }}
       >
@@ -530,6 +551,34 @@ function Size({ reading, onDone }: { reading: Reading; onDone: () => void }) {
         }}
       >
         Guardar
+      </button>
+    </div>
+  )
+}
+
+/** Starting a book from the pile: now, or it was already under way (where, and since when). */
+function Start({ reading, onDone }: { reading: Reading; onDone: (already?: { position: number; startedOn: string | null }) => void }) {
+  const [today] = useState(() => nightOf(new Date()))
+  const [started, setStarted] = useState(false)
+  const [draft, setDraft] = useState<AlreadyDraft>({ position: '', startedOn: '' })
+  const at = alreadyPosition(draft, reading.total)
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="radiogroup" aria-label="¿Lo empiezas ahora?" className="flex flex-wrap gap-2">
+        <button type="button" role="radio" className="chip" aria-checked={!started} aria-pressed={!started} onClick={() => setStarted(false)}>
+          Lo empiezo ahora
+        </button>
+        <button type="button" role="radio" className="chip" aria-checked={started} aria-pressed={started} onClick={() => setStarted(true)}>
+          Ya lo tenía empezado
+        </button>
+      </div>
+      {started && <AlreadyStartedFields unit={reading.unit} total={reading.total} today={today} value={draft} onChange={setDraft} />}
+      <button
+        className="btn btn-primary"
+        disabled={started && at == null}
+        onClick={() => onDone(started && at != null ? { position: at, startedOn: draft.startedOn || null } : undefined)}
+      >
+        A la mesita
       </button>
     </div>
   )
