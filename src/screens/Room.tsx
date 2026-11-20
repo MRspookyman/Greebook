@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { Link, useNavigate } from 'react-router'
 import { chooseCandle, lightCandle } from '@/lib/actions'
 import {
-  bookViews, candleReading, dropped, fmtPosition, heldBy, isLit, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
+  bookViews, candleReading, dropped, fmtPosition, heldBy, isBurning, isLit, isPaused, matchesText, sortViews, live, nightstand, pile, progressOf, shelves, standGroups,
   minutesTonight, waxAfter, type BookView, type ShelfOrder, type Whose,
 } from '@/lib/model'
 import { lastNights, nightsLine, nightsOf, sharedNights } from '@/lib/nights'
@@ -41,8 +41,12 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   const sessions = useMemo(() => live(db.sessions), [db.sessions])
   const stand = useMemo(() => nightstand(views, sessions), [views, sessions])
   const chosen = candleReading(db, me.id, views, sessions)
-  const mineLit = isLit(me, now)
-  const theirsLit = isLit(partner, now)
+  // «Lit» is an open evening, burning or paused; «burning» is a flame you can see.
+  const mineOpen = isLit(me, now)
+  const minePaused = isPaused(me, now)
+  const theirsPaused = isPaused(partner, now)
+  const mineLit = isBurning(me, now)
+  const theirsLit = isBurning(partner, now)
   const tonight = nightOf(new Date(now))
   const theirNights = useMemo(() => (partner ? nightsOf(sessions, partner.id) : new Set<string>()), [sessions, partner])
   const shared = useMemo(() => sharedNights(nightsOf(sessions, me.id), theirNights), [sessions, me.id, theirNights])
@@ -88,7 +92,8 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
         {partner.name} está leyendo{theirBook ? <> <em>{theirBook.title}</em></> : ''}. ¿Enciendes la tuya?
       </>
     )
-  } else if (mineLit) line = partner ? `Tu vela está encendida. ${partner.name} la ve.` : 'Tu vela está encendida.'
+  } else if (minePaused) line = 'Tu velada está en pausa. Toca tu vela para volver.'
+  else if (mineLit) line = partner ? `Tu vela está encendida. ${partner.name} la ve.` : 'Tu vela está encendida.'
   else if (!chosen) line = 'Pon un libro en la mesita y enciende tu vela.'
   else line = nights ?? 'Las dos velas esperan.'
 
@@ -128,7 +133,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
   /** Moves the candle to another open book: at once if it is burning, for next time if it isn't. */
   const moveCandle = (view: BookView) => {
     if (!view.mine) return
-    if (mineLit) lightCandle(view.mine)
+    if (mineOpen) lightCandle(view.mine)
     else chooseCandle(view.mine)
     toast('Tu vela es ahora para este libro')
   }
@@ -242,13 +247,13 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
                 onClick={wink.send}
               >
                 <span className={`theirs block ${theirsLit ? '' : 'unlit'}`}>
-                  <Candle color={partner.color} lit={theirsLit} wax={waxAfter(theirMinutes)} lean={mineLit ? 1 : 0} tremble={wink.received} />
+                  <Candle color={partner.color} lit={theirsLit} paused={theirsPaused} wax={waxAfter(theirMinutes)} lean={mineLit ? 1 : 0} tremble={wink.received} />
                 </span>
               </button>
             </div>
           )}
           <div className="flex w-[calc(var(--candle)+36px)] justify-center">
-            <MyCandle me={me} lit={mineLit} wax={waxAfter(myMinutes)} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onHold={showHold} onLight={light} onOpen={() => navigate('/velada')} />
+            <MyCandle me={me} lit={mineOpen} flame={mineLit} paused={minePaused} wax={waxAfter(myMinutes)} lean={theirsLit && partner ? -1 : 0} ready={!!chosen} onHold={showHold} onLight={light} onOpen={() => navigate('/velada')} />
           </div>
         </div>
         <Plank />
@@ -258,7 +263,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             <div className="w-[calc(var(--candle)+36px)]">
               <p className="text-[18px]">{partner.name}</p>
               <p className="quiet text-[15px] whitespace-nowrap">
-                {theirsLit
+                {theirsPaused
+                  ? `en pausa · ${fmtMinutes(theirMinutes)} hoy`
+                  : theirsLit
                   ? theirMinutes > 0 ? `leyendo · ${fmtMinutes(theirMinutes)} hoy` : 'acaba de encenderla'
                   : theirMinutes > 0 ? `${fmtMinutes(theirMinutes)} hoy` : theirNights.has(tonight) ? 'ya ha leído hoy' : 'aún no ha leído hoy'}
               </p>
@@ -266,7 +273,9 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
           )}
           <div className="w-[calc(var(--candle)+36px)]">
             <p className="text-[18px] font-medium">Tú</p>
-            {mineLit ? (
+            {minePaused ? (
+              <p className="quiet text-[15px] whitespace-nowrap">en pausa · {fmtMinutes(myMinutes)} hoy</p>
+            ) : mineLit ? (
               <p className="quiet text-[15px] whitespace-nowrap">{myMinutes > 0 ? `leyendo · ${fmtMinutes(myMinutes)} hoy` : 'recién encendida'}</p>
             ) : myMinutes > 0 ? (
               <p className="quiet text-[15px] whitespace-nowrap">{fmtMinutes(myMinutes)} hoy</p>
@@ -275,7 +284,7 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
             ) : (
               <p className="text-[15.5px] whitespace-nowrap text-flame-ink">mantén para encender</p>
             )}
-            {!mineLit && (
+            {!mineOpen && (
               <span aria-hidden className="mx-auto mt-1.5 block h-[3px] w-[92px] overflow-hidden rounded-full" style={{ background: 'color-mix(in oklab, var(--flame) 20%, transparent)', opacity: 'var(--holding, 0)', transition: 'opacity 160ms' } as CSSProperties}>
                 <span ref={meter} className="block h-full origin-left rounded-full bg-flame" style={{ transform: 'scaleX(0)' }} />
               </span>
@@ -642,7 +651,11 @@ export function Room({ section }: { section: 'velas' | 'mesilla' | 'estanteria' 
 
 interface MyCandleProps {
   me: Profile
+  /** The evening is open: touching it goes back to it instead of lighting. */
   lit: boolean
+  /** Its flame is burning (an open evening can be paused). */
+  flame: boolean
+  paused: boolean
   /** What tonight's reading has left of it. */
   wax: number
   lean: -1 | 0 | 1
@@ -655,7 +668,7 @@ interface MyCandleProps {
 }
 
 /** Your candle: hold a finger on it to light it; once lit, a tap takes you back to your evening. */
-function MyCandle({ me, lit, wax, lean, ready, onHold, onLight, onOpen }: MyCandleProps) {
+function MyCandle({ me, lit, flame, paused, wax, lean, ready, onHold, onLight, onOpen }: MyCandleProps) {
   const hold = useHold(onLight)
   useEffect(() => onHold(hold.progress), [hold.progress, onHold])
   const [hint, setHint] = useState(false)
@@ -672,7 +685,7 @@ function MyCandle({ me, lit, wax, lean, ready, onHold, onLight, onOpen }: MyCand
       type="button"
       className="rise relative rounded-[20px] outline-offset-0"
       style={{ '--i': 1, touchAction: 'manipulation', WebkitTouchCallout: 'none' } as CSSProperties}
-      aria-label={lit ? 'Tu vela está encendida. Volver a tu velada' : 'Tu vela. Mantén pulsado para encenderla'}
+      aria-label={paused ? 'Tu velada está en pausa. Volver a ella' : lit ? 'Tu vela está encendida. Volver a tu velada' : 'Tu vela. Mantén pulsado para encenderla'}
       onPointerDown={(event) => {
         if (lit || event.button !== 0) return
         setHint(false)
@@ -689,7 +702,7 @@ function MyCandle({ me, lit, wax, lean, ready, onHold, onLight, onOpen }: MyCand
         else if (event.detail === 0) onLight()
       }}
     >
-      <Candle color={me.color} lit={lit} wax={wax} lean={lean} igniting={hold.progress} inviting={ready} />
+      <Candle color={me.color} lit={flame} paused={paused} wax={wax} lean={lean} igniting={hold.progress} inviting={ready && !lit} />
       {hint && !lit && <span role="status" className="pointer-events-none absolute inset-x-[-34px] bottom-2 rounded-xl bg-surface px-3 py-2 text-center text-[15px] leading-snug text-ink shadow-sm">Mantén el dedo sobre la mecha hasta que prenda.</span>}
     </button>
   )

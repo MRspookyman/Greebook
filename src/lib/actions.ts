@@ -26,6 +26,8 @@ export function lightCandle(reading: Reading) {
     // Relighting for another book keeps the same flame burning.
     candle_lit_at: already ? me.candle_lit_at : nowIso(),
     candle_reading_id: reading.id,
+    // A new flame starts burning; moving a lit one to another book leaves it as it was, paused or not.
+    ...(already ? {} : { candle_paused_at: null }),
   })
   if (reading.status !== 'leyendo') openBook(reading)
   if (!already) enqueue({ id: uid(), kind: 'notify', what: 'vela', ref: me.id })
@@ -37,7 +39,28 @@ export function chooseCandle(reading: Reading) {
 }
 
 export function snuffCandle() {
-  patch('profiles', getMe(), { candle_lit_at: null })
+  patch('profiles', getMe(), { candle_lit_at: null, candle_paused_at: null })
+}
+
+/** Pauses the evening: the flame goes out for a while and the time stops, but the evening stays open. */
+export function pauseCandle() {
+  const me = getDb().profiles[getMe()]
+  if (!me?.candle_lit_at || me.candle_paused_at) return
+  patch('profiles', me.id, { candle_paused_at: nowIso() })
+}
+
+/**
+ * Takes the evening up again. The candle is moved forward by as long as the pause lasted, so the time read
+ * is still just «now minus when it was lit», and nothing else has to know there was a pause.
+ */
+export function resumeCandle() {
+  const me = getDb().profiles[getMe()]
+  if (!me?.candle_lit_at || !me.candle_paused_at) return
+  const paused = Date.now() - new Date(me.candle_paused_at).getTime()
+  patch('profiles', me.id, {
+    candle_lit_at: new Date(new Date(me.candle_lit_at).getTime() + Math.max(0, paused)).toISOString(),
+    candle_paused_at: null,
+  })
 }
 
 /** A bookmark leaving the nightstand must not leave its candle burning. */

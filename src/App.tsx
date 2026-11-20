@@ -189,11 +189,12 @@ function Gate({ userId }: { userId: string }) {
 
   // While my candle burns, the phone carries a notice that counts the time, like a timer's.
   const litAt = me?.candle_lit_at ?? null
+  const pausedAt = me?.candle_paused_at ?? null
   const candleBook = me?.candle_reading_id ? db.books[db.readings[me.candle_reading_id]?.book_id ?? '']?.title : undefined
   useEffect(() => {
-    if (litAt && isLit({ candle_lit_at: litAt }, Date.now())) void showCandleNotice(litAt, candleBook ?? null)
+    if (litAt && isLit({ candle_lit_at: litAt }, Date.now())) void showCandleNotice(litAt, candleBook ?? null, pausedAt)
     else void clearCandleNotice()
-  }, [litAt, candleBook])
+  }, [litAt, candleBook, pausedAt])
   // Nothing of yours stays on the lock screen of a phone you have signed out of.
   useEffect(() => () => void clearCandleNotice(), [])
 

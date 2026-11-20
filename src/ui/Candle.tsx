@@ -17,12 +17,14 @@ interface Props {
   inviting?: boolean
   /** Changes whenever the flame should shiver (a «guiño»). */
   tremble?: number
+  /** The evening is paused: no flame, the wick keeps a small ember that breathes. */
+  paused?: boolean
   /** Shows the wisp of smoke of a candle just blown out. */
   smoke?: boolean
 }
 
 /** A candle on its brass dish. Purely a drawing: whoever places it decides what touching it does. */
-export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0, inviting = false, tremble = 0, smoke = false }: Props) {
+export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0, inviting = false, tremble = 0, smoke = false, paused = false }: Props) {
   const id = useId()
   const height = 62 + 86 * Math.max(0, Math.min(1, wax))
   const top = 212 - height
@@ -207,6 +209,13 @@ export function Candle({ color, lit, wax = 1, size = 120, lean = 0, igniting = 0
         </g>
       )}
 
+      {/* Paused: the wick keeps its ember, ready to catch again. */}
+      {paused && !lit && !smoke && (
+        <g className="ember-rest">
+          <circle cx="60" cy={wick} r="9" fill={`url(#${id}warm)`} />
+          <circle cx="60" cy={wick} r="1.6" fill="#ff8a3c" />
+        </g>
+      )}
       {/* Just blown out: the tip of the wick stays red for a moment, and goes dark. */}
       {smoke && !lit && (
         <g className="ember">

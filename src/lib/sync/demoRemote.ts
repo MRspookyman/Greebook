@@ -18,7 +18,7 @@ export const JAVIER = '00000000-0000-4000-8000-00000000000b'
 
 const person = (id: string, name: string, color: Profile['color'], partner_id: string): Profile => ({
   id, name, color, partner_id, timezone: 'Europe/Madrid', welcomed_at: null,
-  candle_lit_at: null, candle_reading_id: null, updated_at: new Date(0).toISOString(),
+  candle_lit_at: null, candle_reading_id: null, candle_paused_at: null, updated_at: new Date(0).toISOString(),
 })
 
 function fresh(): Db {

@@ -11,11 +11,33 @@ export function live<T extends { deleted_at?: string | null }>(rows: Record<stri
   return Object.values(rows).filter((row) => !row.deleted_at)
 }
 
-/** Whether this person's candle is burning right now. A few minutes of clock difference are tolerated. */
-export function isLit(person: Pick<Profile, 'candle_lit_at'> | null | undefined, now: number): boolean {
+type Candle = Pick<Profile, 'candle_lit_at'> & Partial<Pick<Profile, 'candle_paused_at'>>
+
+/**
+ * Whether this person's candle is lit: their evening is open, burning or paused. A few minutes of clock
+ * difference are tolerated.
+ */
+export function isLit(person: Candle | null | undefined, now: number): boolean {
   if (!person?.candle_lit_at) return false
   const elapsed = now - new Date(person.candle_lit_at).getTime()
   return elapsed > -5 * 60_000
+}
+
+/** Lit, and paused: the evening is open but the flame is out and the time stands still. */
+export function isPaused(person: Candle | null | undefined, now: number): boolean {
+  return isLit(person, now) && !!person?.candle_paused_at
+}
+
+/** The flame is burning right now: lit and not paused. */
+export function isBurning(person: Candle | null | undefined, now: number): boolean {
+  return isLit(person, now) && !person?.candle_paused_at
+}
+
+/** How long the candle has burned, in ms: up to the pause while it is paused, so a pause does not count. */
+export function burnedMs(person: Candle | null | undefined, now: number): number {
+  if (!person?.candle_lit_at) return 0
+  const end = person.candle_paused_at ? new Date(person.candle_paused_at).getTime() : now
+  return Math.max(0, end - new Date(person.candle_lit_at).getTime())
 }
 
 /**
@@ -24,14 +46,14 @@ export function isLit(person: Pick<Profile, 'candle_lit_at'> | null | undefined,
  */
 export function minutesTonight(
   sessions: Session[],
-  person: Pick<Profile, 'id' | 'candle_lit_at'> | null | undefined,
+  person: (Candle & Pick<Profile, 'id'>) | null | undefined,
   tonight: string,
   now: number,
 ): number {
   if (!person) return 0
   let minutes = 0
   for (const session of sessions) if (session.user_id === person.id && session.day === tonight && !session.deleted_at) minutes += session.minutes ?? 0
-  if (person.candle_lit_at && isLit(person, now)) minutes += Math.max(0, Math.floor((now - new Date(person.candle_lit_at).getTime()) / 60_000))
+  if (isLit(person, now)) minutes += Math.floor(burnedMs(person, now) / 60_000)
   return minutes
 }
 

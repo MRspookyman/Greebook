@@ -9,7 +9,7 @@ estáticos). Nada más.
 
 1. Supabase → **SQL Editor** → pega entero `supabase/migrations/0001_greenbook.sql` → **Run**. Después, igual,
    `supabase/migrations/0002_siguiente.sql`, `0003_notas_abiertas.sql`, `0004_notas_ocultas.sql`,
-   `0005_portadas_con_foto.sql` y `0006_emparejar.sql`.
+   `0005_portadas_con_foto.sql`, `0006_emparejar.sql` y `0007_vela_en_pausa.sql`.
    - **Borra todos los datos anteriores** (libros, sesiones, citas…).
    - Conserva vuestras dos cuentas, los nombres, quién es pareja de quién y un color para cada uno.
 2. Ya está. Entráis con el mismo email y contraseña.
@@ -22,7 +22,7 @@ Limpieza opcional de lo que ya no se usa (no molesta si se queda):
 
 ### Si es un proyecto nuevo
 
-1. SQL Editor → pega y ejecuta, en orden, todos los archivos de `supabase/migrations/` (del `0001` al `0006`).
+1. SQL Editor → pega y ejecuta, en orden, todos los archivos de `supabase/migrations/` (del `0001` al `0007`).
 2. Abre la app y pulsa **Es mi primera vez: crear una cuenta**. La otra persona hace lo mismo en su móvil.
    - Si en Authentication → Sign In / Providers → Email está activado «Confirm email», cada cuenta tiene que
      confirmar su correo antes de entrar. Para dos personas es más cómodo desactivarlo.

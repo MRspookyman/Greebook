@@ -412,6 +412,13 @@ input[type='search']::-webkit-search-cancel-button {
 .ember {
   animation: gb-ember 2.4s ease-out both;
 }
+.ember-rest {
+  animation: gb-ember-rest 3.2s ease-in-out infinite;
+}
+@keyframes gb-ember-rest {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 @keyframes gb-ember {
   0% { opacity: 1; }
   25% { opacity: 0.55; }

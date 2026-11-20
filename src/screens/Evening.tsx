@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { burnedMinutes, finishReading, openSlip, saveEvening, snuffCandle } from '@/lib/actions'
+import { burnedMinutes, finishReading, openSlip, pauseCandle, resumeCandle, saveEvening, snuffCandle } from '@/lib/actions'
 import { fractionOf } from '@/lib/lock'
 import { slipPlace } from '@/lib/slips'
 import { sync } from '@/lib/sync/store'
-import { fmtProgress, isLit, live, minutesTonight, waxAfter } from '@/lib/model'
-import { capital, fmtMinutes, fmtSince, greeting, nightOf } from '@/lib/time'
+import { burnedMs, fmtProgress, isBurning, isPaused, live, minutesTonight, waxAfter } from '@/lib/model'
+import { capital, fmtMinutes, greeting, nightOf } from '@/lib/time'
 import type { Reading } from '@/lib/types'
 import { usePeople, useNow, useWink } from '@/session'
 import { useLivingWall } from '@/lib/ambience'
 import { glowOf } from '@/lib/candle'
 import { Candle } from '@/ui/Candle'
 import { CandleWall } from '@/ui/CandleWall'
-import { Back, Paper } from '@/ui/icons'
+import { Back, Pause, Paper } from '@/ui/icons'
 import { MinutesField } from '@/ui/Minutes'
 import { NumberDial } from '@/ui/NumberDial'
 import { Sheet } from '@/ui/Sheet'
@@ -67,8 +67,10 @@ export function Evening() {
 
   const reading = me.candle_reading_id ? db.readings[me.candle_reading_id] : undefined
   const book = reading ? db.books[reading.book_id] : undefined
-  const burning = isLit(me, now)
-  const theirsLit = isLit(partner, now)
+  const burning = isBurning(me, now)
+  const paused = isPaused(me, now)
+  const theirsLit = isBurning(partner, now)
+  const theirsPaused = isPaused(partner, now)
 
   if (farewell && handing && partner) {
     const leaveNow = () => navigate(farewell.finished ? `/libro/${farewell.bookId}?cerrar=1` : `/libro/${farewell.bookId}#papeles`, { replace: true })
@@ -109,7 +111,7 @@ export function Evening() {
   // Blown out, the room stays as it was for a moment: same candles, same wall, the light going and the smoke rising.
   const out = farewell
   if (!out && (!me.candle_lit_at || !reading || reading.deleted_at || !book || book.deleted_at)) return <Navigate to="/" replace />
-  const open = !out && reading && book && me.candle_lit_at ? { reading, book, litAt: me.candle_lit_at } : null
+  const open = !out && reading && book && me.candle_lit_at ? { reading, book, litAt: me.candle_lit_at, burned: burnedMs(me, now) } : null
 
   const leave = (result: Omit<Farewell, 'wax'>) => {
     setAsking(false)
@@ -160,11 +162,11 @@ export function Evening() {
               aria-label={theirsLit ? `La vela de ${partner.name}. Mandarle un guiño` : `La vela de ${partner.name}, apagada`}
               onClick={sendWink}
             >
-              <Candle color={partner.color} lit={theirsLit} wax={theirWax} size={62} lean={1} tremble={wink.received} />
+              <Candle color={partner.color} lit={theirsLit} paused={theirsPaused} wax={theirWax} size={62} lean={1} tremble={wink.received} />
             </button>
           )}
           <div ref={mineRef}>
-            <Candle color={me.color} lit={alight} wax={myWax} size={150} lean={theirsLit ? -1 : 0} smoke={!!out} />
+            <Candle color={me.color} lit={alight} paused={!out && paused} wax={myWax} size={150} lean={theirsLit ? -1 : 0} smoke={!!out} />
           </div>
           {partner && <div className="w-[54px]" aria-hidden />}
         </div>
@@ -185,8 +187,11 @@ export function Evening() {
             open && (
               <>
                 <h1 className="mt-5 text-[27px] leading-tight italic">{open.book.title}</h1>
-                <p className="quiet mt-2 text-[17px]">{`${capital(fmtProgress(open.reading))} · encendida ${fmtSince(open.litAt, now)}`}</p>
-                {partner && theirsLit && (
+                <p className="quiet mt-2 text-[17px]" aria-live="polite">
+                  {`${capital(fmtProgress(open.reading))} · ${paused ? `en pausa · llevas ${fmtMinutes(open.burned / 60_000)}` : `leyendo ${fmtMinutes(open.burned / 60_000)}`}`}
+                </p>
+                {paused && <p className="mt-4 text-[17px] text-flame-ink">El tiempo está parado. Retómala cuando vuelvas al libro.</p>}
+                {!paused && partner && theirsLit && (
                   <p className="mt-4 text-[17px] text-flame-ink">{partner.name} también está leyendo. Toca su vela para un guiño.</p>
                 )}
               </>
@@ -197,9 +202,25 @@ export function Evening() {
 
       {/* Kept in place, unseen, once the candle is out: the candles must not jump as the buttons go. */}
       <footer className={`relative mx-auto flex w-full max-w-md flex-col gap-1 px-6 ${out ? 'invisible' : ''}`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 22px)' }}>
-        <button className="btn btn-primary" onClick={() => setAsking(true)}>
-          Apagar la vela
-        </button>
+        {paused ? (
+          <div className="flex gap-2">
+            <button className="btn btn-primary flex-1" onClick={() => { navigator.vibrate?.(18); resumeCandle() }}>
+              Retomar
+            </button>
+            <button className="btn btn-soft" onClick={() => setAsking(true)}>
+              Apagar
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button className="btn btn-soft" aria-label="Pausar la velada" onClick={() => pauseCandle()}>
+              <Pause size={20} /> Pausar
+            </button>
+            <button className="btn btn-primary flex-1" onClick={() => setAsking(true)}>
+              Apagar la vela
+            </button>
+          </div>
+        )}
         <button className="btn btn-text self-center" onClick={() => setWriting(true)}>
           <Paper size={18} /> Dejar una nota entre estas páginas
         </button>
@@ -210,17 +231,18 @@ export function Evening() {
       </Sheet>
 
       <Sheet open={asking && !out} onClose={() => setAsking(false)} title="¿Por dónde vas?" night>
-        {asking && open && <Snuff reading={open.reading} litAt={open.litAt} onDone={leave} />}
+        {asking && open && <Snuff reading={open.reading} litAt={open.litAt} burned={open.burned} onDone={leave} />}
       </Sheet>
     </main>
   )
 }
 
 /** Blowing the candle out asks one thing: where the bookmark goes. The rest is already filled in. */
-function Snuff({ reading, litAt, onDone }: { reading: Reading; litAt: string; onDone: (farewell: Omit<Farewell, 'wax'>) => void }) {
+function Snuff({ reading, litAt, burned, onDone }: { reading: Reading; litAt: string; burned: number; onDone: (farewell: Omit<Farewell, 'wax'>) => void }) {
   const { db, me } = usePeople()
   const [position, setPosition] = useState(reading.position)
-  const [minutes, setMinutes] = useState(() => burnedMinutes(litAt, Date.now()))
+  // The time read, without the pauses: what the candle actually burned.
+  const [minutes, setMinutes] = useState(() => burnedMinutes(litAt, new Date(litAt).getTime() + burned))
   const [place, setPlace] = useState<string | null>(null)
   const percent = reading.unit === 'porcentaje'
 

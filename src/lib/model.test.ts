@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, minutesTonight, waxAfter,
+  bookViews, byNewest, candleReading, dropped, heldBy, isLit, isNext, matchesText, ratingOf, sortViews, nightstand, pile, shelves, standGroups, tally, minutesTonight, waxAfter, isPaused, isBurning, burnedMs,
 } from './model'
 import { stepMinutes } from './time'
 import { emptyDb, type Book, type Db, type Reading, type Session } from './types'
@@ -119,6 +119,18 @@ describe('la vela', () => {
     expect(minutesTonight(sessions, { id: 'a', candle_lit_at: '2026-11-10T21:48:00Z' }, '2026-11-10', now)).toBe(37)
     expect(minutesTonight(sessions, { id: 'b', candle_lit_at: null }, '2026-11-10', now)).toBe(15)
     expect(minutesTonight(sessions, null, '2026-11-10', now)).toBe(0)
+  })
+  it('en pausa sigue encendida, pero no arde y el tiempo no corre', () => {
+    const paused = { candle_lit_at: '2026-11-10T21:30:00Z', candle_paused_at: '2026-11-10T21:40:00Z' }
+    expect(isLit(paused, now)).toBe(true)
+    expect(isPaused(paused, now)).toBe(true)
+    expect(isBurning(paused, now)).toBe(false)
+    expect(burnedMs(paused, now)).toBe(10 * 60_000)
+    expect(minutesTonight([], { id: 'a', ...paused }, '2026-11-10', now)).toBe(10)
+    const burning = { candle_lit_at: '2026-11-10T21:30:00Z', candle_paused_at: null }
+    expect(isBurning(burning, now)).toBe(true)
+    expect(burnedMs(burning, now)).toBe(30 * 60_000)
+    expect(isPaused({ candle_lit_at: null, candle_paused_at: '2026-11-10T21:40:00Z' }, now)).toBe(false)
   })
 })
 

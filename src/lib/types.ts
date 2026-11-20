@@ -12,6 +12,8 @@ export interface Profile {
   /** The candle: lit since when, and with which reading. This is the presence. */
   candle_lit_at: string | null
   candle_reading_id: string | null
+  /** The evening is paused since then: the candle is still lit (the evening is open) but its flame is out. */
+  candle_paused_at?: string | null
   updated_at: string
 }
 

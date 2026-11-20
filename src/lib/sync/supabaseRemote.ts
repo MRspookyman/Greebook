@@ -103,6 +103,7 @@ export function create(): Remote {
             welcomed_at: p.welcomed_at,
             candle_lit_at: p.candle_lit_at,
             candle_reading_id: p.candle_reading_id,
+            candle_paused_at: p.candle_paused_at ?? null,
           })
           .eq('id', p.id)
         if (error) throw failure(error, status)
